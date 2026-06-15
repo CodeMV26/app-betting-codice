@@ -3,6 +3,9 @@ name: 1. Fase Pre-Match - Genera Pronostici
 on:
   workflow_dispatch:
 
+permissions:
+  contents: write  # Dà al server il permesso di salvare i file nella repository
+
 jobs:
   pre-match:
     runs-on: ubuntu-latest
@@ -24,3 +27,11 @@ jobs:
         run: |
           python modulo_01_estrattore.py
           python modulo_02_motore.py
+
+      - name: Salva Automaticamente i File Excel su GitHub
+        run: |
+          git config --global user.name "GitHub Actions Bot"
+          git config --global user.email "actions@github.com"
+          git add Database_App_Betting.xlsx Pronostici_App_Betting.xlsx || true
+          git commit -m "Aggiornamento database e pronostici (Fase Pre-Match)" || true
+          git push origin main || true
