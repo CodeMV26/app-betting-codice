@@ -1,10 +1,10 @@
-name: Esegui Moduli App Betting
+name: 1. Fase Pre-Match - Genera Pronostici
 
 on:
   workflow_dispatch:
 
 jobs:
-  run-modules:
+  pre-match:
     runs-on: ubuntu-latest
     steps:
       - name: Sincronizza Codice
@@ -20,7 +20,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install pandas requests openpyxl xlsxwriter numpy
 
-      - name: Avvia Estrattore e Motore
+      - name: Esegui Estrattore e Motore
         run: |
           python modulo_01_estrattore.py
           python modulo_02_motore.py
