@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write  # Dà al server il permesso di salvare i file nella repository
+  contents: write
 
 jobs:
   post-match:
@@ -33,6 +33,6 @@ jobs:
         run: |
           git config --global user.name "GitHub Actions Bot"
           git config --global user.email "actions@github.com"
-          git add Storico_Validato_Betting.xlsx Report_Simulatore_Betting.xlsx || true
-          git commit -m "Aggiornamento storico e simulazione (Fase Post-Match)" || true
-          git push origin main || true
+          git add --all *.xlsx
+          git commit -m "Aggiornamento storico e simulazione (Fase Post-Match)" || echo "Nessuna modifica da caricare"
+          git push origin main || echo "Push non riuscito o non necessario"
