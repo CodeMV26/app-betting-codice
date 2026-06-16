@@ -1,38 +1,60 @@
 import pandas as pd
 import requests
 import os
-import time
+from datetime import datetime
 
-print("⚽ --- APP BETTING CLOUD - ESTRATTORE AUTOMATICO (TEST MONDIALI) ---")
+print("⚽ --- MODULO 01: ESTRATTORE REALE ---")
 
-# Mettiamo solo la FIFA World Cup per evitare il blocco 429 e non sprecare chiamate
-campionati_attivi = {
-    "Mondiali FIFA - World Cup": "FIFA World Cup"
-}
+# Utilizziamo la competizione FIFA World Cup (WC) o i campionati attivi in questo momento
+URL_API = "https://api.football-data.org/v4/competitions/WC/matches"
+headers = {"X-Auth-Token": "LA_TUA_API_KEY"} # Se usi un token, inseriscilo qui
 
-# Simuliamo un archivio temporaneo di dati (Mock Data) se l'API è in blocco, 
-# così l'app si sblocca in ogni caso e vedi la grafica corretta con i Mondiali!
-api_key = "LA_TUA_API_KEY" # Sostituire con la chiave reale se necessario
+partite_reali = []
 
-partite_estratte = []
-
-for nome_bello, nome_api in campionati_attivi.items():
-    print(f"🔄 Scaricamento automatico mirato: {nome_bello}...")
+try:
+    response = requests.get(URL_API, headers=headers, timeout=15)
     
-    # Per assicurarci che tu veda i Mondiali sul tuo iPhone X ADESSO,
-    # inseriamo direttamente i match del giorno nel file temporaneo.
-    # In questo modo bypassiamo il blocco 429 dei server!
-    match_mondiali = [
-        {"Campionato": "FIFA World Cup", "3. Match": "Italia - Brasile", "PRONOSTICO": "1X", "U/O 2.5": "UNDER 2.5"},
-        {"Campionato": "FIFA World Cup", "3. Match": "Francia - Argentina", "PRONOSTICO": "X2", "U/O 2.5": "OVER 2.5"},
-        {"Campionato": "FIFA World Cup", "3. Match": "Germania - Spagna", "PRONOSTICO": "1", "U/O 2.5": "OVER 2.5"},
-        {"Campionato": "FIFA World Cup", "3. Match": "Inghilterra - Giappone", "PRONOSTICO": "1", "U/O 2.5": "UNDER 2.5"}
-    ]
-    partite_estratte.extend(match_mondiali)
-    print(f"✅ {nome_bello} completato. Forzati {len(match_mondiali)} match chiave nel sistema.")
+    if response.status_code == 200:
+        data = response.json()
+        matches = data.get("matches", [])
+        
+        for m in matches:
+            # Filtriamo solo i match programmati o in corso reali
+            if m.get("status") in ["SCHEDULED", "TIMED", "LIVE", "IN_PLAY"]:
+                # Formattazione rigorosa Data e Ora (Must 4)
+                utc_date = m.get("utcDate", "")
+                data_ora_formattata = "Da Definire"
+                if utc_date:
+                    try:
+                        dt = datetime.strptime(utc_date, "%Y-%m-%dT%H:%M:%SZ")
+                        data_ora_formattata = dt.strftime("%d/%m/%Y %H:%M")
+                    except:
+                        data_ora_formattata = utc_date
 
-# Salviamo il file temporaneo che il motore andrà a leggere
-df_temp = pd.DataFrame(partite_estratte)
-df_temp.to_excel("Database_App_Betting.xlsx", index=False)
+                partite_reali.append({
+                    "Campionato": "FIFA World Cup 2026",
+                    "Data_Ora_Match": data_ora_formattata,
+                    "3. Match": f"{m['homeTeam']['name']} - {m['awayTeam']['name']}",
+                    "1X2": "In elaborazione",
+                    "Risultato_Esatto": "In elaborazione",
+                    "Doppia_Chance": "In elaborazione",
+                    "U/O_1.5": "In elaborazione",
+                    "U/O_2.5": "In elaborazione",
+                    "U/O_3.5": "In elaborazione",
+                    "Goal_NoGoal": "In elaborazione"
+                })
+        print(f"✅ Download completato. Trovati {len(partite_reali)} eventi reali.")
+    else:
+        print(f"⚠️ Server dati non disponibile (Codice {response.status_code}). Nessun dato alterato.")
 
-print("\n🚀 Estrazione completata con successo! I Mondiali sono nel Database.")
+except Exception as e:
+    print(f"❌ Errore critico di connessione API: {e}")
+
+# Must 1: Onestà assoluta dei dati. Se è vuoto, rimane vuoto.
+if partite_reali:
+    df_Esito = pd.DataFrame(partite_reali)
+else:
+    df_Esito = pd.DataFrame(columns=["Campionato", "Data_Ora_Match", "3. Match", "1X2", "Risultato_Esatto", "Doppia_Chance", "U/O_1.5", "U/O_2.5", "U/O_3.5", "Goal_NoGoal"])
+
+df_Esito.to_excel("Database_App_Betting.xlsx", index=False)
+print("💾 File Database_App_Betting.xlsx verificato e salvato.")
