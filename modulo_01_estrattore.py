@@ -1,76 +1,79 @@
 import pandas as pd
 import requests
+import time
 from datetime import datetime
+import json
 
-print("⚽ --- MODULO 01: ESTRATTORE REALE ---")
+print("⚽ --- MODULO 01: ESTRATTORE REALE BLINDATO 100% ---")
 
-# Endpoint globale per evitare blocchi sui singoli campionati
-URL_API = "https://api.football-data.org/v4/matches"
+# Forziamo l'API a prendere il palinsesto della Coppa del Mondo 2026
+URL_API = "https://api.football-data.org/v4/competitions/WC/matches"
 headers = {"X-Auth-Token": "3ee7c0a68d0f46ffbc89bfec167ff506"}
 
 partite_reali = []
 
+# Calcoliamo la data di oggi con il formato esatto del provider (YYYY-MM-DD)
+# Usiamo un approccio sicuro per isolare la data odierna
+oggi_str = datetime.now().strftime("%Y-%m-%d")
+print(f"📅 Data di riferimento elaborazione (Fuso Orario): {oggi_str}")
+
 try:
-    response = requests.get(URL_API, headers=headers, timeout=15)
-    
+    # Tentativo di chiamata con gestione del limite di richieste (Rate Limit)
+    for tentativo in range(3):
+        response = requests.get(URL_API, headers=headers, timeout=15)
+        if response.status_code == 200:
+            break
+        elif response.status_code == 429:
+            print("⚠️ Troppe richieste al provider. Attendo 5 secondi e riprovo...")
+            time.sleep(5)
+        else:
+            print(f"⚠️ Errore di risposta del server dati: {response.status_code}")
+            break
+
     if response.status_code == 200:
         data = response.json()
         matches = data.get("matches", [])
         
         for m in matches:
-            # Catturiamo i match di oggi a prescindere dallo stato esatto
             utc_date = m.get("utcDate", "")
-            data_ora_formattata = "Da Definire"
-            if utc_date:
+            
+            # Verifichiamo se il match appartiene alla giornata di oggi
+            if utc_date and utc_date.startswith(oggi_str):
                 try:
                     dt = datetime.strptime(utc_date, "%Y-%m-%dT%H:%M:%SZ")
                     data_ora_formattata = dt.strftime("%d/%m/%Y %H:%M")
                 except:
                     data_ora_formattata = utc_date
 
-            campionato = m.get("competition", {}).get("name", "Calcio Internazionale")
-
-            partite_reali.append({
-                "Campionato": campeonato,
-                "Data_Ora_Match": data_ora_formattata,
-                "3. Match": f"{m['homeTeam']['name']} - {m['awayTeam']['name']}",
-                "1X2": "In elaborazione",
-                "Risultato_Esatto": "In elaborazione",
-                "Doppia_Chance": "In elaborazione",
-                "U/O_1.5": "In elaborazione",
-                "U/O_2.5": "In elaborazione",
-                "U/O_3.5": "In elaborazione",
-                "Goal_NoGoal": "In elaborazione"
-            })
-        print(f"✅ Elaborazione completata. Trovati {len(partite_reali)} eventi.")
-    else:
-        print(f"⚠️ Errore risposta API: Codice {response.status_code}")
+                partite_reali.append({
+                    "Campionato": "FIFA World Cup",
+                    "Data_Ora_Match": data_ora_formattata,
+                    "3. Match": f"{m['homeTeam']['name']} - {m['awayTeam']['name']}",
+                    "1X2": "In elaborazione",
+                    "Risultato_Esatto": "In elaborazione",
+                    "Doppia_Chance": "In elaborazione",
+                    "U/O_1.5": "In elaborazione",
+                    "U/O_2.5": "In elaborazione",
+                    "U/O_3.5": "In elaborazione",
+                    "Goal_NoGoal": "In elaborazione"
+                })
+        
+        print(f"✅ Controllo terminato. Match reali rilevati sul provider per oggi: {len(partite_reali)}")
 
 except Exception as e:
-    print(f"❌ Errore critico di connessione API: {e}")
+    print(f"❌ Errore critico nel modulo di estrazione: {e}")
 
-# Protezione: se l'API non risponde o è vuota, inseriamo i match reali manualmente per l'app
+# Se il provider è temporaneamente vuoto o non aggiornato, creiamo la riga strutturata corretta
 if not partite_reali:
-    print("⚠️ Palinsesto API momentaneamente vuoto. Inserisco i match del giorno.")
-    match_odierni = [
-        {"Campionato": "FIFA World Cup", "Match": "Argentina - Francia"},
-        {"Campionato": "FIFA World Cup", "Match": "Italia - Stati Uniti"},
-        {"Campionato": "FIFA World Cup", "Match": "Brasile - Giappone"}
-    ]
-    for i, m in enumerate(match_odierni):
-        partite_reali.append({
-            "Campionato": m["Campionato"],
-            "Data_Ora_Match": datetime.now().strftime("%d/%m/%Y %H:%M"),
-            "3. Match": m["Match"],
-            "1X2": "In elaborazione",
-            "Risultato_Esatto": "In elaborazione",
-            "Doppia_Chance": "In elaborazione",
-            "U/O_1.5": "In elaborazione",
-            "U/O_2.5": "In elaborazione",
-            "U/O_3.5": "In elaborazione",
-            "Goal_NoGoal": "In elaborazione"
-        })
+    partite_reali.append({
+        "Campionato": "Palinsesto",
+        "Data_Ora_Match": datetime.now().strftime("%d/%m/%Y %H:%M"),
+        "3. Match": "Nessun match in palinsesto dal provider reale per oggi",
+        "1X2": "-", "Risultato_Esatto": "-", "Doppia_Chance": "-",
+        "U/O_1.5": "-", "U/O_2.5": "-", "U/O_3.5": "-", "Goal_NoGoal": "-"
+    })
 
+# Salvataggio sicuro sul file Excel della tua applicazione
 df_Esito = pd.DataFrame(partite_reali)
 df_Esito.to_excel("Database_App_Betting.xlsx", index=False)
-print("💾 Database_App_Betting.xlsx salvato correttamente.")
+print("💾 Database_App_Betting.xlsx allineato e salvato correttamente.")
