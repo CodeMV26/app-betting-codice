@@ -1,7 +1,7 @@
 name: Esecuzione Moduli Pre-Match
 
 on:
-  workflow_dispatch: # Questo permette al pulsante dell'iPhone di attivare il flusso
+  workflow_dispatch:
 
 jobs:
   run-modules:
