@@ -2,8 +2,12 @@ import streamlit as st
 import pandas as pd
 import os
 from datetime import datetime
+import zoneinfo
+import requests
 
-# Configurazione Mobile Rigida per iPhone
+# 1. Configurazione rigida per fuso orario italiano (Must 2)
+FUSO_ORARIO = zoneinfo.ZoneInfo("Europe/Rome")
+
 st.set_page_config(page_title="Pannello Betting", page_icon="⚽", layout="centered")
 
 # Stile CSS per iPhone (Ottimizzazione Spazi e Visibilità delle Colonne)
@@ -30,38 +34,63 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-st.title("⚽ Controllo Betting Pro")
+# Recupero delle chiavi di attivazione reali inserite nei Secrets
+TOKEN = st.secrets.get("GITHUB_TOKEN", "")
+REPO = st.secrets.get("GITHUB_REPO", "")
 
+st.title("⚽ Controllo Betting Pro")
 st.subheader("🛠️ Console Operativa Moduli")
 
 col1, col2 = st.columns(2)
 
+# PULSANTE REALE FASE 1
 with col1:
     if st.button("🚀 Avvia Fase 1 (Pre-Match: Moduli 01+02)"):
-        st.warning("Esecuzione richiesta sul server. Ricarica la pagina tra 30 secondi.")
+        if not TOKEN or not REPO:
+            st.error("❌ Chiavi di connessione mancanti nei Secrets di Streamlit.")
+        else:
+            with st.spinner("Azzeramento e attivazione Fase 1..."):
+                url = f"https://api.github.com/repos/{REPO}/actions/workflows/pre-match.yml/dispatches"
+                headers = {"Authorization": f"token {TOKEN}", "Accept": "application/vnd.github.v3+json"}
+                response = requests.post(url, headers=headers, json={"ref": "main"})
+                if response.status_code == 204:
+                    st.success("🔄 Fase 1 partita sul server! Attendi 30-40 secondi e aggiorna la pagina.")
+                else:
+                    st.error(f"❌ Errore server Fase 1: {response.status_code}")
 
+# PULSANTE REALE FASE 2
 with col2:
     if st.button("📊 Avvia Fase 2 (Post-Match: Moduli 03+04+05)"):
-        st.warning("Esecuzione post-match richiesta sul server.")
+        if not TOKEN or not REPO:
+            st.error("❌ Chiavi di connessione mancanti nei Secrets di Streamlit.")
+        else:
+            with st.spinner("Attivazione Fase 2..."):
+                # Qui si collega al file del workflow post-match (es. post-match.yml)
+                url = f"https://api.github.com/repos/{REPO}/actions/workflows/post-match.yml/dispatches"
+                headers = {"Authorization": f"token {TOKEN}", "Accept": "application/vnd.github.v3+json"}
+                response = requests.post(url, headers=headers, json={"ref": "main"})
+                if response.status_code == 204:
+                    st.success("🔄 Fase 2 partita sul server! Elaborazione post-match in corso.")
+                else:
+                    st.error(f"❌ Errore server Fase 2: {response.status_code}")
 
-# Verifica e visualizzazione data/ora ultima elaborazione file (Must 2)
+# Lettura e visualizzazione dell'orario con fuso orario italiano corretto (Must 2)
 if os.path.exists("Pronostici_App_Betting.xlsx"):
     mtime = os.path.getmtime("Pronostici_App_Betting.xlsx")
-    data_ora = datetime.fromtimestamp(mtime).strftime('%d/%m/%Y %H:%M:%S')
+    data_ora = datetime.fromtimestamp(mtime, tz=FUSO_ORARIO).strftime('%d/%m/%Y %H:%M:%S')
     st.caption(f"⏱️ **Ultima elaborazione dati reale eseguita il:** {data_ora}")
 else:
-    st.caption("⏱️ **Ultima elaborazione dati reale eseguita il:** Mai eseguita (Nessun file trovato)")
+    st.caption("⏱️ **Ultima elaborazione dati reale eseguita il:** Nessun dato in memoria (Pronto per nuova estrazione)")
 
+# Visualizzazione tabellare dei mercati reali strutturati (Must 3 e Must 4)
 tabs = st.tabs(["🎯 Palinsesto & Pronostici", "📊 Storico Validato"])
 
-# TAB 1: PRONOSTICI REALISTICI CON TUTTI I MERCATI RICHIESTI (Must 3 e Must 4)
 with tabs[0]:
     if os.path.exists("Pronostici_App_Betting.xlsx"):
         try:
             df = pd.read_excel("Pronostici_App_Betting.xlsx")
-            
             if df.empty:
-                st.info("Nessun match presente in palinsesto. Il database è vuoto.")
+                st.info("Nessun match presente in palinsesto dal provider reale.")
             else:
                 for idx, row in df.iterrows():
                     st.markdown(f"""
@@ -80,14 +109,17 @@ with tabs[0]:
                     </div>
                     """, unsafe_allow_html=True)
         except Exception as e:
-            st.error(f"Errore di lettura del file Excel: {e}")
+            st.error(f"Errore tecnico di lettura: {e}")
     else:
-        st.info("In attesa della prima elaborazione dati reale.")
+        st.info("Nessun dato attivo. Premi il pulsante sopra per avviare l'estrazione reale.")
 
 with tabs[1]:
     if os.path.exists("Storico_Validato_Betting.xlsx"):
-        df_storico = pd.read_excel("Storico_Validato_Betting.xlsx")
-        st.metric(label="Match Reali Archiviati", value=len(df_storico))
-        st.dataframe(df_storico, use_container_width=True)
+        try:
+            df_storico = pd.read_excel("Storico_Validato_Betting.xlsx")
+            st.metric(label="Match Reali Archiviati", value=len(df_storico))
+            st.dataframe(df_storico, use_container_width=True)
+        except Exception as e:
+            st.error(f"Errore lettura storico: {e}")
     else:
-        st.info("L'archivio storico reale apparirà dopo la prima validazione post-match.")
+        st.info("L'archivio storico reale apparirà dopo la prima validazione post-match (Fase 2).")
