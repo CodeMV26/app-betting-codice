@@ -3,7 +3,7 @@ import os
 import math
 import numpy as np
 
-print("🧠 --- MODULO 02: MOTORE DIXON-COLES & POISSON CON MULTIGOAL RANGE ---")
+print("🧠 --- MODULO 02: MOTORE DIXON-COLES & POISSON CON MULTIGOAL DINAMICO ---")
 
 DATABASE_FILE = "Database_App_Betting.xlsx"
 OUTPUT_FILE = "Pronostici_App_Betting.xlsx"
@@ -19,6 +19,20 @@ def dixon_coles_adj(i, j, xg_c, xg_t, rho=-0.09):
     if i == 1 and j == 1: return 1 - rho
     return 1.0
 
+def determina_miglior_multigoal(prob_vettore):
+    # Calcola la probabilità cumulata per i reali range di gol del palinsesto (da 0 a 5 gol)
+    range_disponibili = {
+        "1-2 MG": sum(prob_vettore[1:3]),
+        "1-3 MG": sum(prob_vettore[1:4]),
+        "1-4 MG": sum(prob_vettore[1:5]),
+        "2-3 MG": sum(prob_vettore[2:4]),
+        "2-4 MG": sum(prob_vettore[2:5]),
+        "3+ MG": sum(prob_vettore[3:]),
+        "0-1 MG": sum(prob_vettore[0:2])
+    }
+    # Estrae il range con la probabilità matematica più alta per la squadra
+    return max(range_disponibili, key=range_disponibili.get)
+
 if not os.path.exists(DATABASE_FILE):
     print(f"❌ Errore critico: {DATABASE_FILE} non trovato.")
     exit()
@@ -30,7 +44,7 @@ if df_ingresso.empty or "Nessun match" in str(df_ingresso.iloc[0].get('3. Match'
     df_ingresso.to_excel(OUTPUT_FILE, index=False)
     exit()
 
-print(f"📊 Calcolo MultiGoal Range su {len(df_ingresso)} match...")
+print(f"📊 Calcolo MultiGoal Dinamico su {len(df_ingresso)} match reali...")
 righe_pronosticate = []
 
 m_h = 1.20
@@ -68,9 +82,16 @@ for idx, riga in df_ingresso.iterrows():
     p1, px, p2, p_u15, p_u25, p_u35, p_goal = 0, 0, 0, 0, 0, 0, 0
     total_p = sum(sum(row) for row in matrix)
 
+    # Inizializza vettori per le distribuzioni gol marginali delle singole squadre
+    prob_gol_casa = [0.0] * 6
+    prob_gol_trasf = [0.0] * 6
+
     for i in range(6):
         for j in range(6):
             prob = matrix[i][j] / total_p
+            prob_gol_casa[i] += prob
+            prob_gol_trasf[j] += prob
+            
             if i > j: p1 += prob
             elif i == j: px += prob
             else: p2 += prob
@@ -90,7 +111,7 @@ for idx, riga in df_ingresso.iterrows():
     dc_val = "1X" if (p1 + px) > (p2 + px) else "X2"
     re_idx = np.unravel_index(np.argmax(matrix), (6,6))
 
-    # Scrittura dei mercati standard
+    # Valorizzazione chiavi e mercati iPhone X
     match_data["1X2"] = prono_s
     match_data["Risultato_Esatto"] = f"{re_idx[0]}-{re_idx[1]}"
     match_data["Doppia_Chance"] = dc_val
@@ -101,12 +122,12 @@ for idx, riga in df_ingresso.iterrows():
     match_data["DC+U/O2.5"] = f"{dc_val}+{u25_label.split(' ')[0]}"
     match_data["Corner_1X2"] = "1" if xg_c > xg_t + 0.3 else ("2" if xg_t > xg_c + 0.3 else "X")
     
-    # AGGIORNAMENTO DIXON-COLES: Assegnazione Range MultiGoal come nel vecchio codice 02
-    match_data["Media_Goal_Casa"] = "1-2 MG" if re_idx[0] <= 2 else "3+ MG"
-    match_data["Media_Goal_Trasferta"] = "1-2 MG" if re_idx[1] <= 2 else "3+ MG"
+    # Calcolo dinamico e inserimento di qualsiasi combinazione MultiGoal reale
+    match_data["Media_Goal_Casa"] = determina_miglior_multigoal(prob_gol_casa)
+    match_data["Media_Goal_Trasferta"] = determina_miglior_multigoal(prob_gol_trasf)
 
     righe_pronosticate.append(match_data)
 
 df_out = pd.DataFrame(righe_pronosticate)
 df_out.to_excel(OUTPUT_FILE, index=False)
-print(f"✅ File {OUTPUT_FILE} generato con i nuovi MultiGoal Range.")
+print(f"✅ Analisi completata. File {OUTPUT_FILE} generato con MultiGoal Dinamici.")
