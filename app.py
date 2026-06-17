@@ -152,7 +152,7 @@ with tabs[1]:
                 </div>
                 """, unsafe_allow_html=True)
 
-# TAB 3: DATABASE TOTALE COMPATTO CON PROTEZIONE DA TAGLI
+# TAB 3: DATABASE CON SCANSIONE DINAMICA TOTALMENTE AUTOMATIZZATA
 with tabs[2]:
     DB_FILE = "Database_Storico_Completo.xlsx"
     if os.path.exists(DB_FILE):
@@ -173,21 +173,41 @@ with tabs[2]:
                         v = row.get(col, '-')
                         return "✅ VINCENTE" if v == "VINCENTE" else "❌ PERDENTE" if v == "PERDENTE" else "⏳ In attesa"
 
-                    # Struttura divisa in array compatti per evitare stringhe lunghe interrotte
-                    st_keys = [
-                        ("Classifica Casa", "Classifica_Casa"), ("Classifica Ospite", "Classifica_Trasferta"),
-                        ("Goal Fatti C", "Goal_Fatti_Casa"), ("Goal Subiti C", "Goal_Subiti_Casa"),
-                        ("Goal Fatti O", "Goal_Fatti_Trasferta"), ("Goal Subiti O", "Goal_Subiti_Trasferta"),
-                        ("Med. Corner C", "Media_Corner_Casa"), ("Med. Corner O", "Media_Corner_Trasferta")
-                    ]
+                    # SISTEMA ADATTIVO AUTOMATICO DI RICERCA COLONNE (Indipendente da maiuscole/spazi)
+                    mappa_colonne = {str(c).strip().lower(): str(c) for c in df_g.columns}
+                    
+                    def estrai_valore(lista_possibili_nomi):
+                        for nome in lista_possibili_nomi:
+                            nome_puro = nome.strip().lower()
+                            if nome_puro in mappa_colonne:
+                                val = str(row.get(mappa_colonne[nome_puro], '-')).strip()
+                                if val not in ['-', 'nan', '']:
+                                    return val
+                        return None
+
+                    # Estrazione automatica e tollerante delle statistiche di input
+                    v_cl_c = estrai_valore(["classifica_casa", "classificacasa"])
+                    v_cl_o = estrai_valore(["classifica_trasferta", "classifica_ospite", "classificastrasferta"])
+                    v_gf_c = estrai_valore(["goal_fatti_casa", "goalfatticasa"])
+                    v_gs_c = estrai_valore(["goal_subiti_casa", "goalsubiticasa"])
+                    v_gf_o = estrai_valore(["goal_fatti_trasferta", "goal_fatti_ospite", "goalfattitrasferta"])
+                    v_gs_o = estrai_valore(["goal_subiti_trasferta", "goal_subiti_ospite", "goalsubititrasferta"])
+                    v_co_c = estrai_valore(["media_corner_casa", "mediacornercasa", "corner_casa"])
+                    v_co_o = estrai_valore(["media_corner_trasferta", "media_corner_ospite", "mediacornertrasferta"])
+
                     el_st = []
-                    for k, c in st_keys:
-                        v_st = str(row.get(c, '-')).strip()
-                        if v_st not in ['-', 'nan', '']:
-                            el_st.append(f'<div class="market-item"><b>{k}:</b> {v_st}</div>')
+                    if v_cl_c: el_st.append(f'<div class="market-item"><b>Classifica Casa:</b> {v_cl_c}</div>')
+                    if v_cl_o: el_st.append(f'<div class="market-item"><b>Classifica Ospite:</b> {v_cl_o}</div>')
+                    if v_gf_c: el_st.append(f'<div class="market-item"><b>Goal Fatti C:</b> {v_gf_c}</div>')
+                    if v_gs_c: el_st.append(f'<div class="market-item"><b>Goal Subiti C:</b> {v_gs_c}</div>')
+                    if v_gf_o: el_st.append(f'<div class="market-item"><b>Goal Fatti O:</b> {v_gf_o}</div>')
+                    if v_gs_o: el_st.append(f'<div class="market-item"><b>Goal Subiti O:</b> {v_gs_o}</div>')
+                    if v_co_c: el_st.append(f'<div class="market-item"><b>Med. Corner C:</b> {v_co_c}</div>')
+                    if v_co_o: el_st.append(f'<div class="market-item"><b>Med. Corner O:</b> {v_co_o}</div>')
                     
                     h_st = '<div class="section-title">📊 Statistiche Input</div>' + "".join(el_st) if el_st else ""
 
+                    # Pronostici ordinari
                     m_keys = [
                         ('1X2', '1X2', 'Esito_1X2'), ('Esatto', 'Risultato_Esatto', 'Esito_Risultato_Esatto'),
                         ('Doppia Ch.', 'Doppia_Chance', 'Esito_Doppia_Chance'), ('Combo DC', 'DC+U/O2.5', 'Esito_DC+U/O2.5'),
