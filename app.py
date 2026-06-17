@@ -21,7 +21,7 @@ st.markdown("""
     .esito-vincente { color: #34c759; font-weight: bold; }
     .esito-perdente { color: #ff3b30; font-weight: bold; }
     
-    /* Stili specifici per i Dati Profondi del Database */
+    /* Stili specifici per i Dati Profondi dell'Archivio */
     .section-title { font-size: 11px; font-weight: bold; color: #ff9500; text-transform: uppercase; margin-top: 8px; margin-bottom: 4px; grid-column: span 2; border-bottom: 1px solid #efeff4; padding-bottom: 2px; }
     
     /* Design Moderno Griglia Badge per Accuratezza */
@@ -161,7 +161,7 @@ with tabs[1]:
                 </div>
                 """, unsafe_allow_html=True)
 
-# TAB 3: NUOVO ARCHIVIO COMPLETO A SCHEDE STRUTTURATE (OTTIMIZZATO IPHONE X)
+# TAB 3: FILTRATO E PULITO DINAMICAMENTE CONTRO I TRATTINI VUOTI
 with tabs[2]:
     DATABASE_STORICO_GLOBALE = "Database_Storico_Completo.xlsx"
     
@@ -169,65 +169,4 @@ with tabs[2]:
         try:
             df_global_storico = pd.read_excel(DATABASE_STORICO_GLOBALE)
             
-            if not df_global_storico.empty:
-                st.write(f"🗄️ **Archivio Storico Totale: {len(df_global_storico)} Partite Registrate**")
-                
-                # Selettore di ricerca rapida per Campionato (mantiene l'usabilità intatta)
-                lista_camp = ["TUTTI"] + list(df_global_storico['Campionato'].dropna().unique())
-                scelta_filtro_camp = st.selectbox("Filtra competizione:", lista_camp, key="filtro_global_tab3_cards")
-                
-                df_mostra_global = df_global_storico if scelta_filtro_camp == "TUTTI" else df_global_storico[df_global_storico['Campionato'] == scelta_filtro_camp]
-                
-                # Loop di generazione delle schede profonde per iPhone X
-                for idx, row in df_mostra_global.iterrows():
-                    res_reale = row.get('Risultato_Reale', 'N.D.')
-                    mg_casa_pulito = pulisci_multigoal(row.get('Media_Goal_Casa', '-'))
-                    mg_ospite_pulito = pulisci_multigoal(row.get('Media_Goal_Trasferta', '-'))
-                    
-                    def get_db_badge(col_name):
-                        val = row.get(col_name, '-')
-                        if val == "VINCENTE": return "✅ VINCENTE"
-                        if val == "PERDENTE": return "❌ PERDENTE"
-                        return "⏳ In attesa"
-
-                    st.markdown(f"""
-                    <div class="card-database">
-                        <div class="time-label">🏆 {row.get('Campionato', '-')} | {row.get('Data_Ora_Match', '-')}</div>
-                        <h4 style="margin: 4px 0; color: #1c1c1e;">{row.get('3. Match', 'Match')}</h4>
-                        <div class="result-label" style="background: #ffe5cc; color: #d97706;">⚽ Punteggio Finale: {res_reale}</div>
-                        
-                        <div class="market-grid">
-                            <!-- SEZIONE 1: INPUT STATISTICI DI PARTENZA (DATI PROFONDI) -->
-                            <div class="section-title">📊 Statistiche e Input di Calcolo</div>
-                            <div class="market-item"><b>Classifica Casa:</b> {row.get('Classifica_Casa', '-')}</div>
-                            <div class="market-item"><b>Classifica Ospite:</b> {row.get('Classifica_Trasferta', '-')}</div>
-                            <div class="market-item"><b>Goal Fatti C:</b> {row.get('Goal_Fatti_Casa', '-')}</div>
-                            <div class="market-item"><b>Goal Subiti C:</b> {row.get('Goal_Subiti_Casa', '-')}</div>
-                            <div class="market-item"><b>Goal Fatti O:</b> {row.get('Goal_Fatti_Trasferta', '-')}</div>
-                            <div class="market-item"><b>Goal Subiti O:</b> {row.get('Goal_Subiti_Trasferta', '-')}</div>
-                            <div class="market-item"><b>Med. Corner C:</b> {row.get('Media_Corner_Casa', '-')}</div>
-                            <div class="market-item"><b>Med. Corner O:</b> {row.get('Media_Corner_Trasferta', '-')}</div>
-                            
-                            <!-- SEZIONE 2: PRONOSTICI GENERATI ED ESITI -->
-                            <div class="section-title">🎯 Pronostici ed Esiti Scommessa</div>
-                            <div class="market-item"><b>1X2:</b> {row.get('1X2', '-')} <br><small>{get_db_badge('Esito_1X2')}</small></div>
-                            <div class="market-item"><b>Esatto:</b> {row.get('Risultato_Esatto', '-')} <br><small>{get_db_badge('Esito_Risultato_Esatto')}</small></div>
-                            <div class="market-item"><b>Doppia Ch.:</b> {row.get('Doppia_Chance', '-')} <br><small>{get_db_badge('Esito_Doppia_Chance')}</small></div>
-                            <div class="market-item"><b>Combo DC:</b> {row.get('DC+U/O2.5', '-')} <br><small>{get_db_badge('Esito_DC+U/O2.5')}</small></div>
-                            <div class="market-item"><b>U/O 1.5:</b> {row.get('U/O_1.5', '-')} <br><small>{get_db_badge('Esito_U/O_1.5')}</small></div>
-                            <div class="market-item"><b>U/O 2.5:</b> {row.get('U/O_2.5', '-')} <br><small>{get_db_badge('Esito_U/O_2.5')}</small></div>
-                            <div class="market-item"><b>U/O 3.5:</b> {row.get('U/O_3.5', '-')} <br><small>{get_db_badge('Esito_U/O_3.5')}</small></div>
-                            <div class="market-item"><b>G/NG:</b> {row.get('Goal_NoGoal', '-')} <br><small>{get_db_badge('Esito_Goal_NoGoal')}</small></div>
-                            <div class="market-item"><b>MG Casa:</b> {mg_casa_pulito} <br><small>{get_db_badge('Esito_Media_Goal_Casa')}</small></div>
-                            <div class="market-item"><b>MG Ospite:</b> {mg_ospite_pulito} <br><small>{get_db_badge('Esito_Media_Goal_Trasferta')}</small></div>
-                            <div class="market-item"><b>Corner 1X2:</b> {row.get('Corner_1X2', '-')} <br><small>{get_db_badge('Esito_Corner_1X2')}</small></div>
-                        </div>
-                    </div>
-                    """, unsafe_allow_html=True)
-                    
-            else:
-                st.warning("📋 Il file `Database_Storico_Completo.xlsx` è presente, ma è vuoto.")
-        except Exception as e:
-            st.error(f"⚠️ Errore di lettura dell'Archivio: {e}")
-    else:
-        st.info("ℹ️ Il file `Database_Storico_Completo.xlsx` verrà creato e popolato automaticamente non appena completerai la prima esecuzione della Fase 2.")
+            if not df_global_
