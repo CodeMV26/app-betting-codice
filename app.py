@@ -2,21 +2,30 @@ import streamlit as st
 import pandas as pd
 import os
 import requests
+from datetime import datetime
 
 st.set_page_config(page_title="Pannello Betting", page_icon="⚽", layout="centered")
 
 st.markdown("""
     <style>
     .main { background-color: #f2f2f7; }
-    .card, .card-storico { background-color: white; padding: 12px; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); margin-bottom: 12px; }
+    .card, .card-storico { background-color: white; padding: 14px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); margin-bottom: 14px; }
     .card { border-left: 5px solid #007aff; }
     .card-storico { border-left: 5px solid #34c759; }
     .time-label { color: #8e8e93; font-size: 11px; font-weight: bold; }
-    .result-label { color: #1c1c1e; font-size: 14px; font-weight: bold; margin: 4px 0; background: #e5e5ea; padding: 4px 8px; border-radius: 5px; display: inline-block; }
-    .market-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; margin-top: 8px; font-size: 13px; }
-    .market-item { background: #f8f9fa; padding: 4px 8px; border-radius: 4px; }
+    .update-label { color: #8e8e93; font-size: 13px; margin-bottom: 15px; font-style: italic; }
+    .result-label { color: #1c1c1e; font-size: 14px; font-weight: bold; margin: 6px 0; background: #e5e5ea; padding: 4px 8px; border-radius: 6px; display: inline-block; }
+    .market-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-top: 10px; font-size: 13px; }
+    .market-item { background: #f8f9fa; padding: 6px 10px; border-radius: 6px; border: 1px solid #efeff4; }
     .esito-vincente { color: #34c759; font-weight: bold; }
     .esito-perdente { color: #ff3b30; font-weight: bold; }
+    
+    /* Design Moderno Griglia Badge per Accuratezza */
+    .accuracy-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-top: 12px; }
+    .accuracy-card { background: #ffffff; border: 1px solid #e5e5ea; padding: 10px 12px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.02); display: flex; justify-content: space-between; align-items: center; }
+    .accuracy-market { font-weight: 600; color: #1c1c1e; font-size: 13px; }
+    .accuracy-value { background: #007aff; color: white; padding: 2px 8px; border-radius: 12px; font-size: 12px; font-weight: bold; }
+    .accuracy-value-nd { background: #8e8e93; color: white; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: bold; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -24,6 +33,15 @@ TOKEN = st.secrets.get("GITHUB_TOKEN", "")
 REPO = st.secrets.get("GITHUB_REPO", "")
 
 st.title("⚽ Controllo Betting Pro")
+
+# Ripristino Data e Ora Ultimo Aggiornamento file
+if os.path.exists("Pronostici_App_Betting.xlsx"):
+    mtime = os.path.getmtime("Pronostici_App_Betting.xlsx")
+    data_ora = datetime.fromtimestamp(mtime).strftime('%d/%m/%Y %H:%M:%S')
+    st.markdown(f"<div class='update-label'>🔄 Ultimo aggiornamento dati: {data_ora}</div>", unsafe_allow_html=True)
+else:
+    st.markdown("<div class='update-label'>🔄 Ultimo aggiornamento dati: Non disponibile</div>", unsafe_allow_html=True)
+
 col1, col2 = st.columns(2)
 with col1:
     if st.button("🚀 Avvia Fase 1 (Pre-Match)"):
@@ -34,10 +52,24 @@ with col2:
 
 tabs = st.tabs(["🎯 Palinsesto & Pronostici", "📊 Storico Validato"])
 
+# Funzione di pulizia/fallback per correggere i vecchi dati "xG" residui nel file Excel
+def pulisci_multigoal(valore_excel):
+    val_str = str(valore_excel).strip()
+    if "xG" in val_str:
+        try:
+            num = float(val_str.replace("xG", "").strip())
+            return "1-2 MG" if num <= 2.0 else "3+ MG"
+        except:
+            return "1-2 MG"
+    return val_str
+
 with tabs[0]:
     if os.path.exists("Pronostici_App_Betting.xlsx"):
         df = pd.read_excel("Pronostici_App_Betting.xlsx")
         for idx, row in df.iterrows():
+            mg_casa_pulito = pulisci_multigoal(row.get('Media_Goal_Casa', '-'))
+            mg_ospite_pulito = pulisci_multigoal(row.get('Media_Goal_Trasferta', '-'))
+            
             st.markdown(f"""
             <div class="card">
                 <div class="time-label">🏆 {row.get('Campionato', '-')} | {row.get('Data_Ora_Match', '-')}</div>
@@ -51,8 +83,8 @@ with tabs[0]:
                     <div class="market-item"><b>U/O 2.5:</b> {row.get('U/O_2.5', '-')}</div>
                     <div class="market-item"><b>U/O 3.5:</b> {row.get('U/O_3.5', '-')}</div>
                     <div class="market-item"><b>G/NG:</b> {row.get('Goal_NoGoal', '-')}</div>
-                    <div class="market-item"><b>MG Casa:</b> {row.get('Media_Goal_Casa', '-')}</div>
-                    <div class="market-item"><b>MG Ospite:</b> {row.get('Media_Goal_Trasferta', '-')}</div>
+                    <div class="market-item"><b>MG Casa:</b> {mg_casa_pulito}</div>
+                    <div class="market-item"><b>MG Ospite:</b> {mg_ospite_pulito}</div>
                     <div class="market-item"><b>Corner 1X2:</b> {row.get('Corner_1X2', '-')}</div>
                 </div>
             </div>
@@ -66,31 +98,35 @@ with tabs[1]:
             tot = len(match_validi)
             
             def calc_acc(col, is_corner=False):
-                if is_corner: return "N.D. (Dato mancante)"
-                return f"{(len(match_validi[match_validi[col] == 'VINCENTE']) / tot * 100):.1f}%" if tot > 0 and col in match_validi.columns else "0.0%"
+                if is_corner: return "<span class='accuracy-value-nd'>N.D.</span>"
+                val = f"{(len(match_validi[match_validi[col] == 'VINCENTE']) / tot * 100):.1f}%" if tot > 0 and col in match_validi.columns else "0.0%"
+                return f"<span class='accuracy-value'>{val}</span>"
 
-            st.write(f"📊 **Resoconto Accuratezza su {tot} Match Storici:**")
+            st.write(f"📊 **Resoconto Accuratezza globale su {tot} Match Storici:**")
             
-            # RIPRISTINO COMPLETO DELLA TUA GRAFICA ORIGINALE AD ELENCO/METRICHE
-            col_acc1, col_acc2 = st.columns(2)
-            with col_acc1:
-                st.write(f"**1X2:** {calc_acc('Esito_1X2')}")
-                st.write(f"**Risultato Esatto:** {calc_acc('Esito_Risultato_Esatto')}")
-                st.write(f"**Doppia Chance:** {calc_acc('Esito_Doppia_Chance')}")
-                st.write(f"**Combo DC+U/O2.5:** {calc_acc('Esito_DC+U/O2.5')}")
-                st.write(f"**Under/Over 1.5:** {calc_acc('Esito_U/O_1.5')}")
-                st.write(f"**Under/Over 2.5:** {calc_acc('Esito_U/O_2.5')}")
-            with col_acc2:
-                st.write(f"**Under/Over 3.5:** {calc_acc('Esito_U/O_3.5')}")
-                st.write(f"**Goal/NoGoal:** {calc_acc('Esito_Goal_NoGoal')}")
-                st.write(f"**MG Casa:** {calc_acc('Esito_Media_Goal_Casa')}")
-                st.write(f"**MG Ospite:** {calc_acc('Esito_Media_Goal_Trasferta')}")
-                st.write(f"**Corner 1X2:** {calc_acc('Esito_Corner_1X2', True)}")
+            # Griglia di card abbellite per il resoconto accuratezza
+            st.markdown(f"""
+            <div class="accuracy-grid">
+                <div class="accuracy-card"><span class="accuracy-market">1X2</span> {calc_acc('Esito_1X2')}</div>
+                <div class="accuracy-card"><span class="accuracy-market">Risultato Esatto</span> {calc_acc('Esito_Risultato_Esatto')}</div>
+                <div class="accuracy-card"><span class="accuracy-market">Doppia Chance</span> {calc_acc('Esito_Doppia_Chance')}</div>
+                <div class="accuracy-card"><span class="accuracy-market">Combo DC+U/O2.5</span> {calc_acc('Esito_DC+U/O2.5')}</div>
+                <div class="accuracy-card"><span class="accuracy-market">Under/Over 1.5</span> {calc_acc('Esito_U/O_1.5')}</div>
+                <div class="accuracy-card"><span class="accuracy-market">Under/Over 2.5</span> {calc_acc('Esito_U/O_2.5')}</div>
+                <div class="accuracy-card"><span class="accuracy-market">Under/Over 3.5</span> {calc_acc('Esito_U/O_3.5')}</div>
+                <div class="accuracy-card"><span class="accuracy-market">Goal/NoGoal</span> {calc_acc('Esito_Goal_NoGoal')}</div>
+                <div class="accuracy-card"><span class="accuracy-market">MG Casa</span> {calc_acc('Esito_Media_Goal_Casa')}</div>
+                <div class="accuracy-card"><span class="accuracy-market">MG Ospite</span> {calc_acc('Esito_Media_Goal_Trasferta')}</div>
+                <div class="accuracy-card"><span class="accuracy-market">Corner 1X2</span> {calc_acc('Esito_Corner_1X2', True)}</div>
+            </div>
+            """, unsafe_allow_html=True)
                 
-            st.markdown("---")
+            st.markdown("<br><hr>", unsafe_allow_html=True)
             
             for idx, row in df_storico.iterrows():
                 res_reale = row.get('Risultato_Reale', 'NON ANCORA REALE/DA VALIDARE')
+                mg_casa_pulito = pulisci_multigoal(row.get('Media_Goal_Casa', '-'))
+                mg_ospite_pulito = pulisci_multigoal(row.get('Media_Goal_Trasferta', '-'))
                 
                 def get_badge(col_name):
                     val = row.get(col_name, '-')
@@ -112,8 +148,8 @@ with tabs[1]:
                         <div class="market-item"><b>U/O 2.5:</b> {row.get('U/O_2.5', '-')} <br> {get_badge('Esito_U/O_2.5')}</div>
                         <div class="market-item"><b>U/O 3.5:</b> {row.get('U/O_3.5', '-')} <br> {get_badge('Esito_U/O_3.5')}</div>
                         <div class="market-item"><b>G/NG:</b> {row.get('Goal_NoGoal', '-')} <br> {get_badge('Esito_Goal_NoGoal')}</div>
-                        <div class="market-item"><b>MG Casa:</b> {row.get('Media_Goal_Casa', '-')} <br> {get_badge('Esito_Media_Goal_Casa')}</div>
-                        <div class="market-item"><b>MG Ospite:</b> {row.get('Media_Goal_Trasferta', '-')} <br> {get_badge('Esito_Media_Goal_Trasferta')}</div>
+                        <div class="market-item"><b>MG Casa:</b> {mg_casa_pulito} <br> {get_badge('Esito_Media_Goal_Casa')}</div>
+                        <div class="market-item"><b>MG Ospite:</b> {mg_ospite_pulito} <br> {get_badge('Esito_Media_Goal_Trasferta')}</div>
                         <div class="market-item"><b>Corner 1X2:</b> {row.get('Corner_1X2', '-')} <br> {get_badge('Esito_Corner_1X2')}</div>
                     </div>
                 </div>
