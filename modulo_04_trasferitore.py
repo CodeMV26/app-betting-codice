@@ -1,10 +1,11 @@
 import pandas as pd
 import os
 
-print("🗄️ --- MODULO 04: ARCHIVIATORE CENTRALE INTEGRALE ---")
+print("🗄️ --- MODULO 04: ARCHIVIATORE CENTRALE CON FILE INPUT CORRETTO ---")
 
 FILE_INPUT_VALIDATO = "Storico_Validato_Betting.xlsx"
-PRONOSTICI_ORIGINALI = "Pronostici_App_Betting.xlsx"
+# CORREZIONE CRITICA: Puntiamo al file reale del Modulo 01 che contiene le statistiche API
+PRONOSTICI_ORIGINALI = "Database_App_Betting.xlsx" 
 DATABASE_STORICO_GLOBALE = "Database_Storico_Completo.xlsx"
 
 def genera_chiave_univoca(row):
@@ -28,7 +29,7 @@ def esegui_archiviazione():
         print("⏳ Nessun match completato e convalidato trovato.")
         return
 
-    # FUSIONE DINAMICA E TOTALE CON IL FILE ORIGINALE PRE-MATCH
+    # FUSIONE DINAMICA CON IL VERO FILE DELLE STATISTICHE API
     if os.path.exists(PRONOSTICI_ORIGINALI):
         try:
             df_orig = pd.read_excel(PRONOSTICI_ORIGINALI)
@@ -39,18 +40,18 @@ def esegui_archiviazione():
                 # Identifichiamo le colonne degli esiti reali (generate dal validatore)
                 colonne_esiti = [c for c in df_nuovi_validi.columns if str(c).startswith('Esito_') or c == 'Risultato_Reale']
                 
-                # Teniamo dal file originale tutte le colonne statistiche profonde delle API
+                # Prendiamo tutte le colonne dal file originale (comprese Pt, Pt_Casa, Medie, ecc.)
                 colonne_da_conservare = [c for c in df_orig.columns if c not in colonne_esiti or c == 'chiave_unione']
                 df_sub = df_orig[colonne_da_conservare].drop_duplicates(subset=['chiave_unione'])
                 
-                # Rimuoviamo dal foglio validato le colonne duplicate prima del merge per evitare suffissi (_x, _y)
+                # Rimuoviamo dal foglio validato le colonne temporanee prima del merge
                 col_da_rimuovere = [c for c in df_sub.columns if c in df_nuovi_validi.columns and c != 'chiave_unione']
                 if col_da_rimuovere:
                     df_nuovi_validi.drop(columns=col_da_rimuovere, errors='ignore', inplace=True)
                 
-                # Unione speculare: riprendiamo l'intera riga statistica originale
+                # Unione totale delle colonne statistiche
                 df_nuovi_validi = pd.merge(df_nuovi_validi, df_sub, on='chiave_unione', how='left')
-                print("📊 Sincronizzazione colonne completata con successo.")
+                print("📊 Sincronizzazione colonne effettuata dal file delle statistiche reali.")
         except Exception as e:
             print(f"⚠️ Errore durante il riallineamento delle colonne: {e}")
 
@@ -62,7 +63,7 @@ def esegui_archiviazione():
         df_storico = pd.read_excel(DATABASE_STORICO_GLOBALE)
         print(f"📈 Database storico caricato. Record attuali: {len(df_storico)}")
         
-        # Allineamento dinamico per assicurarsi che lo storico accetti tutte le nuove colonne statistiche
+        # Allineamento dinamico per assicurarsi che lo storico riceva TUTTE le colonne statistiche
         for col in df_nuovi_validi.columns:
             if col not in df_storico.columns:
                 df_storico[col] = None
@@ -92,7 +93,7 @@ def esegui_archiviazione():
         df_da_appendere = pd.DataFrame(righe_da_appendere)
         df_storico_aggiornato = pd.concat([df_storico, df_da_appendere], ignore_index=True)
         df_storico_aggiornato.to_excel(DATABASE_STORICO_GLOBALE, index=False)
-        print(f"✅ Fatto! Archiviati {record_aggiunti} match con tutte le colonne API integrate.")
+        print(f"✅ Successo! Archiviati {record_aggiunti} match con l'intero set di colonne delle classifiche.")
         
         try:
             df_nuovi_vuoto = df_nuovi[df_nuovi['Risultato_Reale'] == 'NON ANCORA REALE/DA VALIDARE']
