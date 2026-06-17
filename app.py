@@ -8,15 +8,27 @@ st.set_page_config(page_title="Pannello Betting", page_icon="⚽", layout="cente
 st.markdown("""
     <style>
     .main { background-color: #f2f2f7; }
-    .card, .card-storico { background-color: white; padding: 12px; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); margin-bottom: 12px; }
+    .card, .card-storico, .card-accuratezza { 
+        background-color: white; padding: 12px; border-radius: 10px; 
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05); margin-bottom: 12px; 
+    }
     .card { border-left: 5px solid #007aff; }
     .card-storico { border-left: 5px solid #34c759; }
+    .card-accuratezza { border-left: 5px solid #ff9500; }
     .time-label { color: #8e8e93; font-size: 11px; font-weight: bold; }
     .result-label { color: #1c1c1e; font-size: 14px; font-weight: bold; margin: 4px 0; background: #e5e5ea; padding: 4px 8px; border-radius: 5px; display: inline-block; }
     .market-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; margin-top: 8px; font-size: 13px; }
     .market-item { background: #f8f9fa; padding: 4px 8px; border-radius: 4px; }
     .esito-vincente { color: #34c759; font-weight: bold; }
     .esito-perdente { color: #ff3b30; font-weight: bold; }
+    
+    /* Stile Tabella HTML Custom per iPhone X */
+    .custom-table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 13px; }
+    .custom-table th { text-align: left; padding: 6px 8px; background-color: #f2f2f7; color: #8e8e93; font-weight: bold; font-size: 11px; text-transform: uppercase; }
+    .custom-table td { padding: 8px; border-bottom: 1px solid #f2f2f7; color: #1c1c1e; }
+    .custom-table tr:last-child td { border-bottom: none; }
+    .badge-acc { background: #ff9500; color: white; padding: 2px 6px; border-radius: 4px; font-weight: bold; font-size: 12px; }
+    .badge-nd { background: #8e8e93; color: white; padding: 2px 6px; border-radius: 4px; font-size: 11px; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -65,25 +77,35 @@ with tabs[1]:
             match_validi = df_storico[df_storico['Risultato_Reale'] != 'NON ANCORA REALE/DA VALIDARE']
             tot = len(match_validi)
             
-            # 2) & 4) Accuratezza globale e sincronizzazione delle chiavi esatte per evitare lo 0% finto
-            def calc_acc(col, is_corner=False):
-                if is_corner: return "N.D. (Dato mancante)"
-                if tot == 0 or col not in match_validi.columns: return "0.0%"
+            # Funzione per estrarre la percentuale o la label ND
+            def get_acc_val(col, is_corner=False):
+                if is_corner: return "<span class='badge-nd'>N.D. (Mancante)</span>"
+                if tot == 0 or col not in match_validi.columns: return "<span class='badge-acc'>0.0%</span>"
                 vincenti = len(match_validi[match_validi[col] == 'VINCENTE'])
-                return f"{(vincenti / tot * 100):.1f}%"
+                return f"<span class='badge-acc'>{(vincenti / tot * 100):.1f}%</span>"
 
-            st.markdown(f"📊 **Resoconto Accuratezza su {tot} Match Storici:**")
+            # Renderizzazione Tabella Custom in HTML perfettamente fusa con il design dell'App
+            st.markdown(f"""
+            <div class="card-accuratezza">
+                <div class="time-label">📈 METRICHE GLOBALI</div>
+                <h4 style="margin: 4px 0 8px 0;">Resoconto Accuratezza ({tot} Match)</h4>
+                <table class="custom-table">
+                    <tr><th>Mercato</th><th>Precisione</th></tr>
+                    <tr><td>🎯 Esito 1X2</td><td>{get_acc_val('Esito_1X2')}</td></tr>
+                    <tr><td>🔢 Risultato Esatto</td><td>{get_acc_val('Esito_Risultato_Esatto')}</td></tr>
+                    <tr><td>🛡️ Doppia Chance</td><td>{get_acc_val('Esito_Doppia_Chance')}</td></tr>
+                    <tr><td>💥 Combo DC+U/O 2.5</td><td>{get_acc_val('Esito_DC+U/O2.5')}</td></tr>
+                    <tr><td>⚽ Under/Over 1.5</td><td>{get_acc_val('Esito_U/O_1.5')}</td></tr>
+                    <tr><td>⚽ Under/Over 2.5</td><td>{get_acc_val('Esito_U/O_2.5')}</td></tr>
+                    <tr><td>⚽ Under/Over 3.5</td><td>{get_acc_val('Esito_U/O_3.5')}</td></tr>
+                    <tr><td>🔥 Goal/NoGoal</td><td>{get_acc_val('Esito_Goal_NoGoal')}</td></tr>
+                    <tr><td>🏠 MG Casa (MultiGoal)</td><td>{get_acc_val('Esito_Media_Goal_Casa')}</td></tr>
+                    <tr><td>🚌 MG Ospite (MultiGoal)</td><td>{get_acc_val('Esito_Media_Goal_Trasferta')}</td></tr>
+                    <tr><td>📐 Corner 1X2</td><td>{get_acc_val('Esito_Corner_1X2', True)}</td></tr>
+                </table>
+            </div>
+            """, unsafe_allow_html=True)
             
-            df_acc = pd.DataFrame({
-                "Mercato": ["1X2", "Risultato Esatto", "Doppia Chance", "Combo DC+U/O", "Under/Over 1.5", "Under/Over 2.5", "Under/Over 3.5", "Goal/NoGoal", "MG Casa", "MG Ospite", "Corner 1X2"],
-                "Accuratezza": [
-                    calc_acc('Esito_1X2'), calc_acc('Esito_Risultato_Esatto'), calc_acc('Esito_Doppia_Chance'), 
-                    calc_acc('Esito_DC+U/O2.5'), calc_acc('Esito_U/O_1.5'), calc_acc('Esito_U/O_2.5'), 
-                    calc_acc('Esito_U/O_3.5'), calc_acc('Esito_Goal_NoGoal'), calc_acc('Esito_Media_Goal_Casa'), 
-                    calc_acc('Esito_Media_Goal_Trasferta'), calc_acc('Esito_Corner_1X2', True)
-                ]
-            })
-            st.dataframe(df_acc, hide_index=True, use_container_width=True)
             st.markdown("---")
             
             for idx, row in df_storico.iterrows():
