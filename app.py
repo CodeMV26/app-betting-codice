@@ -20,13 +20,9 @@ st.markdown("""
     .market-item { background: #f8f9fa; padding: 6px 10px; border-radius: 6px; border: 1px solid #efeff4; }
     .esito-vincente { color: #34c759; font-weight: bold; }
     .esito-perdente { color: #ff3b30; font-weight: bold; }
-    
-    /* Stili specifici per i Dati Profondi dell'Archivio */
     .section-title { font-size: 11px; font-weight: bold; color: #ff9500; text-transform: uppercase; margin-top: 8px; margin-bottom: 4px; grid-column: span 2; border-bottom: 1px solid #efeff4; padding-bottom: 2px; }
-    
-    /* Design Moderno Griglia Badge per Accuratezza */
     .accuracy-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-top: 12px; }
-    .accuracy-card { background: #ffffff; border: 1px solid #e5e5ea; padding: 10px 12px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.02); display: flex; justify-content: space-between; align-items: center; }
+    .accuracy-card { background: #ffffff; border: 1px solid #e5e5ea; padding: 10px 12px; border-radius: 8px; shadow: 0 1px 3px rgba(0,0,0,0.02); display: flex; justify-content: space-between; align-items: center; }
     .accuracy-market { font-weight: 600; color: #1c1c1e; font-size: 13px; }
     .accuracy-value { background: #007aff; color: white; padding: 2px 8px; border-radius: 12px; font-size: 12px; font-weight: bold; }
     .accuracy-value-nd { background: #8e8e93; color: white; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: bold; }
@@ -38,7 +34,6 @@ REPO = st.secrets.get("GITHUB_REPO", "")
 
 st.title("⚽ Controllo Betting Pro")
 
-# Ripristino Data e Ora Ultimo Aggiornamento file
 if os.path.exists("Pronostici_App_Betting.xlsx"):
     mtime = os.path.getmtime("Pronostici_App_Betting.xlsx")
     data_ora = datetime.fromtimestamp(mtime).strftime('%d/%m/%Y %H:%M:%S')
@@ -54,10 +49,8 @@ with col2:
     if st.button("📊 Avvia Fase 2 (Post-Match)"):
         if TOKEN and REPO: requests.post(f"https://api.github.com/repos/{REPO}/actions/workflows/validazione_storico.yml/dispatches", headers={"Authorization": f"token {TOKEN}", "Accept": "application/vnd.github.v3+json"}, json={"ref": "main"})
 
-# CREAZIONE DEI TRE TABS OTTIMIZZATI
 tabs = st.tabs(["🎯 Palinsesto", "📊 Storico", "🗄️ Database Totale"])
 
-# Funzione di pulizia/fallback per correggere i vecchi dati "xG" residui nel file Excel
 def pulisci_multigoal(valore_excel):
     val_str = str(valore_excel).strip()
     if "xG" in val_str:
@@ -68,14 +61,13 @@ def pulisci_multigoal(valore_excel):
             return "1-2 MG"
     return val_str
 
-# TAB 1: PALINSESTO E PRONOSTICI
+# TAB 1: PALINSESTO
 with tabs[0]:
     if os.path.exists("Pronostici_App_Betting.xlsx"):
         df = pd.read_excel("Pronostici_App_Betting.xlsx")
         for idx, row in df.iterrows():
             mg_casa_pulito = pulisci_multigoal(row.get('Media_Goal_Casa', '-'))
             mg_ospite_pulito = pulisci_multigoal(row.get('Media_Goal_Trasferta', '-'))
-            
             st.markdown(f"""
             <div class="card">
                 <div class="time-label">🏆 {row.get('Campionato', '-')} | {row.get('Data_Ora_Match', '-')}</div>
@@ -96,7 +88,7 @@ with tabs[0]:
             </div>
             """, unsafe_allow_html=True)
 
-# TAB 2: STORICO VALIDATO
+# TAB 2: STORICO
 with tabs[1]:
     if os.path.exists("Storico_Validato_Betting.xlsx"):
         df_storico = pd.read_excel("Storico_Validato_Betting.xlsx")
@@ -110,7 +102,6 @@ with tabs[1]:
                 return f"<span class='accuracy-value'>{val}</span>"
 
             st.write(f"📊 **Resoconto Accuratezza globale su {tot} Match Storici:**")
-            
             st.markdown(f"""
             <div class="accuracy-grid">
                 <div class="accuracy-card"><span class="accuracy-market">1X2</span> {calc_acc('Esito_1X2')}</div>
@@ -161,41 +152,27 @@ with tabs[1]:
                 </div>
                 """, unsafe_allow_html=True)
 
-# TAB 3: CONTROLLO COMPLETO E RIPRISTINATO
+# TAB 3: DATABASE TOTALE (PROTETTO E COMPATTO)
 with tabs[2]:
-    DATABASE_STORICO_GLOBALE = "Database_Storico_Completo.xlsx"
-    
-    if os.path.exists(DATABASE_STORICO_GLOBALE):
+    DB_FILE = "Database_Storico_Completo.xlsx"
+    if os.path.exists(DB_FILE):
         try:
-            df_global_storico = pd.read_excel(DATABASE_STORICO_GLOBALE)
-            
-            if not df_global_storico.empty:
-                st.write(f"🗄️ **Archivio Storico Totale: {len(df_global_storico)} Partite Registrate**")
+            df_g = pd.read_excel(DB_FILE)
+            if not df_g.empty:
+                st.write(f"🗄️ **Partite in Archivio: {len(df_g)}**")
+                list_c = ["TUTTI"] + list(df_g['Campionato'].dropna().unique())
+                scelta_c = st.selectbox("Filtra competizione:", list_c, key="filt_t3")
+                df_m = df_g if scelta_c == "TUTTI" else df_g[df_g['Campionato'] == scelta_c]
                 
-                lista_camp = ["TUTTI"] + list(df_global_storico['Campionato'].dropna().unique())
-                scelta_filtro_camp = st.selectbox("Filtra competizione:", lista_camp, key="filtro_global_tab3_clean")
-                
-                df_mostra_global = df_global_storico if scelta_filtro_camp == "TUTTI" else df_global_storico[df_global_storico['Campionato'] == scelta_filtro_camp]
-                
-                for idx, row in df_mostra_global.iterrows():
-                    res_reale = row.get('Risultato_Reale', 'N.D.')
-                    mg_casa_pulito = pulisci_multigoal(row.get('Media_Goal_Casa', '-'))
-                    mg_ospite_pulito = pulisci_multigoal(row.get('Media_Goal_Trasferta', '-'))
+                for idx, row in df_m.iterrows():
+                    res_r = row.get('Risultato_Reale', 'N.D.')
+                    mg_c = pulisci_multigoal(row.get('Media_Goal_Casa', '-'))
+                    mg_o = pulisci_multigoal(row.get('Media_Goal_Trasferta', '-'))
                     
-                    def get_db_badge(col_name):
-                        val = row.get(col_name, '-')
-                        if val == "VINCENTE": return "✅ VINCENTE"
-                        if val == "PERDENTE": return "❌ PERDENTE"
-                        return "⏳ In attesa"
+                    def b_db(col):
+                        v = row.get(col, '-')
+                        return "✅ VINCENTE" if v == "VINCENTE" else "❌ PERDENTE" if v == "PERDENTE" else "⏳ In attesa"
 
-                    html_statistiche = ""
-                    statistiche_chiave = {
-                        "Classifica Casa": "Classifica_Casa", "Classifica Ospite": "Classifica_Trasferta",
-                        "Goal Fatti C": "Goal_Fatti_Casa", "Goal Subiti C": "Goal_Subiti_Casa",
-                        "Goal Fatti O": "Goal_Fatti_Trasferta", "Goal Subiti O": "Goal_Subiti_Trasferta",
-                        "Med. Corner C": "Media_Corner_Casa", "Med. Corner O": "Media_Corner_Trasferta"
-                    }
-                    
-                    elementi_stat = []
-                    for etichetta, colonna in statistiche_chiave.items():
-                        valore = str(row.get(
+                    # Statistiche di input filtrate
+                    st_keys = {
+                        "Classifica Casa": "Classifica_Casa", "Classifica Ospite": "Classifica
