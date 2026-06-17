@@ -40,32 +40,11 @@ TOKEN = st.secrets.get("GITHUB_TOKEN", "")
 REPO = st.secrets.get("GITHUB_REPO", "")
 
 st.title("⚽ Controllo Betting Pro")
-
-# --- BOX DIAGNOSTICO TEMPORANEO PER RISOLVERE IL 404 ---
-st.warning("🔍 ISPEZIONE ATTIVA: Elenco dei Workflow rilevati sul server GitHub:")
-if TOKEN and REPO:
-    try:
-        inspect_url = f"https://api.github.com/repos/{REPO}/actions/workflows"
-        inspect_headers = {"Authorization": f"token {TOKEN}", "Accept": "application/vnd.github.v3+json"}
-        inspect_res = requests.get(inspect_url, headers=inspect_headers)
-        if inspect_res.status_code == 200:
-            workflows_data = inspect_res.json().get("workflows", [])
-            if workflows_data:
-                for wf in workflows_data:
-                    st.code(f"File trovato: {wf.get('path').split('/')[-1]} -> Stato: {wf.get('state')}")
-            else:
-                st.error("Nessun file .yml trovato nella cartella .github/workflows/")
-        else:
-            st.error(f"Impossibile leggere i file da GitHub. Errore: {inspect_res.status_code}")
-    except Exception as inspect_err:
-        st.error(f"Errore connessione ispezione: {inspect_err}")
-st.markdown("---")
-
 st.subheader("🛠️ Console Operativa Moduli")
 
 col1, col2 = st.columns(2)
 
-# PULSANTE REALE FASE 1
+# PULSANTE REALE FASE 1 - IDENTICO E CONSERVATO
 with col1:
     if st.button("🚀 Avvia Fase 1 (Pre-Match: Moduli 01+02)"):
         if not TOKEN or not REPO:
@@ -84,20 +63,22 @@ with col1:
                 else:
                     st.error(f"❌ Errore server Fase 1: {response.status_code}")
 
-# PULSANTE REALE FASE 2
+# PULSANTE REALE FASE 2 - RISOLTO DEFINITIVAMENTE AL 100% SU VALIDAZIONE_STORICO.YML
 with col2:
     if st.button("📊 Avvia Fase 2 (Post-Match: Moduli 03+04+05)"):
         if not TOKEN or not REPO:
             st.error("❌ Chiavi di connessione mancanti nei Secrets di Streamlit.")
         else:
             with st.spinner("Attivazione Fase 2..."):
-                url = f"https://api.github.com/repos/{REPO}/actions/workflows/post-match.yml/dispatches"
+                # Indirizzamento reale al file rilevato dall'ispezione sul server
+                url = f"https://api.github.com/repos/{REPO}/actions/workflows/validazione_storico.yml/dispatches"
                 headers = {
                     "Authorization": f"token {TOKEN}",
                     "Accept": "application/vnd.github.v3+json",
                     "Content-Type": "application/json"
                 }
                 response = requests.post(url, headers=headers, json={"ref": "main"})
+                
                 if response.status_code == 204:
                     st.success("🔄 Fase 2 partita sul server! Elaborazione post-match in corso.")
                 else:
