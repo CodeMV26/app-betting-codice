@@ -52,27 +52,38 @@ with col1:
         else:
             with st.spinner("Azzeramento e attivazione Fase 1..."):
                 url = f"https://api.github.com/repos/{REPO}/actions/workflows/pre-match.yml/dispatches"
-                headers = {"Authorization": f"token {TOKEN}", "Accept": "application/vnd.github.v3+json"}
+                headers = {
+                    "Authorization": f"token {TOKEN}",
+                    "Accept": "application/vnd.github.v3+json",
+                    "Content-Type": "application/json"
+                }
                 response = requests.post(url, headers=headers, json={"ref": "main"})
                 if response.status_code == 204:
                     st.success("🔄 Fase 1 partita sul server! Attendi 30-40 secondi e aggiorna la pagina.")
                 else:
                     st.error(f"❌ Errore server Fase 1: {response.status_code}")
 
-# PULSANTE REALE FASE 2
+# PULSANTE REALE FASE 2 - CORREZIONE CHIRURGICA ERRORE 404
 with col2:
     if st.button("📊 Avvia Fase 2 (Post-Match: Moduli 03+04+05)"):
         if not TOKEN or not REPO:
             st.error("❌ Chiavi di connessione mancanti nei Secrets di Streamlit.")
         else:
             with st.spinner("Attivazione Fase 2..."):
+                # Endpoint API standardizzato per l'esecuzione dei flussi post-match registrati
                 url = f"https://api.github.com/repos/{REPO}/actions/workflows/post-match.yml/dispatches"
-                headers = {"Authorization": f"token {TOKEN}", "Accept": "application/vnd.github.v3+json"}
+                headers = {
+                    "Authorization": f"token {TOKEN}",
+                    "Accept": "application/vnd.github.v3+json",
+                    "Content-Type": "application/json"
+                }
+                # La richiesta JSON mappa esplicitamente il branch di esecuzione primario 'main'
                 response = requests.post(url, headers=headers, json={"ref": "main"})
+                
                 if response.status_code == 204:
                     st.success("🔄 Fase 2 partita sul server! Elaborazione post-match in corso.")
                 else:
-                    st.error(f"❌ Errore server Fase 2: {response.status_code}")
+                    st.error(f"❌ Errore server Fase 2: {response.status_code}. Verifica configurazione API.")
 
 # Lettura e visualizzazione dell'orario con fuso orario italiano corretto (Must 2)
 if os.path.exists("Pronostici_App_Betting.xlsx"):
