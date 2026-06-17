@@ -31,7 +31,7 @@ def valida_range_multigoal(prono_str, gol_reali):
     return 'PERDENTE'
 
 def esegui_validazione():
-    print("\n✅ --- VALIDATORE RIGOROSO DATI REALI ---")
+    print("\n✅ --- VALIDATORE MATEMATICO INTEGRALE (11 MERCATI) ---")
     if not os.path.exists(PRONOSTICI_FILE): return
     df_prono = pd.read_excel(PRONOSTICI_FILE)
     if df_prono.empty: return
@@ -43,6 +43,7 @@ def esegui_validazione():
         camp = riga['Campionato']
         match_str = riga['3. Match']
         
+        # Estrazione pronostici originali della Fase 1
         p_1x2 = riga.get('1X2', '-')
         p_esatto = riga.get('Risultato_Esatto', '-')
         p_dc = riga.get('Doppia_Chance', '-')
@@ -82,6 +83,8 @@ def esegui_validazione():
             segno_reale = '1' if g_casa > g_trasf else ('2' if g_trasf > g_casa else 'X')
 
             riga_aggiornata['Risultato_Reale'] = f"{g_casa}-{g_trasf}"
+            
+            # 1) Calcoli Matematici Rigorosi (Nessun "In attesa" se terminata)
             riga_aggiornata['Esito_1X2'] = 'VINCENTE' if str(p_1x2).strip() == segno_reale else 'PERDENTE'
             riga_aggiornata['Esito_Risultato_Esatto'] = 'VINCENTE' if str(p_esatto).strip() == f"{g_casa}-{g_trasf}" else 'PERDENTE'
             
@@ -100,14 +103,13 @@ def esegui_validazione():
             
             riga_aggiornata['Esito_Media_Goal_Casa'] = valida_range_multigoal(p_mg_casa, g_casa)
             riga_aggiornata['Esito_Media_Goal_Trasferta'] = valida_range_multigoal(p_mg_out, g_trasf)
+            riga_aggiornata['Esito_DC+U/O2.5'] = 'VINCENTE' if riga_aggiornata['Esito_Doppia_Chance'] == 'VINCENTE' and riga_aggiornata['Esito_U/O_2.5'] == 'VINCENTE' else 'PERDENTE'
             
-            # 3) NESSUNA ASSUNZIONE: Manteniamo 'In attesa' per mancanza di dati reali sui corner nell'API
+            # Angoli: Lasciato esplicitamente come 'In attesa' per rispetto del dato mancante nell'API
             riga_aggiornata['Esito_Corner_1X2'] = 'In attesa'
-            
-            riga_aggiornata['Esito DC+U/O2.5'] = 'VINCENTE' if riga_aggiornata['Esito_Doppia_Chance'] == 'VINCENTE' and riga_aggiornata['Esito_U/O_2.5'] == 'VINCENTE' else 'PERDENTE'
         else:
             riga_aggiornata['Risultato_Reale'] = 'NON ANCORA REALE/DA VALIDARE'
-            for k in ['Esito_1X2', 'Esito_Risultato_Esatto', 'Esito_Doppia_Chance', 'Esito_Goal_NoGoal', 'Esito_U/O_1.5', 'Esito_U/O_2.5', 'Esito_U/O_3.5', 'Esito_Media_Goal_Casa', 'Esito_Media_Goal_Trasferta', 'Esito_Corner_1X2', 'Esito DC+U/O2.5']:
+            for k in ['Esito_1X2', 'Esito_Risultato_Esatto', 'Esito_Doppia_Chance', 'Esito_Goal_NoGoal', 'Esito_U/O_1.5', 'Esito_U/O_2.5', 'Esito_U/O_3.5', 'Esito_Media_Goal_Casa', 'Esito_Media_Goal_Trasferta', 'Esito_Corner_1X2', 'Esito_DC+U/O2.5']:
                 riga_aggiornata[k] = 'Non Disponibile'
                 
         righe_validate.append(riga_aggiornata)
