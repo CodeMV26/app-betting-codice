@@ -75,16 +75,17 @@ def esegui_validazione():
             righe_validate.append(riga_err)
             continue
 
-        if league_id not in cache_results_keys := cache_risultati.keys():
+        # Corretto l'errore di sintassi che bloccava GitHub (Rimosso il Walrus operator)
+        if league_id not in cache_risultati:
             print(f"🔄 Scaricamento risultati reali terminati per {camp}...")
             cache_risultati[league_id] = recupera_risultati_api(league_id)
 
         match_reale = None
-        # BLINDO IL CONFRONTO: Entrambe le squadre devono combaciare per evitare finti abbinamenti
         for m in cache_risultati[league_id]:
             casa_r = m['homeTeam']['name'].lower()
             trasf_r = m['awayTeam']['name'].lower()
             
+            # Confronto flessibile per intercettare i nomi parziali delle squadre
             check_casa = (casa_p in casa_r) or (casa_r in casa_p)
             check_trasf = (trasf_p in trasf_r) or (trasf_r in trasf_p)
             
@@ -99,7 +100,7 @@ def esegui_validazione():
             g_trasf = match_reale['score']['fullTime']['away']
             tot_gol = g_casa + g_trasf
 
-            # 1. Segno Reale e Verifica Pronostico 1X2
+            # 1. Segno Reale
             segno_reale = '1' if g_casa > g_trasf else ('2' if g_trasf > g_casa else 'X')
             esito_1x2 = 'VINCENTE' if str(prono_segno).strip() == segno_reale else 'PERDENTE'
 
@@ -107,7 +108,7 @@ def esegui_validazione():
             uo_reale = 'OVER 2.5' if tot_gol > 2.5 else 'UNDER 2.5'
             esito_uo = 'VINCENTE' if str(prono_uo).strip().upper() == uo_reale else 'PERDENTE'
             
-            # 3. Validazione Mercato Combo (DC + U/O 2.5)
+            # 3. Validazione Mercato Combo
             esito_combo = "PERDENTE"
             if prono_combo and prono_combo != "In elaborazione" and "+" in str(prono_combo):
                 try:
@@ -128,7 +129,6 @@ def esegui_validazione():
                 except:
                     esito_combo = "Errore Analisi"
 
-            # Scrittura colonne allineate rigidamente alle chiavi lette da app.py
             riga_aggiornata['Risultato_Reale'] = f"{g_casa}-{g_trasf}"
             riga_aggiornata['Esito_1X2'] = esito_1x2
             riga_aggiornata['Esito_Risultato_Esatto'] = 'VINCENTE' if riga.get('Risultato_Esatto') == f"{g_casa}-{g_trasf}" else 'PERDENTE'
@@ -143,10 +143,9 @@ def esegui_validazione():
             
         righe_validate.append(riga_aggiornata)
 
-    # Conserva o crea il file storico finale
     df_output = pd.DataFrame(righe_validate)
     df_output.to_excel(OUTPUT_VALIDATO, index=False)
-    print(f"💾 Validazione completata con successo! Storico salvato in {OUTPUT_VALIDATO}")
+    print(f"💾 Validazione completata! Storico salvato in {OUTPUT_VALIDATO}")
 
 if __name__ == "__main__":
     esegui_validazione()
