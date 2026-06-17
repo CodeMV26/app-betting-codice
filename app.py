@@ -9,9 +9,10 @@ st.set_page_config(page_title="Pannello Betting", page_icon="⚽", layout="cente
 st.markdown("""
     <style>
     .main { background-color: #f2f2f7; }
-    .card, .card-storico { background-color: white; padding: 14px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); margin-bottom: 14px; }
+    .card, .card-storico, .card-database { background-color: white; padding: 14px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); margin-bottom: 14px; }
     .card { border-left: 5px solid #007aff; }
     .card-storico { border-left: 5px solid #34c759; }
+    .card-database { border-left: 5px solid #ff9500; }
     .time-label { color: #8e8e93; font-size: 11px; font-weight: bold; }
     .update-label { color: #8e8e93; font-size: 13px; margin-bottom: 15px; font-style: italic; }
     .result-label { color: #1c1c1e; font-size: 14px; font-weight: bold; margin: 6px 0; background: #e5e5ea; padding: 4px 8px; border-radius: 6px; display: inline-block; }
@@ -50,7 +51,8 @@ with col2:
     if st.button("📊 Avvia Fase 2 (Post-Match)"):
         if TOKEN and REPO: requests.post(f"https://api.github.com/repos/{REPO}/actions/workflows/validazione_storico.yml/dispatches", headers={"Authorization": f"token {TOKEN}", "Accept": "application/vnd.github.v3+json"}, json={"ref": "main"})
 
-tabs = st.tabs(["🎯 Palinsesto & Pronostici", "📊 Storico Validato"])
+# CREAZIONE DEI TRE TABS (Aggiunto il Tab 3 per consultare l'archivio globale Modulo 04)
+tabs = st.tabs(["🎯 Palinsesto & Pronostici", "📊 Storico Validato", "🗄️ Archivio Globale Completo"])
 
 # Funzione di pulizia/fallback per correggere i vecchi dati "xG" residui nel file Excel
 def pulisci_multigoal(valore_excel):
@@ -63,6 +65,7 @@ def pulisci_multigoal(valore_excel):
             return "1-2 MG"
     return val_str
 
+# TAB 1: PALINSESTO E PRONOSTICI
 with tabs[0]:
     if os.path.exists("Pronostici_App_Betting.xlsx"):
         df = pd.read_excel("Pronostici_App_Betting.xlsx")
@@ -90,6 +93,7 @@ with tabs[0]:
             </div>
             """, unsafe_allow_html=True)
 
+# TAB 2: STORICO VALIDATO
 with tabs[1]:
     if os.path.exists("Storico_Validato_Betting.xlsx"):
         df_storico = pd.read_excel("Storico_Validato_Betting.xlsx")
@@ -104,7 +108,6 @@ with tabs[1]:
 
             st.write(f"📊 **Resoconto Accuratezza globale su {tot} Match Storici:**")
             
-            # Griglia di card abbellite per il resoconto accuratezza
             st.markdown(f"""
             <div class="accuracy-grid">
                 <div class="accuracy-card"><span class="accuracy-market">1X2</span> {calc_acc('Esito_1X2')}</div>
@@ -154,3 +157,42 @@ with tabs[1]:
                     </div>
                 </div>
                 """, unsafe_allow_html=True)
+
+# TAB 3: NUOVO ARCHIVIO GLOBALE COMPLETO (Database_Storico_Completo.xlsx)
+with tabs[2]:
+    st.subheader("🗄️ Database Storico Incrementale (Modulo 04)")
+    
+    DATABASE_STORICO_GLOBALE = "Database_Storico_Completo.xlsx"
+    
+    if os.path.exists(DATABASE_STORICO_GLOBALE):
+        try:
+            df_global_storico = pd.read_excel(DATABASE_STORICO_GLOBALE)
+            
+            if not df_global_storico.empty:
+                st.success(f"📈 Connessione riuscita! Il database contiene **{len(df_global_storico)}** partite uniche registrate.")
+                
+                # Selettore di ricerca rapida per Campionato
+                lista_camp = ["TUTTI"] + list(df_global_storico['Campionato'].unique())
+                scelta_filtro_camp = st.selectbox("Filtra per competizione:", lista_camp, key="filtro_global_tab3")
+                
+                df_mostra_global = df_global_storico if scelta_filtro_camp == "TUTTI" else df_global_storico[df_global_storico['Campionato'] == scelta_filtro_camp]
+                
+                # Colonne essenziali ordinate e pulite per lo schermo dell'iPhone X
+                colonne_target = [
+                    'Data_Ora_Match', 'Campionato', '3. Match', 
+                    'Risultato_Reale', '1X2', 'Esito_1X2', 
+                    'Media_Goal_Casa', 'Esito_Media_Goal_Casa',
+                    'Media_Goal_Trasferta', 'Esito_Media_Goal_Trasferta'
+                ]
+                
+                colonne_disponibili_global = [c for c in colonne_target if c in df_mostra_global.columns]
+                
+                # Rendering tabella interattiva nativa di Streamlit ottimizzata
+                st.dataframe(df_mostra_global[colonne_disponibili_global], use_container_width=True)
+                
+            else:
+                st.warning("📋 Il file `Database_Storico_Completo.xlsx` è presente, ma non contiene ancora righe stabili.")
+        except Exception as e:
+            st.error(f"⚠️ Errore di lettura del Database Storico: {e}")
+    else:
+        st.info("ℹ️ Il file `Database_Storico_Completo.xlsx` non è ancora stato creato nel repository. Verrà generato automaticamente dalla Fase 2 non appena il workflow su GitHub Actions andrà a buon fine (Verde).")
