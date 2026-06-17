@@ -139,7 +139,7 @@ with tabs[0]:
     else:
         st.info("Nessun dato attivo.")
 
-# --- TAB 2: STORICO VALIDATO CON SUPER ACCURATEZZA E ICONE ---
+# --- TAB 2: STORICO VALIDATO CON COMPLETO ALLINEAMENTO COLORI ---
 with tabs[1]:
     if os.path.exists("Storico_Validato_Betting.xlsx"):
         try:
@@ -148,7 +148,6 @@ with tabs[1]:
             if df_storico.empty:
                 st.info("L'archivio storico è vuoto.")
             else:
-                # --- CALCOLO METRICHE ACCURATEZZA LIVE SUL DATABASE ---
                 match_validi = df_storico[df_storico['Risultato_Reale'] != 'NON ANCORA REALE/DA VALIDARE']
                 tot_validi = len(match_validi)
                 
@@ -165,7 +164,6 @@ with tabs[1]:
                     acc_uo = (vinte_uo / tot_validi) * 100
                     acc_esatto = (vinte_esatto / tot_validi) * 100
 
-                # Box Accorciato delle metriche per iPhone X (Fila singola scannabile)
                 st.markdown(f"📈 **Accuratezza Archivio ({tot_validi} Match Elaborati):**")
                 c1, c2, c3 = st.columns(3)
                 c1.metric(label="🎯 Esito 1X2", value=f"{acc_1x2:.1f}%")
@@ -173,14 +171,17 @@ with tabs[1]:
                 c3.metric(label="🔢 Ris. Esatto", value=f"{acc_esatto:.1f}%")
                 st.markdown("---")
                 
-                # Renderizzazione delle Card Storiche con Flag Visivi
                 for idx, row in df_storico.iterrows():
                     res_reale = row.get('Risultato_Reale', 'NON ANCORA REALE/DA VALIDARE')
                     
-                    # Generazione icone dinamiche (Verde se VINCENTE, Rossa se PERDENTE)
+                    # Generazione icone dinamiche per tutti i mercati
                     icona_1x2 = "✅" if row.get('Esito_1X2') == "VINCENTE" else ("❌" if row.get('Esito_1X2') == "PERDENTE" else "⏳")
                     icona_uo = "✅" if row.get('Esito_U/O_2.5') == "VINCENTE" else ("❌" if row.get('Esito_U/O_2.5') == "PERDENTE" else "⏳")
                     icona_esatto = "✅" if row.get('Esito_Risultato_Esatto') == "VINCENTE" else ("❌" if row.get('Esito_Risultato_Esatto') == "PERDENTE" else "⏳")
+                    
+                    # ALLINEATA ANCHE LA COMBO ALLA LOGICA DEL DIZIONARIO REALE
+                    esito_combo_raw = row.get('Esito DC+U/O2.5', '-')
+                    icona_combo = "✅" if esito_combo_raw == "VINCENTE" else ("❌" if esito_combo_raw == "PERDENTE" else "⏳")
                     
                     st.markdown(f"""
                     <div class="card-storico">
@@ -191,7 +192,7 @@ with tabs[1]:
                             <div class="market-item"><b>Prono 1X2:</b> {row.get('1X2', '-')} <br> {icona_1x2} <span class="{"esito-vincente" if icona_1x2 == "✅" else "esito-perdente"}">{row.get('Esito_1X2', '-')}</span></div>
                             <div class="market-item"><b>Prono Esatto:</b> {row.get('Risultato_Esatto', '-')} <br> {icona_esatto} <span class="{"esito-vincente" if icona_esatto == "✅" else "esito-perdente"}">{row.get('Esito_Risultato_Esatto', '-')}</span></div>
                             <div class="market-item"><b>Prono U/O 2.5:</b> {row.get('U/O_2.5', '-')} <br> {icona_uo} <span class="{"esito-vincente" if icona_uo == "✅" else "esito-perdente"}">{row.get('Esito_U/O_2.5', '-')}</span></div>
-                            <div class="market-item"><b>Prono Combo:</b> {row.get('DC+U/O2.5', '-')} <br> ⏳ <span>{row.get('Esito DC+U/O2.5', '-')}</span></div>
+                            <div class="market-item"><b>Prono Combo:</b> {row.get('DC+U/O2.5', '-')} <br> {icona_combo} <span class="{"esito-vincente" if icona_combo == "✅" else "esito-perdente"}">{esito_combo_raw}</span></div>
                         </div>
                     </div>
                     """, unsafe_allow_html=True)
