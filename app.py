@@ -22,7 +22,7 @@ st.markdown("""
     .esito-perdente { color: #ff3b30; font-weight: bold; }
     .section-title { font-size: 11px; font-weight: bold; color: #ff9500; text-transform: uppercase; margin-top: 8px; margin-bottom: 4px; grid-column: span 2; border-bottom: 1px solid #efeff4; padding-bottom: 2px; }
     .accuracy-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-top: 12px; }
-    .accuracy-card { background: #ffffff; border: 1px solid #e5e5ea; padding: 10px 12px; border-radius: 8px; shadow: 0 1px 3px rgba(0,0,0,0.02); display: flex; justify-content: space-between; align-items: center; }
+    .accuracy-card { background: #ffffff; border: 1px solid #e5e5ea; padding: 10px 12px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; }
     .accuracy-market { font-weight: 600; color: #1c1c1e; font-size: 13px; }
     .accuracy-value { background: #007aff; color: white; padding: 2px 8px; border-radius: 12px; font-size: 12px; font-weight: bold; }
     .accuracy-value-nd { background: #8e8e93; color: white; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: bold; }
@@ -152,7 +152,7 @@ with tabs[1]:
                 </div>
                 """, unsafe_allow_html=True)
 
-# TAB 3: DATABASE TOTALE (PROTETTO E COMPATTO)
+# TAB 3: DATABASE TOTALE COMPATTO CON PROTEZIONE DA TAGLI
 with tabs[2]:
     DB_FILE = "Database_Storico_Completo.xlsx"
     if os.path.exists(DB_FILE):
@@ -173,6 +173,53 @@ with tabs[2]:
                         v = row.get(col, '-')
                         return "✅ VINCENTE" if v == "VINCENTE" else "❌ PERDENTE" if v == "PERDENTE" else "⏳ In attesa"
 
-                    # Statistiche di input filtrate
-                    st_keys = {
-                        "Classifica Casa": "Classifica_Casa", "Classifica Ospite": "Classifica
+                    # Struttura divisa in array compatti per evitare stringhe lunghe interrotte
+                    st_keys = [
+                        ("Classifica Casa", "Classifica_Casa"), ("Classifica Ospite", "Classifica_Trasferta"),
+                        ("Goal Fatti C", "Goal_Fatti_Casa"), ("Goal Subiti C", "Goal_Subiti_Casa"),
+                        ("Goal Fatti O", "Goal_Fatti_Trasferta"), ("Goal Subiti O", "Goal_Subiti_Trasferta"),
+                        ("Med. Corner C", "Media_Corner_Casa"), ("Med. Corner O", "Media_Corner_Trasferta")
+                    ]
+                    el_st = []
+                    for k, c in st_keys:
+                        v_st = str(row.get(c, '-')).strip()
+                        if v_st not in ['-', 'nan', '']:
+                            el_st.append(f'<div class="market-item"><b>{k}:</b> {v_st}</div>')
+                    
+                    h_st = '<div class="section-title">📊 Statistiche Input</div>' + "".join(el_st) if el_st else ""
+
+                    m_keys = [
+                        ('1X2', '1X2', 'Esito_1X2'), ('Esatto', 'Risultato_Esatto', 'Esito_Risultato_Esatto'),
+                        ('Doppia Ch.', 'Doppia_Chance', 'Esito_Doppia_Chance'), ('Combo DC', 'DC+U/O2.5', 'Esito_DC+U/O2.5'),
+                        ('U/O 1.5', 'U/O_1.5', 'Esito_U/O_1.5'), ('U/O 2.5', 'U/O_2.5', 'Esito_U/O_2.5'),
+                        ('U/O 3.5', 'U/O_3.5', 'Esito_U/O_3.5'), ('G/NG', 'Goal_NoGoal', 'Esito_Goal_NoGoal'),
+                        ('Corner 1X2', 'Corner_1X2', 'Esito_Corner_1X2')
+                    ]
+                    el_m = []
+                    for k, cp, ce in m_keys:
+                        vp = str(row.get(cp, '-')).strip()
+                        if vp not in ['-', 'nan', '']:
+                            el_m.append(f'<div class="market-item"><b>{k}:</b> {vp} <br><small>{b_db(ce)}</small></div>')
+                    
+                    if str(row.get('Media_Goal_Casa', '-')).strip() not in ['-', 'nan', '']:
+                        el_m.append(f'<div class="market-item"><b>MG Casa:</b> {mg_c} <br><small>{b_db("Esito_Media_Goal_Casa")}</small></div>')
+                    if str(row.get('Media_Goal_Trasferta', '-')).strip() not in ['-', 'nan', '']:
+                        el_m.append(f'<div class="market-item"><b>MG Ospite:</b> {mg_o} <br><small>{b_db("Esito_Media_Goal_Trasferta")}</small></div>')
+
+                    h_m = '<div class="section-title">🎯 Pronostici ed Esiti</div>' + "".join(el_m) if el_m else ""
+
+                    if el_st or el_m:
+                        st.markdown(f"""
+                        <div class="card-database">
+                            <div class="time-label">🏆 {row.get('Campionato', '-')} | {row.get('Data_Ora_Match', '-')}</div>
+                            <h4 style="margin: 4px 0; color: #1c1c1e;">{row.get('3. Match', 'Match')}</h4>
+                            <div class="result-label" style="background: #ffe5cc; color: #d97706;">⚽ Finale: {res_r}</div>
+                            <div class="market-grid">{h_st}{h_m}</div>
+                        </div>
+                        """, unsafe_allow_html=True)
+            else:
+                st.warning("📋 Archivio presente ma vuoto.")
+        except Exception as e:
+            st.error(f"⚠️ Errore di lettura archivio: {e}")
+    else:
+        st.info("ℹ️ Il file database verrà popolato automaticamente alla prima esecuzione della Fase 2.")
