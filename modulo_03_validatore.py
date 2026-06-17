@@ -21,16 +21,19 @@ def recupera_risultati_api(league_id):
     except: pass
     return []
 
-def valida_nuovo_multigoal(prono_str, gol_reali):
-    p_clean = str(prono_str).strip().upper()
-    if "1-2" in p_clean:
-        return 'VINCENTE' if 1 <= gol_reali <= 2 else 'PERDENTE'
-    if "3+" in p_clean:
-        return 'VINCENTE' if gol_reali >= 3 else 'PERDENTE'
+def valida_qualsiasi_multigoal(prono_str, gol_reali):
+    p_clean = str(prono_str).strip().upper().replace("MG", "").strip()
+    try:
+        if "-" in p_clean:
+            g_min, g_max = map(int, p_clean.split("-"))
+            return 'VINCENTE' if g_min <= gol_reali <= g_max else 'PERDENTE'
+        if "3+" in p_clean:
+            return 'VINCENTE' if gol_reali >= 3 else 'PERDENTE'
+    except: pass
     return 'PERDENTE'
 
 def esegui_validazione():
-    print("\n✅ --- VALIDATORE STRUTTURA MULTIGOAL RANGE ---")
+    print("\n✅ --- VALIDATORE STRUTTURA MULTIGOAL MULTI-RANGE ---")
     if not os.path.exists(PRONOSTICI_FILE): return
     df_prono = pd.read_excel(PRONOSTICI_FILE)
     if df_prono.empty: return
@@ -52,7 +55,6 @@ def esegui_validazione():
         p_gng = riga.get('Goal_NoGoal', '-')
         p_mg_casa = riga.get('Media_Goal_Casa', '-')
         p_mg_out = riga.get('Media_Goal_Trasferta', '-')
-        p_corner = riga.get('Corner_1X2', '-')
         
         try:
             casa_p, trasf_p = match_str.split(" - ")
@@ -97,9 +99,9 @@ def esegui_validazione():
             riga_aggiornata['Esito_U/O_2.5'] = 'VINCENTE' if (str(p_uo25).strip().upper() == 'OVER 2.5' and tot_gol > 2.5) or (str(p_uo25).strip().upper() == 'UNDER 2.5' and tot_gol <= 2.5) else 'PERDENTE'
             riga_aggiornata['Esito_U/O_3.5'] = 'VINCENTE' if (str(p_uo35).strip().upper() == 'OVER 3.5' and tot_gol > 3.5) or (str(p_uo35).strip().upper() == 'UNDER 3.5' and tot_gol <= 3.5) else 'PERDENTE'
             
-            # Convalida matematica dei nuovi range 1-2 e 3+
-            riga_aggiornata['Esito_Media_Goal_Casa'] = valida_nuovo_multigoal(p_mg_casa, g_casa)
-            riga_aggiornata['Esito_Media_Goal_Trasferta'] = valida_nuovo_multigoal(p_mg_out, g_trasf)
+            # Convalida universale per tutti i MultiGoal estratti (1-3, 2-4, 2-3, ecc.)
+            riga_aggiornata['Esito_Media_Goal_Casa'] = valida_qualsiasi_multigoal(p_mg_casa, g_casa)
+            riga_aggiornata['Esito_Media_Goal_Trasferta'] = valida_qualsiasi_multigoal(p_mg_out, g_trasf)
             
             riga_aggiornata['Esito_Corner_1X2'] = 'In attesa'
             riga_aggiornata['Esito_DC+U/O2.5'] = 'VINCENTE' if riga_aggiornata['Esito_Doppia_Chance'] == 'VINCENTE' and riga_aggiornata['Esito_U/O_2.5'] == 'VINCENTE' else 'PERDENTE'
