@@ -22,7 +22,6 @@ def recupera_risultati_api(league_id):
     return []
 
 def valida_qualsiasi_multigoal(prono_str, gol_reali):
-    # Rimuove spazi, scritte MG ed estrae i numeri puri per il controllo matematico
     p_clean = str(prono_str).strip().upper().replace("MG", "").strip()
     try:
         if "-" in p_clean:
@@ -65,7 +64,8 @@ def esegui_validazione():
         league_id = MAPPA_COMPETIZIONI.get(camp)
         if not league_id: continue
 
-        if league_id not in cache_results:
+        # Corretto il bug del nome della cache
+        if league_id not in cache_risultati:
             cache_risultati[league_id] = recupera_risultati_api(league_id)
 
         match_reale = None
@@ -100,7 +100,6 @@ def esegui_validazione():
             riga_aggiornata['Esito_U/O_2.5'] = 'VINCENTE' if (str(p_uo25).strip().upper() == 'OVER 2.5' and tot_gol > 2.5) or (str(p_uo25).strip().upper() == 'UNDER 2.5' and tot_gol <= 2.5) else 'PERDENTE'
             riga_aggiornata['Esito_U/O_3.5'] = 'VINCENTE' if (str(p_uo35).strip().upper() == 'OVER 3.5' and tot_gol > 3.5) or (str(p_uo35).strip().upper() == 'UNDER 3.5' and tot_gol <= 3.5) else 'PERDENTE'
             
-            # Calcolo esatto degli esiti MultiGoal
             riga_aggiornata['Esito_Media_Goal_Casa'] = valida_qualsiasi_multigoal(p_mg_casa, g_casa)
             riga_aggiornata['Esito_Media_Goal_Trasferta'] = valida_qualsiasi_multigoal(p_mg_out, g_trasf)
             
