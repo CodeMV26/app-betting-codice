@@ -65,16 +65,23 @@ with tabs[1]:
             match_validi = df_storico[df_storico['Risultato_Reale'] != 'NON ANCORA REALE/DA VALIDARE']
             tot = len(match_validi)
             
-            # Funzione per calcolare l'accuratezza pura escludendo calcoli falsati
+            # 2) & 4) Accuratezza globale e sincronizzazione delle chiavi esatte per evitare lo 0% finto
             def calc_acc(col, is_corner=False):
                 if is_corner: return "N.D. (Dato mancante)"
-                return f"{(len(match_validi[match_validi[col] == 'VINCENTE']) / tot * 100):.1f}%" if tot > 0 and col in match_validi.columns else "0.0%"
+                if tot == 0 or col not in match_validi.columns: return "0.0%"
+                vincenti = len(match_validi[match_validi[col] == 'VINCENTE'])
+                return f"{(vincenti / tot * 100):.1f}%"
 
             st.markdown(f"📊 **Resoconto Accuratezza su {tot} Match Storici:**")
             
             df_acc = pd.DataFrame({
                 "Mercato": ["1X2", "Risultato Esatto", "Doppia Chance", "Combo DC+U/O", "Under/Over 1.5", "Under/Over 2.5", "Under/Over 3.5", "Goal/NoGoal", "MG Casa", "MG Ospite", "Corner 1X2"],
-                "Accuratezza": [calc_acc('Esito_1X2'), calc_acc('Esito_Risultato_Esatto'), calc_acc('Esito_Doppia_Chance'), calc_acc('Esito DC+U/O2.5'), calc_acc('Esito_U/O_1.5'), calc_acc('Esito_U/O_2.5'), calc_acc('Esito_U/O_3.5'), calc_acc('Esito_Goal_NoGoal'), calc_acc('Esito_Media_Goal_Casa'), calc_acc('Esito_Media_Goal_Trasferta'), calc_acc('Esito_Corner_1X2', True)]
+                "Accuratezza": [
+                    calc_acc('Esito_1X2'), calc_acc('Esito_Risultato_Esatto'), calc_acc('Esito_Doppia_Chance'), 
+                    calc_acc('Esito_DC+U/O2.5'), calc_acc('Esito_U/O_1.5'), calc_acc('Esito_U/O_2.5'), 
+                    calc_acc('Esito_U/O_3.5'), calc_acc('Esito_Goal_NoGoal'), calc_acc('Esito_Media_Goal_Casa'), 
+                    calc_acc('Esito_Media_Goal_Trasferta'), calc_acc('Esito_Corner_1X2', True)
+                ]
             })
             st.dataframe(df_acc, hide_index=True, use_container_width=True)
             st.markdown("---")
@@ -97,7 +104,7 @@ with tabs[1]:
                         <div class="market-item"><b>1X2:</b> {row.get('1X2', '-')} <br> {get_badge('Esito_1X2')}</div>
                         <div class="market-item"><b>Esatto:</b> {row.get('Risultato_Esatto', '-')} <br> {get_badge('Esito_Risultato_Esatto')}</div>
                         <div class="market-item"><b>Doppia:</b> {row.get('Doppia_Chance', '-')} <br> {get_badge('Esito_Doppia_Chance')}</div>
-                        <div class="market-item"><b>Combo:</b> {row.get('DC+U/O2.5', '-')} <br> {get_badge('Esito DC+U/O2.5')}</div>
+                        <div class="market-item"><b>Combo:</b> {row.get('DC+U/O2.5', '-')} <br> {get_badge('Esito_DC+U/O2.5')}</div>
                         <div class="market-item"><b>U/O 1.5:</b> {row.get('U/O_1.5', '-')} <br> {get_badge('Esito_U/O_1.5')}</div>
                         <div class="market-item"><b>U/O 2.5:</b> {row.get('U/O_2.5', '-')} <br> {get_badge('Esito_U/O_2.5')}</div>
                         <div class="market-item"><b>U/O 3.5:</b> {row.get('U/O_3.5', '-')} <br> {get_badge('Esito_U/O_3.5')}</div>
