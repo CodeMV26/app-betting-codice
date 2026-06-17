@@ -76,13 +76,13 @@ with tabs[1]:
     if os.path.exists("Storico_Validato_Betting.xlsx"):
         df_storico = pd.read_excel("Storico_Validato_Betting.xlsx")
         if not df_storico.empty:
-            match_validi = df_storico[df_storico['Risultato_Reale'] != 'NON ANCORA REALE/DA VALIDARE']
+            match_validi = df_storico[df_storico['Risultato_Reale'] != 'NON ANCORA REALE/DA VALIDARE'] if 'Risultato_Reale' in df_storico.columns else pd.DataFrame()
             tot_validi = len(match_validi)
             
-            # Calcolo dinamico accuratezza complessiva dell'archivio
-            acc_1x2 = (len(match_validi[match_validi['Esito_1X2'] == 'VINCENTE']) / tot_validi * 100) if tot_validi > 0 else 0
-            acc_dc = (len(match_validi[match_validi['Esito_Doppia_Chance'] == 'VINCENTE']) / tot_validi * 100) if tot_validi > 0 else 0
-            acc_gng = (len(match_validi[match_validi['Esito_Goal_NoGoal'] == 'VINCENTE']) / tot_validi * 100) if tot_validi > 0 else 0
+            # PROTEZIONE KEYERROR: Calcolo metriche solo se le colonne esistono nell'Excel caricato
+            acc_1x2 = (len(match_validi[match_validi['Esito_1X2'] == 'VINCENTE']) / tot_validi * 100) if tot_validi > 0 and 'Esito_1X2' in match_validi.columns else 0
+            acc_dc = (len(match_validi[match_validi['Esito_Doppia_Chance'] == 'VINCENTE']) / tot_validi * 100) if tot_validi > 0 and 'Esito_Doppia_Chance' in match_validi.columns else 0
+            acc_gng = (len(match_validi[match_validi['Esito_Goal_NoGoal'] == 'VINCENTE']) / tot_validi * 100) if tot_validi > 0 and 'Esito_Goal_NoGoal' in match_validi.columns else 0
 
             st.markdown(f"📈 **Accuratezza Global ({tot_validi} Match):**")
             c1, c2, c3 = st.columns(3)
@@ -94,6 +94,7 @@ with tabs[1]:
             for idx, row in df_storico.iterrows():
                 res_reale = row.get('Risultato_Reale', 'NON ANCORA REALE/DA VALIDARE')
                 
+                # PROTEZIONE INTERNA CARD: get() restituisce '-' se la colonna manca, evitando crash
                 def get_badge(col_name):
                     val = row.get(col_name, '-')
                     if val == "VINCENTE": return "✅ <span class='esito-vincente'>VINCENTE</span>"
