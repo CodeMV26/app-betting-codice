@@ -161,7 +161,7 @@ with tabs[1]:
                 </div>
                 """, unsafe_allow_html=True)
 
-# TAB 3: FILTRATO E PULITO DINAMICAMENTE CONTRO I TRATTINI VUOTI
+# TAB 3: CONTROLLO COMPLETO E RIPRISTINATO
 with tabs[2]:
     DATABASE_STORICO_GLOBALE = "Database_Storico_Completo.xlsx"
     
@@ -169,4 +169,33 @@ with tabs[2]:
         try:
             df_global_storico = pd.read_excel(DATABASE_STORICO_GLOBALE)
             
-            if not df_global_
+            if not df_global_storico.empty:
+                st.write(f"🗄️ **Archivio Storico Totale: {len(df_global_storico)} Partite Registrate**")
+                
+                lista_camp = ["TUTTI"] + list(df_global_storico['Campionato'].dropna().unique())
+                scelta_filtro_camp = st.selectbox("Filtra competizione:", lista_camp, key="filtro_global_tab3_clean")
+                
+                df_mostra_global = df_global_storico if scelta_filtro_camp == "TUTTI" else df_global_storico[df_global_storico['Campionato'] == scelta_filtro_camp]
+                
+                for idx, row in df_mostra_global.iterrows():
+                    res_reale = row.get('Risultato_Reale', 'N.D.')
+                    mg_casa_pulito = pulisci_multigoal(row.get('Media_Goal_Casa', '-'))
+                    mg_ospite_pulito = pulisci_multigoal(row.get('Media_Goal_Trasferta', '-'))
+                    
+                    def get_db_badge(col_name):
+                        val = row.get(col_name, '-')
+                        if val == "VINCENTE": return "✅ VINCENTE"
+                        if val == "PERDENTE": return "❌ PERDENTE"
+                        return "⏳ In attesa"
+
+                    html_statistiche = ""
+                    statistiche_chiave = {
+                        "Classifica Casa": "Classifica_Casa", "Classifica Ospite": "Classifica_Trasferta",
+                        "Goal Fatti C": "Goal_Fatti_Casa", "Goal Subiti C": "Goal_Subiti_Casa",
+                        "Goal Fatti O": "Goal_Fatti_Trasferta", "Goal Subiti O": "Goal_Subiti_Trasferta",
+                        "Med. Corner C": "Media_Corner_Casa", "Med. Corner O": "Media_Corner_Trasferta"
+                    }
+                    
+                    elementi_stat = []
+                    for etichetta, colonna in statistiche_chiave.items():
+                        valore = str(row.get(
