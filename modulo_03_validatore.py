@@ -2,6 +2,8 @@ import pandas as pd
 import requests
 import os
 
+print("✅ --- MODULO 03: VALIDATORE STRUTTURA MULTIGOAL MULTI-RANGE ---")
+
 PRONOSTICI_FILE = "Pronostici_App_Betting.xlsx"
 OUTPUT_VALIDATO = "Storico_Validato_Betting.xlsx"
 
@@ -33,8 +35,10 @@ def valida_qualsiasi_multigoal(prono_str, gol_reali):
     return 'PERDENTE'
 
 def esegui_validazione():
-    print("\n✅ --- VALIDATORE STRUTTURA MULTIGOAL MULTI-RANGE ---")
-    if not os.path.exists(PRONOSTICI_FILE): return
+    if not os.path.exists(PRONOSTICI_FILE): 
+        print(f"⚠️ File {PRONOSTICI_FILE} non trovato.")
+        return
+        
     df_prono = pd.read_excel(PRONOSTICI_FILE)
     if df_prono.empty: return
 
@@ -64,7 +68,6 @@ def esegui_validazione():
         league_id = MAPPA_COMPETIZIONI.get(camp)
         if not league_id: continue
 
-        # Corretto il bug del nome della cache
         if league_id not in cache_risultati:
             cache_risultati[league_id] = recupera_risultati_api(league_id)
 
@@ -113,6 +116,7 @@ def esegui_validazione():
         righe_validate.append(riga_aggiornata)
 
     pd.DataFrame(righe_validate).to_excel(OUTPUT_VALIDATO, index=False)
+    print("✅ Validazione completata e salvata con successo.")
 
 if __name__ == "__main__":
     esegui_validazione()
