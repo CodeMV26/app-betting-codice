@@ -3,36 +3,37 @@ name: 2. Fase Post-Match - Archiviazione e Studio
 on:
   workflow_dispatch:
 
-permissions:
-  contents: write
-
 jobs:
   post-match:
     runs-on: ubuntu-latest
+
     steps:
-      - name: Sincronizza Codice
-        uses: actions/checkout@v4
+    - name: Checkout del codice repository
+      uses: actions/checkout@v3
 
-      - name: Configura Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.10'
+    - name: Configurazione ambiente Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
 
-      - name: Installa Librerie
-        run: |
-          python -m pip install --upgrade pip
-          pip install pandas requests openpyxl xlsxwriter numpy streamlit
+    - name: Installazione dipendenze necessarie
+      run: |
+        python -m pip install --upgrade pip
+        pip install pandas openpyxl requests numpy
 
-      - name: Esegui Validazione, Archiviazione e Simulazione
-        run: |
-          python modulo_03_validatore.py
-          python modulo_04_trasferitore.py
-          python modulo_05_simulatore.py
+    - name: Esegui Validazione Risultati Reali (Modulo 03)
+      run: python modulo_03_validatore.py
 
-      - name: Salva Automaticamente lo Storico e il Report su GitHub
-        run: |
-          git config --global user.name "GitHub Actions Bot"
-          git config --global user.email "actions@github.com"
-          git add --all *.xlsx
-          git commit -m "Aggiornamento storico e simulazione (Fase Post-Match)" || echo "Nessuna modifica da caricare"
-          git push origin main || echo "Push non riuscito o non necessario"
+    - name: Esegui Archiviazione e Rimozione Doppioni (Modulo 04)
+      run: python modulo_04_trasferitore.py
+
+    - name: Configura credenziali Git
+      run: |
+        git config --global user.name "GitHub Actions Bot"
+        git config --global user.email "actions@github.com"
+
+    - name: Salva e pusha le modifiche sui file Excel
+      run: |
+        git add Storico_Validato_Betting.xlsx Database_Storico_Completo.xlsx || true
+        git commit -m "🤖 Post-Match: Storico validato e archiviato senza doppioni" || true
+        git push origin main || true
