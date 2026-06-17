@@ -69,13 +69,24 @@ with tabs[1]:
                 if is_corner: return "N.D. (Dato mancante)"
                 return f"{(len(match_validi[match_validi[col] == 'VINCENTE']) / tot * 100):.1f}%" if tot > 0 and col in match_validi.columns else "0.0%"
 
-            st.markdown(f"📊 **Resoconto Accuratezza su {tot} Match Storici:**")
+            st.write(f"📊 **Resoconto Accuratezza su {tot} Match Storici:**")
             
-            df_acc = pd.DataFrame({
-                "Mercato": ["1X2", "Risultato Esatto", "Doppia Chance", "Combo DC+U/O2.5", "Under/Over 1.5", "Under/Over 2.5", "Under/Over 3.5", "Goal/NoGoal", "MG Casa", "MG Ospite", "Corner 1X2"],
-                "Accuratezza": [calc_acc('Esito_1X2'), calc_acc('Esito_Risultato_Esatto'), calc_acc('Esito_Doppia_Chance'), calc_acc('Esito_DC+U/O2.5'), calc_acc('Esito_U/O_1.5'), calc_acc('Esito_U/O_2.5'), calc_acc('Esito_U/O_3.5'), calc_acc('Esito_Goal_NoGoal'), calc_acc('Esito_Media_Goal_Casa'), calc_acc('Esito_Media_Goal_Trasferta'), calc_acc('Esito_Corner_1X2', True)]
-            })
-            st.dataframe(df_acc, hide_index=True, use_container_width=True)
+            # RIPRISTINO COMPLETO DELLA TUA GRAFICA ORIGINALE AD ELENCO/METRICHE
+            col_acc1, col_acc2 = st.columns(2)
+            with col_acc1:
+                st.write(f"**1X2:** {calc_acc('Esito_1X2')}")
+                st.write(f"**Risultato Esatto:** {calc_acc('Esito_Risultato_Esatto')}")
+                st.write(f"**Doppia Chance:** {calc_acc('Esito_Doppia_Chance')}")
+                st.write(f"**Combo DC+U/O2.5:** {calc_acc('Esito_DC+U/O2.5')}")
+                st.write(f"**Under/Over 1.5:** {calc_acc('Esito_U/O_1.5')}")
+                st.write(f"**Under/Over 2.5:** {calc_acc('Esito_U/O_2.5')}")
+            with col_acc2:
+                st.write(f"**Under/Over 3.5:** {calc_acc('Esito_U/O_3.5')}")
+                st.write(f"**Goal/NoGoal:** {calc_acc('Esito_Goal_NoGoal')}")
+                st.write(f"**MG Casa:** {calc_acc('Esito_Media_Goal_Casa')}")
+                st.write(f"**MG Ospite:** {calc_acc('Esito_Media_Goal_Trasferta')}")
+                st.write(f"**Corner 1X2:** {calc_acc('Esito_Corner_1X2', True)}")
+                
             st.markdown("---")
             
             for idx, row in df_storico.iterrows():
