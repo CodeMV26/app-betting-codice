@@ -129,5 +129,62 @@ for idx, riga in df_ingresso.iterrows():
     righe_pronosticate.append(match_data)
 
 df_out = pd.DataFrame(righe_pronosticate)
+
+# 🗄️ --- CODA DI SICUREZZA: ARCHIVIAZIONE PRE-MATCH INTEGRALE DELLE API ---
+DATABASE_STORICO_GLOBALE = "Database_Storico_Completo.xlsx"
+
+def genera_chiave_univoca_local(row):
+    data = str(row.get('Data_Ora_Match', '')).strip()
+    match_str = str(row.get('3. Match', '')).strip()
+    return f"{data}_{match_str}".lower().replace(" ", "")
+
+if not df_out.empty:
+    print("⏳ Memorizzazione preventiva di tutte le colonne statistiche nel Database Storico...")
+    
+    # Prepariamo la copia impostando lo stato iniziale dei risultati per il Modulo 03/04
+    df_da_appendere = df_out.copy()
+    df_da_appendere["Risultato_Reale"] = "NON ANCORA REALE/DA VALIDARE"
+    
+    if os.path.exists(DATABASE_STORICO_GLOBALE):
+        try:
+            df_storico_esistente = pd.read_excel(DATABASE_STORICO_GLOBALE)
+            
+            # Uniformiamo dinamicamente le strutture dei due file per non perdere nessuna colonna delle API
+            for col in df_da_appendere.columns:
+                if col not in df_storico_esistente.columns:
+                    df_storico_esistente[col] = None
+            for col in df_storico_esistente.columns:
+                if col not in df_da_appendere.columns:
+                    df_da_appendere[col] = None
+            
+            # Estraiamo le chiavi dei match esistenti per scongiurare duplicati in caso di ri-esecuzione
+            if not df_storico_esistente.empty:
+                chiavi_storico = set(df_storico_esistente.apply(genera_chiave_univoca_local, axis=1))
+            else:
+                chiavi_storico = set()
+                
+            nuove_righe_effettive = []
+            for _, riga in df_da_appendere.iterrows():
+                if genera_chiave_univoca_local(riga) not in chiavi_storico:
+                    nuove_righe_effettive.append(riga)
+            
+            if nuove_righe_effettive:
+                df_nuove_inserite = pd.DataFrame(nuove_righe_effettive)
+                df_storico_aggiornato = pd.concat([df_storico_esistente, df_nuove_inserite], ignore_index=True)
+                df_storico_aggiornato.to_excel(DATABASE_STORICO_GLOBALE, index=False)
+                print(f"✅ Storico aggiornato con successo: registrati {len(nuove_righe_inserite)} match con intero patrimonio statistico.")
+            else:
+                print("📋 Nessun nuovo match inserito: i record correnti sono già blindati nell'archivio.")
+                
+        except Exception as e:
+            print(f"⚠️ Nota di avviso accodamento storico: {e}")
+    else:
+        try:
+            df_da_appendere.to_excel(DATABASE_STORICO_GLOBALE, index=False)
+            print("🆕 Archivio Database_Storico_Completo.xlsx non rilevato. Creato un nuovo tracciato globale.")
+        except Exception as e:
+            print(f"❌ Impossibile inizializzare il Database Storico: {e}")
+
+# Salvataggio del file standard per l'interfaccia dell'applicazione
 df_out.to_excel(OUTPUT_FILE, index=False)
 print(f"✅ Analisi completata. File {OUTPUT_FILE} generato con MultiGoal Dinamici.")
