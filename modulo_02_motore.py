@@ -20,7 +20,6 @@ def dixon_coles_adj(i, j, xg_c, xg_t, rho=-0.09):
     return 1.0
 
 def determina_miglior_multigoal(prob_vettore):
-    # Calcola la probabilità cumulata per i reali range di gol del palinsesto (da 0 a 5 gol)
     range_disponibili = {
         "1-2 MG": sum(prob_vettore[1:3]),
         "1-3 MG": sum(prob_vettore[1:4]),
@@ -30,7 +29,6 @@ def determina_miglior_multigoal(prob_vettore):
         "3+ MG": sum(prob_vettore[3:]),
         "0-1 MG": sum(prob_vettore[0:2])
     }
-    # Estrae il range con la probabilità matematica più alta per la squadra
     return max(range_disponibili, key=range_disponibili.get)
 
 if not os.path.exists(DATABASE_FILE):
@@ -82,7 +80,6 @@ for idx, riga in df_ingresso.iterrows():
     p1, px, p2, p_u15, p_u25, p_u35, p_goal = 0, 0, 0, 0, 0, 0, 0
     total_p = sum(sum(row) for row in matrix)
 
-    # Inizializza vettori per le distribuzioni gol marginali delle singole squadre
     prob_gol_casa = [0.0] * 6
     prob_gol_trasf = [0.0] * 6
 
@@ -111,7 +108,7 @@ for idx, riga in df_ingresso.iterrows():
     dc_val = "1X" if (p1 + px) > (p2 + px) else "X2"
     re_idx = np.unravel_index(np.argmax(matrix), (6,6))
 
-    # Valorizzazione chiavi e mercati iPhone X
+    # Valorizzazione mercati
     match_data["1X2"] = prono_s
     match_data["Risultato_Esatto"] = f"{re_idx[0]}-{re_idx[1]}"
     match_data["Doppia_Chance"] = dc_val
@@ -122,9 +119,9 @@ for idx, riga in df_ingresso.iterrows():
     match_data["DC+U/O2.5"] = f"{dc_val}+{u25_label.split(' ')[0]}"
     match_data["Corner_1X2"] = "1" if xg_c > xg_t + 0.3 else ("2" if xg_t > xg_c + 0.3 else "X")
     
-    # Calcolo dinamico e inserimento di qualsiasi combinazione MultiGoal reale
-    match_data["Media_Goal_Casa"] = determina_miglior_multigoal(prob_gol_casa)
-    match_data["Media_Goal_Trasferta"] = determina_miglior_multigoal(prob_gol_trasf)
+    # COSTREZIONE DI SICUREZZA (MUST 1): Salviamo i MultiGoal in colonne separate per non cancellare i float delle API
+    match_data["Pronostico_MG_Casa"] = determina_miglior_multigoal(prob_gol_casa)
+    match_data["Pronostico_MG_Trasferta"] = determina_miglior_multigoal(prob_gol_trasf)
 
     righe_pronosticate.append(match_data)
 
@@ -141,7 +138,6 @@ def genera_chiave_univoca_local(row):
 if not df_out.empty:
     print("⏳ Memorizzazione preventiva di tutte le colonne statistiche nel Database Storico...")
     
-    # Prepariamo la copia impostando lo stato iniziale dei risultati per il Modulo 03/04
     df_da_appendere = df_out.copy()
     df_da_appendere["Risultato_Reale"] = "NON ANCORA REALE/DA VALIDARE"
     
@@ -149,7 +145,7 @@ if not df_out.empty:
         try:
             df_storico_esistente = pd.read_excel(DATABASE_STORICO_GLOBALE)
             
-            # Uniformiamo dinamicamente le strutture dei due file per non perdere nessuna colonna delle API
+            # Uniformiamo dinamicamente le colonne (MUST 7)
             for col in df_da_appendere.columns:
                 if col not in df_storico_esistente.columns:
                     df_storico_esistente[col] = None
@@ -157,7 +153,7 @@ if not df_out.empty:
                 if col not in df_da_appendere.columns:
                     df_da_appendere[col] = None
             
-            # Estraiamo le chiavi dei match esistenti per scongiurare duplicati in caso di ri-esecuzione
+            # Controllo univoco chiavi (MUST 2)
             if not df_storico_esistente.empty:
                 chiavi_storico = set(df_storico_esistente.apply(genera_chiave_univoca_local, axis=1))
             else:
@@ -172,7 +168,8 @@ if not df_out.empty:
                 df_nuove_inserite = pd.DataFrame(nuove_righe_effettive)
                 df_storico_aggiornato = pd.concat([df_storico_esistente, df_nuove_inserite], ignore_index=True)
                 df_storico_aggiornato.to_excel(DATABASE_STORICO_GLOBALE, index=False)
-                print(f"✅ Storico aggiornato con successo: registrati {len(nuove_righe_inserite)} match con intero patrimonio statistico.")
+                # CORREZIONE BUG: nuove_righe_effettive al posto del vecchio nome errato
+                print(f"✅ Storico aggiornato con successo: registrati {len(nuove_righe_effettive)} match con intero patrimonio statistico.")
             else:
                 print("📋 Nessun nuovo match inserito: i record correnti sono già blindati nell'archivio.")
                 
@@ -185,6 +182,6 @@ if not df_out.empty:
         except Exception as e:
             print(f"❌ Impossibile inizializzare il Database Storico: {e}")
 
-# Salvataggio del file standard per l'interfaccia dell'applicazione
+# Invia l'output standard all'applicazione Streamlit
 df_out.to_excel(OUTPUT_FILE, index=False)
-print(f"✅ Analisi completata. File {OUTPUT_FILE} generato con MultiGoal Dinamici.")
+print(f"✅ Analisi completata. File {OUTPUT_FILE} generato correttamente.")
