@@ -51,23 +51,11 @@ with col2:
 
 tabs = st.tabs(["🎯 Palinsesto", "📊 Storico", "🗄️ Database Totale"])
 
-def pulisci_multigoal(valore_excel):
-    val_str = str(valore_excel).strip()
-    if "xG" in val_str:
-        try:
-            num = float(val_str.replace("xG", "").strip())
-            return "1-2 MG" if num <= 2.0 else "3+ MG"
-        except:
-            return "1-2 MG"
-    return val_str
-
 # TAB 1: PALINSESTO
 with tabs[0]:
     if os.path.exists("Pronostici_App_Betting.xlsx"):
         df = pd.read_excel("Pronostici_App_Betting.xlsx")
         for idx, row in df.iterrows():
-            mg_casa_pulito = pulisci_multigoal(row.get('Media_Goal_Casa', '-'))
-            mg_ospite_pulito = pulisci_multigoal(row.get('Media_Goal_Trasferta', '-'))
             st.markdown(f"""
             <div class="card">
                 <div class="time-label">🏆 {row.get('Campionato', '-')} | {row.get('Data_Ora_Match', '-')}</div>
@@ -81,8 +69,8 @@ with tabs[0]:
                     <div class="market-item"><b>U/O 2.5:</b> {row.get('U/O_2.5', '-')}</div>
                     <div class="market-item"><b>U/O 3.5:</b> {row.get('U/O_3.5', '-')}</div>
                     <div class="market-item"><b>G/NG:</b> {row.get('Goal_NoGoal', '-')}</div>
-                    <div class="market-item"><b>MG Casa:</b> {mg_casa_pulito}</div>
-                    <div class="market-item"><b>MG Ospite:</b> {mg_ospite_pulito}</div>
+                    <div class="market-item"><b>MG Casa:</b> {row.get('Pronostico_MG_Casa', '-')}</div>
+                    <div class="market-item"><b>MG Ospite:</b> {row.get('Pronostico_MG_Trasferta', '-')}</div>
                     <div class="market-item"><b>Corner 1X2:</b> {row.get('Corner_1X2', '-')}</div>
                 </div>
             </div>
@@ -122,8 +110,6 @@ with tabs[1]:
             
             for idx, row in df_storico.iterrows():
                 res_reale = row.get('Risultato_Reale', 'NON ANCORA REALE/DA VALIDARE')
-                mg_casa_pulito = pulisci_multigoal(row.get('Media_Goal_Casa', '-'))
-                mg_ospite_pulito = pulisci_multigoal(row.get('Media_Goal_Trasferta', '-'))
                 
                 def get_badge(col_name):
                     val = row.get(col_name, '-')
@@ -145,8 +131,8 @@ with tabs[1]:
                         <div class="market-item"><b>U/O 2.5:</b> {row.get('U/O_2.5', '-')} <br> {get_badge('Esito_U/O_2.5')}</div>
                         <div class="market-item"><b>U/O 3.5:</b> {row.get('U/O_3.5', '-')} <br> {get_badge('Esito_U/O_3.5')}</div>
                         <div class="market-item"><b>G/NG:</b> {row.get('Goal_NoGoal', '-')} <br> {get_badge('Esito_Goal_NoGoal')}</div>
-                        <div class="market-item"><b>MG Casa:</b> {mg_casa_pulito} <br> {get_badge('Esito_Media_Goal_Casa')}</div>
-                        <div class="market-item"><b>MG Ospite:</b> {mg_ospite_pulito} <br> {get_badge('Esito_Media_Goal_Trasferta')}</div>
+                        <div class="market-item"><b>MG Casa:</b> {row.get('Pronostico_MG_Casa', '-')} <br> {get_badge('Esito_Media_Goal_Casa')}</div>
+                        <div class="market-item"><b>MG Ospite:</b> {row.get('Pronostico_MG_Trasferta', '-')} <br> {get_badge('Esito_Media_Goal_Trasferta')}</div>
                         <div class="market-item"><b>Corner 1X2:</b> {row.get('Corner_1X2', '-')} <br> {get_badge('Esito_Corner_1X2')}</div>
                     </div>
                 </div>
@@ -166,14 +152,11 @@ with tabs[2]:
                 
                 for idx, row in df_m.iterrows():
                     res_r = row.get('Risultato_Reale', 'N.D.')
-                    mg_c = pulisci_multigoal(row.get('Media_Goal_Casa', '-'))
-                    mg_o = pulisci_multigoal(row.get('Media_Goal_Trasferta', '-'))
                     
                     def b_db(col):
                         v = row.get(col, '-')
                         return "✅ VINCENTE" if v == "VINCENTE" else "❌ PERDENTE" if v == "PERDENTE" else "⏳ In attesa"
 
-                    # SISTEMA ADATTIVO AUTOMATICO DI RICERCA COLONNE (Indipendente da maiuscole/spazi)
                     mappa_colonne = {str(c).strip().lower(): str(c) for c in df_g.columns}
                     
                     def estrai_valore(lista_possibili_nomi):
@@ -185,35 +168,36 @@ with tabs[2]:
                                     return val
                         return None
 
-                    # Estrazione automatica e tollerante delle statistiche di input
-                    v_cl_c = estrai_valore(["classifica_casa", "classificacasa"])
-                    v_cl_o = estrai_valore(["classifica_trasferta", "classifica_ospite", "classificastrasferta"])
-                    v_gf_c = estrai_valore(["goal_fatti_casa", "goalfatticasa"])
-                    v_gs_c = estrai_valore(["goal_subiti_casa", "goalsubiticasa"])
-                    v_gf_o = estrai_valore(["goal_fatti_trasferta", "goal_fatti_ospite", "goalfattitrasferta"])
-                    v_gs_o = estrai_valore(["goal_subiti_trasferta", "goal_subiti_ospite", "goalsubititrasferta"])
-                    v_co_c = estrai_valore(["media_corner_casa", "mediacornercasa", "corner_casa"])
-                    v_co_o = estrai_valore(["media_corner_trasferta", "media_corner_ospite", "mediacornertrasferta"])
+                    # Mappatura esatta basata sui dati arricchiti del Modulo 01
+                    v_punti_c = estrai_valore(["punti_casa"])
+                    v_punti_o = estrai_valore(["punti_trasferta"])
+                    v_gf_c = estrai_valore(["media_goal_casa"])
+                    v_gs_c = estrai_valore(["media_goal_subiti_casa"])
+                    v_gf_o = estrai_valore(["media_goal_trasferta"])
+                    v_gs_o = estrai_valore(["media_goal_subiti_trasferta"])
+                    v_forma_c = estrai_valore(["forma_casa"])
+                    v_forma_o = estrai_valore(["forma_trasferta"])
 
                     el_st = []
-                    if v_cl_c: el_st.append(f'<div class="market-item"><b>Classifica Casa:</b> {v_cl_c}</div>')
-                    if v_cl_o: el_st.append(f'<div class="market-item"><b>Classifica Ospite:</b> {v_cl_o}</div>')
-                    if v_gf_c: el_st.append(f'<div class="market-item"><b>Goal Fatti C:</b> {v_gf_c}</div>')
-                    if v_gs_c: el_st.append(f'<div class="market-item"><b>Goal Subiti C:</b> {v_gs_c}</div>')
-                    if v_gf_o: el_st.append(f'<div class="market-item"><b>Goal Fatti O:</b> {v_gf_o}</div>')
-                    if v_gs_o: el_st.append(f'<div class="market-item"><b>Goal Subiti O:</b> {v_gs_o}</div>')
-                    if v_co_c: el_st.append(f'<div class="market-item"><b>Med. Corner C:</b> {v_co_c}</div>')
-                    if v_co_o: el_st.append(f'<div class="market-item"><b>Med. Corner O:</b> {v_co_o}</div>')
+                    if v_punti_c: el_st.append(f'<div class="market-item"><b>Punti Casa:</b> {v_punti_c}</div>')
+                    if v_punti_o: el_st.append(f'<div class="market-item"><b>Punti Ospite:</b> {v_punti_o}</div>')
+                    if v_gf_c: el_st.append(f'<div class="market-item"><b>Media GF Casa:</b> {v_gf_c}</div>')
+                    if v_gs_c: el_st.append(f'<div class="market-item"><b>Media GS Casa:</b> {v_gs_c}</div>')
+                    if v_gf_o: el_st.append(f'<div class="market-item"><b>Media GF Ospite:</b> {v_gf_o}</div>')
+                    if v_gs_o: el_st.append(f'<div class="market-item"><b>Media GS Ospite:</b> {v_gs_o}</div>')
+                    if v_forma_c: el_st.append(f'<div class="market-item"><b>Forma Casa:</b> {v_forma_c}</div>')
+                    if v_forma_o: el_st.append(f'<div class="market-item"><b>Forma Ospite:</b> {v_forma_o}</div>')
                     
                     h_st = '<div class="section-title">📊 Statistiche Input</div>' + "".join(el_st) if el_st else ""
 
-                    # Pronostici ordinari
                     m_keys = [
                         ('1X2', '1X2', 'Esito_1X2'), ('Esatto', 'Risultato_Esatto', 'Esito_Risultato_Esatto'),
                         ('Doppia Ch.', 'Doppia_Chance', 'Esito_Doppia_Chance'), ('Combo DC', 'DC+U/O2.5', 'Esito_DC+U/O2.5'),
                         ('U/O 1.5', 'U/O_1.5', 'Esito_U/O_1.5'), ('U/O 2.5', 'U/O_2.5', 'Esito_U/O_2.5'),
                         ('U/O 3.5', 'U/O_3.5', 'Esito_U/O_3.5'), ('G/NG', 'Goal_NoGoal', 'Esito_Goal_NoGoal'),
-                        ('Corner 1X2', 'Corner_1X2', 'Esito_Corner_1X2')
+                        ('Corner 1X2', 'Corner_1X2', 'Esito_Corner_1X2'),
+                        ('MG Casa', 'Pronostico_MG_Casa', 'Esito_Media_Goal_Casa'),
+                        ('MG Ospite', 'Pronostico_MG_Trasferta', 'Esito_Media_Goal_Trasferta')
                     ]
                     el_m = []
                     for k, cp, ce in m_keys:
@@ -221,11 +205,6 @@ with tabs[2]:
                         if vp not in ['-', 'nan', '']:
                             el_m.append(f'<div class="market-item"><b>{k}:</b> {vp} <br><small>{b_db(ce)}</small></div>')
                     
-                    if str(row.get('Media_Goal_Casa', '-')).strip() not in ['-', 'nan', '']:
-                        el_m.append(f'<div class="market-item"><b>MG Casa:</b> {mg_c} <br><small>{b_db("Esito_Media_Goal_Casa")}</small></div>')
-                    if str(row.get('Media_Goal_Trasferta', '-')).strip() not in ['-', 'nan', '']:
-                        el_m.append(f'<div class="market-item"><b>MG Ospite:</b> {mg_o} <br><small>{b_db("Esito_Media_Goal_Trasferta")}</small></div>')
-
                     h_m = '<div class="section-title">🎯 Pronostici ed Esiti</div>' + "".join(el_m) if el_m else ""
 
                     if el_st or el_m:
