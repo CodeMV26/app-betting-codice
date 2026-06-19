@@ -20,15 +20,29 @@ try:
         for standing in data_st.get('standings', []):
             for t in standing.get('table', []):
                 nome_squadra = t['team']['name']
+                
+                # Statistiche Ruolo Casa
                 g_casa = t.get('home', {}).get('playedGames', 0)
                 gf_casa = t.get('home', {}).get('goalsFor', 0)
+                gs_casa = t.get('home', {}).get('goalsAgainst', 0)
+                
+                # Statistiche Ruolo Trasferta
                 g_trasf = t.get('away', {}).get('playedGames', 0)
                 gf_trasf = t.get('away', {}).get('goalsFor', 0)
+                gs_trasf = t.get('away', {}).get('goalsAgainst', 0)
+                
+                # Stringa Forma Recente
+                forma = t.get('form', '-')
+                if forma and isinstance(forma, str):
+                    forma = forma.replace(',', ' - ')
                 
                 diz_classifica[nome_squadra] = {
                     "Punti": int(t.get('points', 0)),
                     "Media_GF_Casa": round(gf_casa / g_casa, 2) if g_casa > 0 else 1.20,
-                    "Media_GF_Trasf": round(gf_trasf / g_trasf, 2) if g_trasf > 0 else 1.10
+                    "Media_GS_Casa": round(gs_casa / g_casa, 2) if g_casa > 0 else 1.00,
+                    "Media_GF_Trasf": round(gf_trasf / g_trasf, 2) if g_trasf > 0 else 1.10,
+                    "Media_GS_Trasf": round(gs_trasf / g_trasf, 2) if g_trasf > 0 else 1.20,
+                    "Forma": forma
                 }
     else:
         print(f"⚠️ Nota server classifiche: Codice {res_st.status_code}. Verranno usati i parametri base.")
@@ -62,8 +76,9 @@ try:
                 squadra_casa = m['homeTeam']['name']
                 squadra_trasferta = m['awayTeam']['name']
                 
-                stats_casa = diz_classifica.get(squadra_casa, {"Punti": 0, "Media_GF_Casa": 1.20, "Media_GF_Trasf": 1.10})
-                stats_trasf = diz_classifica.get(squadra_trasferta, {"Punti": 0, "Media_GF_Casa": 1.20, "Media_GF_Trasf": 1.10})
+                stats_default = {"Punti": 0, "Media_GF_Casa": 1.20, "Media_GS_Casa": 1.00, "Media_GF_Trasf": 1.10, "Media_GS_Trasf": 1.20, "Forma": "-"}
+                stats_casa = diz_classifica.get(squadra_casa, stats_default)
+                stats_trasf = diz_classifica.get(squadra_trasferta, stats_default)
                 
                 partite_reali.append({
                     "Campionato": "FIFA World Cup",
@@ -72,7 +87,11 @@ try:
                     "Punti_Casa": stats_casa["Punti"],
                     "Punti_Trasferta": stats_trasf["Punti"],
                     "Media_Goal_Casa": stats_casa["Media_GF_Casa"],
+                    "Media_Goal_Subiti_Casa": stats_casa["Media_GS_Casa"],
                     "Media_Goal_Trasferta": stats_trasf["Media_GF_Trasf"],
+                    "Media_Goal_Subiti_Trasferta": stats_trasf["Media_GS_Trasf"],
+                    "Forma_Casa": stats_casa["Forma"],
+                    "Forma_Trasferta": stats_trasf["Forma"],
                     "1X2": "In elaborazione",
                     "Risultato_Esatto": "In elaborazione",
                     "Doppia_Chance": "In elaborazione",
@@ -94,7 +113,9 @@ if not partite_reali:
         "Data_Ora_Match": datetime.now().strftime("%d/%m/%Y %H:%M"),
         "3. Match": "Nessun match in palinsesto nei prossimi 4 giorni", 
         "Punti_Casa": 0, "Punti_Trasferta": 0,
-        "Media_Goal_Casa": 0.0, "Media_Goal_Trasferta": 0.0, 
+        "Media_Goal_Casa": 0.0, "Media_Goal_Subiti_Casa": 0.0,
+        "Media_Goal_Trasferta": 0.0, "Media_Goal_Subiti_Trasferta": 0.0,
+        "Forma_Casa": "-", "Forma_Trasferta": "-",
         "1X2": "-", "Risultato_Esatto": "-", "Doppia_Chance": "-", 
         "U/O_1.5": "-", "U/O_2.5": "-", "U/O_3.5": "-", "Goal_NoGoal": "-",
         "DC+U/O2.5": "-", "Corner_1X2": "-", "Odds_1X2": "-"
