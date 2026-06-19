@@ -27,6 +27,9 @@ def esegui_archiviazione():
         print("⚠️ Il file dei match convalidati è vuoto.")
         return
 
+    # BLINDAGGIO MOBILE (iPhone X/13): Uniformiamo il tipo dato in stringa per evitare fallimenti nel filtro
+    df_nuovi['Risultato_Reale'] = df_nuovi['Risultato_Reale'].astype(str).str.strip()
+
     # Isoliamo solo i match che hanno un risultato reale campionato e pronto
     df_nuovi_validi = df_nuovi[df_nuovi['Risultato_Reale'] != 'NON ANCORA REALE/DA VALIDARE'].copy()
     
@@ -38,14 +41,14 @@ def esegui_archiviazione():
     df_storico = pd.read_excel(DATABASE_STORICO_GLOBALE)
     print(f"📈 Database storico caricato. Record totali registrati: {len(df_storico)}")
 
-    # Creiamo le chiavi univoche per l'incrocio millimetrico
+    # Creiamo le chiavi univoche per l'incrocio millimetrico (MUST 2)
     df_storico['chiave_incrocio'] = df_storico.apply(genera_chiave_univoca, axis=1)
     df_nuovi_validi['chiave_incrocio'] = df_nuovi_validi.apply(genera_chiave_univoca, axis=1)
 
     # Identifichiamo quali colonne contengono gli esiti e i risultati calcolati dal Modulo 03
     colonne_da_aggiornare = [c for c in df_nuovi_validi.columns if str(c).startswith('Esito_') or c == 'Risultato_Reale']
     
-    # Assicuriamo che lo storico sia strutturato per accogliere le colonne esito se non esistono ancora
+    # Assicuriamo che lo storico sia strutturato per accogliere le colonne esito se non esistono ancora (MUST 7)
     for col in colonne_da_aggiornare:
         if col not in df_storico.columns:
             df_storico[col] = None
@@ -55,11 +58,10 @@ def esegui_archiviazione():
 
     match_aggiornati_conteggio = 0
 
-    # Ciclo di aggiornamento nello storico: andiamo a sovrascrivere solo i campi del risultato finale
+    # Ciclo di aggiornamento nello storico: andiamo a sovrascrivere solo i campi del risultato finale (MUST 3)
     for idx, row in df_storico.iterrows():
         chiave = row['chiave_incrocio']
         if chiave in diz_nuovi_dati:
-            # Abbiamo trovato il match corrispondente inserito dal Modulo 02. Aggiorniamo i suoi esiti reali
             for col in colonne_da_aggiornare:
                 df_storico.at[idx, col] = diz_nuovi_dati[chiave][col]
             match_aggiornati_conteggio += 1
@@ -72,7 +74,7 @@ def esegui_archiviazione():
         df_storico.to_excel(DATABASE_STORICO_GLOBALE, index=False)
         print(f"✅ Successo! Aggiornati {match_aggiornati_conteggio} match nell'archivio storico con i risultati reali.")
         
-        # Pulizia del file temporaneo: lasciamo dentro solo i match ancora da giocare/validare
+        # Pulizia del file temporaneo: lasciamo dentro solo i match ancora da giocare/validare (MUST 6)
         try:
             df_nuovi_rimasti = df_nuovi[df_nuovi['Risultato_Reale'] == 'NON ANCORA REALE/DA VALIDARE']
             df_nuovi_rimasti.to_excel(FILE_INPUT_VALIDATO, index=False)
