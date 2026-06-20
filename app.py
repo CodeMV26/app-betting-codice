@@ -4,10 +4,11 @@ import os
 import requests
 from datetime import datetime
 import pytz
+import time
 
 st.set_page_config(page_title="Pannello Betting", page_icon="⚽", layout="centered")
 
-# Stili CSS ottimizzati per iPhone e componenti grafici
+# Stili CSS ottimizzati per iPhone
 st.markdown("""
     <style>
     .main { background-color: #f2f2f7; }
@@ -16,7 +17,8 @@ st.markdown("""
     .card-storico { border-left: 5px solid #34c759; }
     .card-database { border-left: 5px solid #ff9500; }
     .time-label { color: #8e8e93; font-size: 11px; font-weight: bold; }
-    .update-label { color: #8e8e93; font-size: 13px; margin-bottom: 15px; font-style: italic; }
+    .update-container { background: #ffffff; padding: 10px; border-radius: 8px; margin-bottom: 15px; border: 1px solid #e5e5ea; }
+    .update-label { color: #1c1c1e; font-size: 12px; font-style: italic; margin-bottom: 4px; }
     .result-label { color: #1c1c1e; font-size: 14px; font-weight: bold; margin: 6px 0; background: #e5e5ea; padding: 4px 8px; border-radius: 6px; display: inline-block; }
     .market-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-top: 10px; font-size: 13px; }
     .market-item { background: #f8f9fa; padding: 6px 10px; border-radius: 6px; border: 1px solid #efeff4; }
@@ -37,37 +39,94 @@ FUSO_ROMA = pytz.timezone("Europe/Rome")
 
 st.title("⚽ Controllo Betting Pro")
 
-# Ottimizzazione 3: Pulsante di Refresh rapido in cima per iPhone
 if st.button("🔄 Aggiorna Schermata", use_container_width=True):
     st.rerun()
 
-# Ottimizzazione 2: Orario regolato sul fuso orario di Roma
-if os.path.exists("Pronostici_App_Betting.xlsx"):
-    mtime = os.path.getmtime("Pronostici_App_Betting.xlsx")
-    data_ora = datetime.fromtimestamp(mtime, tz=FUSO_ROMA).strftime('%d/%m/%Y %H:%M:%S')
-    st.markdown(f"<div class='update-label'>🔄 Ultimo aggiornamento dati (Roma): {data_ora}</div>", unsafe_allow_html=True)
-else:
-    st.markdown("<div class='update-label'>🔄 Ultimo aggiornamento dati: Non disponibile</div>", unsafe_allow_html=True)
-
-# File di riferimento
+# Definizione File
 DB_FILE = "Database_Storico_Completo.xlsx"
 STORICO_FILE = "Storico_Validato_Betting.xlsx"
 PALINSESTO_FILE = "Pronostici_App_Betting.xlsx"
 
-# Ottimizzazione 4: Indicatori "In Progress" visivi durante i click delle Fasi
+# Ottimizzazione 2: Mostra i due orari distinti (Fase 1 e Fase 2) sul fuso di Roma
+st.markdown('<div class="update-container">', unsafe_allow_html=True)
+if os.path.exists(PALINSESTO_FILE):
+    t_f1 = datetime.fromtimestamp(os.path.getmtime(PALINSESTO_FILE), tz=FUSO_ROMA).strftime('%d/%m/%Y %H:%M:%S')
+    st.markdown(f"<div class='update-label'>📅 <b>Ultimo calcolo Palinsesto (Fase 1):</b> {t_f1}</div>", unsafe_allow_html=True)
+else:
+    st.markdown("<div class='update-label'>📅 <b>Ultimo calcolo Palinsesto (Fase 1):</b> Non disponibile</div>", unsafe_allow_html=True)
+
+if os.path.exists(STORICO_FILE):
+    t_f2 = datetime.fromtimestamp(os.path.getmtime(STORICO_FILE), tz=FUSO_ROMA).strftime('%d/%m/%Y %H:%M:%S')
+    st.markdown(f"<div class='update-label'>🗄️ <b>Ultima Validazione Storico (Fase 2):</b> {t_f2}</div>", unsafe_allow_html=True)
+else:
+    st.markdown("<div class='update-label'>🗄️ <b>Ultima Validazione Storico (Fase 2):</b> Non disponibile</div>", unsafe_allow_html=True)
+st.markdown('</div>', unsafe_allow_html=True)
+
+
+# Funzione per monitorare l'avanzamento reale dei workflow su GitHub (Ottimizzazione 3)
+def esegui_e_attendi_workflow(workflow_name):
+    if not TOKEN or not REPO:
+        st.error("Credenziali GitHub mancanti nei Secrets.")
+        return
+    
+    headers = {"Authorization": f"token {TOKEN}", "Accept": "application/vnd.github.v3+json"}
+    url_dispatch = f"https://api.github.com/repos/{REPO}/actions/workflows/{workflow_name}/dispatches"
+    url_runs = f"https://api.github.com/repos/{REPO}/actions/workflows/{workflow_name}/runs"
+    
+    # Avvia l'azione
+    res = requests.post(url_dispatch, headers=headers, json={"ref": "main"})
+    if res.status_code != 204:
+        st.error("Impossibile avviare il workflow su GitHub.")
+        return
+
+    # Attendi che il workflow appaia e si completi
+    time.sleep(5)
+    for _ in range(60): # Timeout massimo ~5 minuti
+        try:
+            r = requests.get(url_runs, headers=headers).json()
+            if "workflow_runs" in r and len(r["workflow_runs"]) > 0:
+                ultimo_run = r["workflow_runs"][0]
+                stato = ultimo_run.get("status")
+                conclusione = ultimo_run.get("conclusion")
+                
+                if stato == "completed":
+                    if conclusione == "success":
+                        st.success("✅ Elaborazione completata con successo!")
+                    else:
+                        st.error(f"❌ Errore durante l'esecuzione su GitHub: {conclusione}")
+                    time.sleep(2)
+                    st.rerun()
+                    return
+        except:
+            pass
+        time.sleep(5)
+    st.warning("⏱️ Il tempo di attesa è scaduto. Controlla lo stato direttamente su GitHub.")
+
+
+# Pulsanti Fasi con monitoraggio attivo
 col1, col2 = st.columns(2)
 with col1:
     if st.button("🚀 Avvia Fase 1 (Pre-Match)", use_container_width=True):
-        with st.spinner("⏳ Fase 1 in progress..."):
-            if TOKEN and REPO: 
-                requests.post(f"https://api.github.com/repos/{REPO}/actions/workflows/pre-match.yml/dispatches", headers={"Authorization": f"token {TOKEN}", "Accept": "application/vnd.github.v3+json"}, json={"ref": "main"})
-                st.success("Fase 1 avviata!")
+        with st.spinner("⏳ Fase 1 in progress su GitHub... Non chiudere la pagina."):
+            esegui_e_attendi_workflow("pre-match.yml")
 with col2:
     if st.button("📊 Avvia Fase 2 (Post-Match)", use_container_width=True):
-        with st.spinner("⏳ Fase 2 in progress..."):
-            if TOKEN and REPO: 
-                requests.post(f"https://api.github.com/repos/{REPO}/actions/workflows/validazione_storico.yml/dispatches", headers={"Authorization": f"token {TOKEN}", "Accept": "application/vnd.github.v3+json"}, json={"ref": "main"})
-                st.success("Fase 2 avviata!")
+        with st.spinner("⏳ Fase 2 in progress su GitHub... Non chiudere la pagina."):
+            esegui_e_attendi_workflow("validazione_storico.yml")
+
+
+# Costruzione Database Totale Unito in Memoria (Necessario sia per Accuratezza che per Tab 3)
+df_database = pd.read_excel(DB_FILE) if os.path.exists(DB_FILE) else pd.DataFrame()
+df_palinsesto = pd.read_excel(PALINSESTO_FILE) if os.path.exists(PALINSESTO_FILE) else pd.DataFrame()
+
+if not df_database.empty and not df_palinsesto.empty:
+    df_g = pd.concat([df_database, df_palinsesto], ignore_index=True)
+    df_g = df_g.drop_duplicates(subset=['3. Match'], keep='first')
+elif not df_database.empty:
+    df_g = df_database
+else:
+    df_g = df_palinsesto
+
 
 tabs = st.tabs(["🎯 Palinsesto", "📊 Storico", "🗄️ Database Totale"])
 
@@ -98,24 +157,13 @@ with tabs[0]:
     else:
         st.info("ℹ️ Nessun match in palinsesto calcolato. Avvia la Fase 1.")
 
-# TAB 2: STORICO (CON ACCURATEZZA GLOBALIZZATA)
+
+# TAB 2: STORICO (ACCURATEZZA SU MATCH TERMINATI DEL DATABASE TOTALE)
 with tabs[1]:
-    # Ottimizzazione 5: Recupero globale di tutti i match terminati nel sistema per l'accuratezza
-    liste_df_finiti = []
-    for f in [STORICO_FILE, DB_FILE]:
-        if os.path.exists(f):
-            try:
-                temp_df = pd.read_excel(f)
-                if not temp_df.empty:
-                    liste_df_finiti.append(temp_df)
-            except:
-                pass
-                
-    if liste_df_finiti:
-        df_totale_finiti = pd.concat(liste_df_finiti, ignore_index=True)
-        df_totale_finiti = df_totale_finiti.drop_duplicates(subset=['3. Match'], keep='first')
-        df_totale_finiti['Risultato_Reale'] = df_totale_finiti['Risultato_Reale'].astype(str).str.strip()
-        match_validi = df_totale_finiti[~df_totale_finiti['Risultato_Reale'].str.contains('NON ANCORA REALE|VALIDARE|DA GIOCARE|-|NAN', case=False, na=True)]
+    # Ottimizzazione 4: Calcolo basato SOLO sui match del DB Totale che risultano terminati
+    if not df_g.empty:
+        df_g['Risultato_Reale'] = df_g['Risultato_Reale'].astype(str).str.strip()
+        match_validi = df_g[~df_g['Risultato_Reale'].str.contains('NON ANCORA REALE|VALIDARE|DA GIOCARE|-|NAN|^$', case=False, na=True)]
         tot = len(match_validi)
         
         def calc_acc(col, is_corner=False):
@@ -123,7 +171,7 @@ with tabs[1]:
             val = f"{(len(match_validi[match_validi[col] == 'VINCENTE']) / tot * 100):.1f}%" if tot > 0 and col in match_validi.columns else "0.0%"
             return f"<span class='accuracy-value'>{val}</span>"
 
-        st.write(f"📊 **Resoconto Accuratezza globale su {tot} Match Storici Conclusi (Database + Sessione):**")
+        st.write(f"📊 **Resoconto Accuratezza su {tot} Match Terminati presenti nel Database Totale:**")
         st.markdown(f"""
         <div class="accuracy-grid">
             <div class="accuracy-card"><span class="accuracy-market">1X2</span> {calc_acc('Esito_1X2')}</div>
@@ -140,7 +188,7 @@ with tabs[1]:
         </div>
         """, unsafe_allow_html=True)
     else:
-        st.info("ℹ️ Dati insufficienti per generare il resoconto accuratezza.")
+        st.info("ℹ️ Nessun dato disponibile nel database totale per elaborare l'accuratezza.")
 
     st.markdown("<br><hr>", unsafe_allow_html=True)
 
@@ -177,38 +225,16 @@ with tabs[1]:
                 </div>
                 """, unsafe_allow_html=True)
 
+
 # TAB 3: DATABASE TOTALMENTE AUTOMATIZZATO
 with tabs[2]:
-    df_database = pd.DataFrame()
-    df_palinsesto = pd.DataFrame()
-    
-    if os.path.exists(DB_FILE):
-        try:
-            df_database = pd.read_excel(DB_FILE)
-        except Exception as e:
-            st.error(f"⚠️ Errore lettura Archivio Storico: {e}")
-            
-    if os.path.exists(PALINSESTO_FILE):
-        try:
-            df_palinsesto = pd.read_excel(PALINSESTO_FILE)
-        except Exception as e:
-            st.error(f"⚠️ Errore lettura Palinsesto in DB: {e}")
-
-    if not df_database.empty or not df_palinsesto.empty:
-        if not df_database.empty and not df_palinsesto.empty:
-            df_g = pd.concat([df_database, df_palinsesto], ignore_index=True)
-            df_g = df_g.drop_duplicates(subset=['3. Match'], keep='first')
-        elif not df_database.empty:
-            df_g = df_database
-        else:
-            df_g = df_palinsesto
-
-        # Ottimizzazione 1: Ordinamento cronologico robusto (dalla più recente alla più lontana)
+    if not df_g.empty:
+        # Ottimizzazione 1: Ordinamento CRESCENTE (dal meno recente al più recente)
         if 'Data_Ora_Match' in df_g.columns:
             df_g['Data_Ora_Match_Parsed'] = pd.to_datetime(df_g['Data_Ora_Match'], format='%d/%m/%Y %H:%M', errors='coerce')
-            df_g = df_g.sort_values(by='Data_Ora_Match_Parsed', ascending=False)
+            df_g = df_g.sort_values(by='Data_Ora_Match_Parsed', ascending=True)
 
-        st.write(f"🗄️ **Partite totali rilevate (Ordinamento Decrescente): {len(df_g)}**")
+        st.write(f"🗄️ **Partite totali rilevate (Ordinamento Crescente): {len(df_g)}**")
         
         list_c = ["TUTTI"] + list(df_g['Campionato'].dropna().unique())
         scelta_c = st.selectbox("Filtra competizione:", list_c, key="filt_t3")
@@ -257,7 +283,7 @@ with tabs[2]:
             
             h_st = '<div class="section-title">📊 Statistiche Input</div>' + "".join(el_st) if el_st else ""
 
-            # Ottimizzazione 7: Cambiato il nome visualizzato in "Combo DC+U/O2.5" per uniformità totale
+            # Ottimizzazione 5: Label corretta ed unificata in Combo DC+U/O2.5
             m_keys = [
                 ('1X2', '1X2', 'Esito_1X2'), ('Esatto', 'Risultato_Esatto', 'Esito_Risultato_Esatto'),
                 ('Doppia Ch.', 'Doppia_Chance', 'Esito_Doppia_Chance'), ('Combo DC+U/O2.5', 'DC+U/O2.5', 'Esito_DC+U/O2.5'),
@@ -287,7 +313,6 @@ with tabs[2]:
             </div>
             """, unsafe_allow_html=True)
             
-        # Ottimizzazione 6: Pulsante Reset Database con Pop-up dialog di conferma di sicurezza
         st.markdown("<br><hr>", unsafe_allow_html=True)
         
         @st.dialog("⚠️ CONFERMA CANCELLAZIONE")
@@ -295,10 +320,8 @@ with tabs[2]:
             st.warning("Sei veramente sicuro di voler svuotare interamente l'archivio storico? Questa azione eliminerà tutti i record salvati in modo definitivo.")
             col_yes, col_no = st.columns(2)
             if col_yes.button("🔥 Sì, Cancella Tutto", use_container_width=True):
-                if os.path.exists(DB_FILE):
-                    os.remove(DB_FILE)
-                if os.path.exists(STORICO_FILE):
-                    os.remove(STORICO_FILE)
+                if os.path.exists(DB_FILE): os.remove(DB_FILE)
+                if os.path.exists(STORICO_FILE): os.remove(STORICO_FILE)
                 st.success("Database svuotato con successo!")
                 st.rerun()
             if col_no.button("❌ Annulla", use_container_width=True):
