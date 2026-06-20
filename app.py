@@ -130,6 +130,11 @@ else:
     df_g = df_palinsesto
 
 
+# PROTEZIONE CRASH: Se dopo un reset il database unito non ha colonne, o manca 'Risultato_Reale'
+if not df_g.empty and 'Risultato_Reale' not in df_g.columns:
+    df_g['Risultato_Reale'] = "-"
+
+
 tabs = st.tabs(["🎯 Palinsesto", "📊 Storico", "🗄️ Database Totale"])
 
 # TAB 1: PALINSESTO
@@ -160,15 +165,13 @@ with tabs[0]:
         st.info("ℹ️ Nessun match in palinsesto calcolato. Avvia la Fase 1.")
 
 
-# TAB 2: STORICO (ACCURATEZZA RIGOROSA E CORRETTA)
+# TAB 2: STORICO (ACCURATEZZA RIGOROSA E PROTETTA)
 with tabs[1]:
     if not df_g.empty:
-        # Funzione per identificare solo i veri punteggi finali (Es. 2-1, 0-0)
         def is_match_terminato(val):
             v_str = str(val).strip()
             return bool(re.match(r'^\d+-\d+$', v_str))
         
-        # Estraiamo solo le righe che hanno un vero punteggio finale numerico
         mask_terminati = df_g['Risultato_Reale'].apply(is_match_terminato)
         match_validi = df_g[mask_terminati].copy()
         tot = len(match_validi)
@@ -177,7 +180,6 @@ with tabs[1]:
             if is_corner: return "<span class='accuracy-value-nd'>N.D.</span>"
             if tot == 0 or col not in match_validi.columns: return "<span class='accuracy-value'>0.0%</span>"
             
-            # Conta quanti sono VINCENTE tra quelli realmente terminati
             vincenti = len(match_validi[match_validi[col].astype(str).str.strip().str.upper() == 'VINCENTE'])
             percentuale = (vincenti / tot) * 100
             return f"<span class='accuracy-value'>{percentuale:.1f}%</span>"
