@@ -153,22 +153,22 @@ if not df_out.empty:
                 if col not in df_da_appendere.columns:
                     df_da_appendere[col] = None
             
-            # Controllo univoco chiavi
+            # Controllo univoco chiavi uniforme
             if not df_storico_esistente.empty:
                 chiavi_storico = set(df_storico_esistente.apply(genera_chiave_univoca_local, axis=1))
             else:
                 chiavi_storico = set()
                 
-            nuove_righe_effettive = []
+            nuova_lista_effettiva = []
             for _, riga in df_da_appendere.iterrows():
                 if genera_chiave_univoca_local(riga) not in chiavi_storico:
-                    nuove_righe_effettive.append(riga)
+                    nuova_lista_effettiva.append(riga)
             
-            if nuove_righe_effettive:
-                df_nuove_inserite = pd.DataFrame(nuove_righe_effettive)
+            if nuova_lista_effettiva:
+                df_nuove_inserite = pd.DataFrame(nuova_lista_effettiva)
                 df_storico_aggiornato = pd.concat([df_storico_esistente, df_nuove_inserite], ignore_index=True)
                 df_storico_aggiornato.to_excel(DATABASE_STORICO_GLOBALE, index=False)
-                print(f"✅ Storico aggiornato con successo: registrati {len(nuove_righe_effettive)} match con intero patrimonio statistico.")
+                print(f"✅ Storico aggiornato con successo: registrati {len(nuova_lista_effettiva)} match con intero patrimonio statistico.")
             else:
                 print("📋 Nessun nuovo match inserito: i record correnti sono già blindati nell'archivio.")
                 
