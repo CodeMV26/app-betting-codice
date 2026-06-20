@@ -129,13 +129,34 @@ elif not df_database.empty:
 else:
     df_g = df_palinsesto
 
-
-# PROTEZIONE CRASH: Se dopo un reset il database unito non ha colonne, o manca 'Risultato_Reale'
 if not df_g.empty and 'Risultato_Reale' not in df_g.columns:
     df_g['Risultato_Reale'] = "-"
 
 
-tabs = st.tabs(["🎯 Palinsesto", "📊 Storico", "🗄️ Database Totale"])
+# CONTEGGI DINAMICI PER I NOMI DEI TAB
+count_palinsesto = 0
+if os.path.exists(PALINSESTO_FILE):
+    try:
+        count_palinsesto = len(pd.read_excel(PALINSESTO_FILE))
+    except:
+        pass
+
+count_storico = 0
+if os.path.exists(STORICO_FILE):
+    try:
+        count_storico = len(pd.read_excel(STORICO_FILE))
+    except:
+        pass
+
+count_database = len(df_g) if not df_g.empty else 0
+
+# Generazione Tab con i numeri dinamici tra parentesi vicino al titolo
+tabs = st.tabs([
+    f"🎯 Palinsesto ({count_palinsesto})", 
+    f"📊 Storico ({count_storico})", 
+    f"🗄️ Database Totale ({count_database})"
+])
+
 
 # TAB 1: PALINSESTO
 with tabs[0]:
@@ -165,7 +186,7 @@ with tabs[0]:
         st.info("ℹ️ Nessun match in palinsesto calcolato. Avvia la Fase 1.")
 
 
-# TAB 2: STORICO (ACCURATEZZA RIGOROSA E PROTETTA)
+# TAB 2: STORICO
 with tabs[1]:
     if not df_g.empty:
         def is_match_terminato(val):
