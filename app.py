@@ -47,7 +47,7 @@ DB_FILE = "Database_Storico_Completo.xlsx"
 STORICO_FILE = "Storico_Validato_Betting.xlsx"
 PALINSESTO_FILE = "Pronostici_App_Betting.xlsx"
 
-# Ottimizzazione 2: Mostra i due orari distinti (Fase 1 e Fase 2) sul fuso di Roma
+# Mostra i due orari distinti (Fase 1 e Fase 2) sul fuso di Roma
 st.markdown('<div class="update-container">', unsafe_allow_html=True)
 if os.path.exists(PALINSESTO_FILE):
     t_f1 = datetime.fromtimestamp(os.path.getmtime(PALINSESTO_FILE), tz=FUSO_ROMA).strftime('%d/%m/%Y %H:%M:%S')
@@ -63,7 +63,7 @@ else:
 st.markdown('</div>', unsafe_allow_html=True)
 
 
-# Funzione per monitorare l'avanzamento reale dei workflow su GitHub (Ottimizzazione 3)
+# Funzione deterministica per monitorare i workflow senza loop infiniti di messaggi
 def esegui_e_attendi_workflow(workflow_name):
     if not TOKEN or not REPO:
         st.error("Credenziali GitHub mancanti nei Secrets.")
@@ -79,43 +79,48 @@ def esegui_e_attendi_workflow(workflow_name):
         st.error("Impossibile avviare il workflow su GitHub.")
         return
 
-    # Attendi che il workflow appaia e si completi
-    time.sleep(5)
-    for _ in range(60): # Timeout massimo ~5 minuti
+    time.sleep(6)
+    completato = False
+    successo = False
+    
+    # Ciclo di monitoraggio pulito in background
+    for _ in range(50): 
         try:
             r = requests.get(url_runs, headers=headers).json()
             if "workflow_runs" in r and len(r["workflow_runs"]) > 0:
                 ultimo_run = r["workflow_runs"][0]
-                stato = ultimo_run.get("status")
-                conclusione = ultimo_run.get("conclusion")
-                
-                if stato == "completed":
-                    if conclusione == "success":
-                        st.success("✅ Elaborazione completata con successo!")
-                    else:
-                        st.error(f"❌ Errore durante l'esecuzione su GitHub: {conclusione}")
-                    time.sleep(2)
-                    st.rerun()
-                    return
+                if ultimo_run.get("status") == "completed":
+                    completato = True
+                    successo = (ultimo_run.get("conclusion") == "success")
+                    break
         except:
             pass
-        time.sleep(5)
-    st.warning("⏱️ Il tempo di attesa è scaduto. Controlla lo stato direttamente su GitHub.")
+        time.sleep(6)
+    
+    if completato:
+        if successo:
+            st.toast("✅ Elaborazione completata con successo!", icon="🎉")
+        else:
+            st.toast("❌ Errore durante l'esecuzione su GitHub.", icon="🚨")
+        time.sleep(1)
+        st.rerun()
+    else:
+        st.warning("⏱️ Timeout raggiunto. Verifica lo stato direttamente su GitHub.")
 
 
-# Pulsanti Fasi con monitoraggio attivo
+# Pulsanti Fasi con monitoraggio corretto
 col1, col2 = st.columns(2)
 with col1:
     if st.button("🚀 Avvia Fase 1 (Pre-Match)", use_container_width=True):
-        with st.spinner("⏳ Fase 1 in progress su GitHub... Non chiudere la pagina."):
+        with st.spinner("⏳ Fase 1 in progress su GitHub... Attendi..."):
             esegui_e_attendi_workflow("pre-match.yml")
 with col2:
     if st.button("📊 Avvia Fase 2 (Post-Match)", use_container_width=True):
-        with st.spinner("⏳ Fase 2 in progress su GitHub... Non chiudere la pagina."):
+        with st.spinner("⏳ Fase 2 in progress su GitHub... Attendi..."):
             esegui_e_attendi_workflow("validazione_storico.yml")
 
 
-# Costruzione Database Totale Unito in Memoria (Necessario sia per Accuratezza che per Tab 3)
+# Costruzione Database Totale Unito in Memoria
 df_database = pd.read_excel(DB_FILE) if os.path.exists(DB_FILE) else pd.DataFrame()
 df_palinsesto = pd.read_excel(PALINSESTO_FILE) if os.path.exists(PALINSESTO_FILE) else pd.DataFrame()
 
@@ -158,12 +163,19 @@ with tabs[0]:
         st.info("ℹ️ Nessun match in palinsesto calcolato. Avvia la Fase 1.")
 
 
-# TAB 2: STORICO (ACCURATEZZA SU MATCH TERMINATI DEL DATABASE TOTALE)
+# TAB 2: STORICO (ACCURATEZZA TOTALMENTE CORRETTA E AGGRESSIVA SUI FILTRI)
 with tabs[1]:
-    # Ottimizzazione 4: Calcolo basato SOLO sui match del DB Totale che risultano terminati
     if not df_g.empty:
-        df_g['Risultato_Reale'] = df_g['Risultato_Reale'].astype(str).str.strip()
-        match_validi = df_g[~df_g['Risultato_Reale'].str.contains('NON ANCORA REALE|VALIDARE|DA GIOCARE|-|NAN|^$', case=False, na=True)]
+        # Pulizia totale della colonna per evitare falsi scarti
+        df_g['Risultato_Reale_Clean'] = df_g['Risultato_Reale'].astype(str).str.strip().str.upper()
+        
+        # Filtriamo escludendo tutto ciò che indica che la partita non è finita o valida
+        match_validi = df_g[
+            (df_g['Risultato_Reale_Clean'] != '') & 
+            (df_g['Risultato_Reale_Clean'] != '-') & 
+            (df_g['Risultato_Reale_Clean'] != 'NAN') & 
+            (~df_g['Risultato_Reale_Clean'].str.contains('NON ANCORA REALE|VALIDARE|DA GIOCARE|ATTESA', na=False))
+        ]
         tot = len(match_validi)
         
         def calc_acc(col, is_corner=False):
@@ -229,7 +241,7 @@ with tabs[1]:
 # TAB 3: DATABASE TOTALMENTE AUTOMATIZZATO
 with tabs[2]:
     if not df_g.empty:
-        # Ottimizzazione 1: Ordinamento CRESCENTE (dal meno recente al più recente)
+        # Ordinamento CRESCENTE (dal meno recente al più recente)
         if 'Data_Ora_Match' in df_g.columns:
             df_g['Data_Ora_Match_Parsed'] = pd.to_datetime(df_g['Data_Ora_Match'], format='%d/%m/%Y %H:%M', errors='coerce')
             df_g = df_g.sort_values(by='Data_Ora_Match_Parsed', ascending=True)
@@ -283,7 +295,6 @@ with tabs[2]:
             
             h_st = '<div class="section-title">📊 Statistiche Input</div>' + "".join(el_st) if el_st else ""
 
-            # Ottimizzazione 5: Label corretta ed unificata in Combo DC+U/O2.5
             m_keys = [
                 ('1X2', '1X2', 'Esito_1X2'), ('Esatto', 'Risultato_Esatto', 'Esito_Risultato_Esatto'),
                 ('Doppia Ch.', 'Doppia_Chance', 'Esito_Doppia_Chance'), ('Combo DC+U/O2.5', 'DC+U/O2.5', 'Esito_DC+U/O2.5'),
