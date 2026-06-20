@@ -5,6 +5,7 @@ import requests
 from datetime import datetime
 import pytz
 import time
+import re
 
 st.set_page_config(page_title="Pannello Betting", page_icon="⚽", layout="centered")
 
@@ -63,17 +64,15 @@ else:
 st.markdown('</div>', unsafe_allow_html=True)
 
 
-# Funzione deterministica per monitorare i workflow senza loop infiniti di messaggi
+# Funzione per monitorare i workflow
 def esegui_e_attendi_workflow(workflow_name):
     if not TOKEN or not REPO:
         st.error("Credenziali GitHub mancanti nei Secrets.")
         return
-    
     headers = {"Authorization": f"token {TOKEN}", "Accept": "application/vnd.github.v3+json"}
     url_dispatch = f"https://api.github.com/repos/{REPO}/actions/workflows/{workflow_name}/dispatches"
     url_runs = f"https://api.github.com/repos/{REPO}/actions/workflows/{workflow_name}/runs"
     
-    # Avvia l'azione
     res = requests.post(url_dispatch, headers=headers, json={"ref": "main"})
     if res.status_code != 204:
         st.error("Impossibile avviare il workflow su GitHub.")
@@ -83,7 +82,6 @@ def esegui_e_attendi_workflow(workflow_name):
     completato = False
     successo = False
     
-    # Ciclo di monitoraggio pulito in background
     for _ in range(50): 
         try:
             r = requests.get(url_runs, headers=headers).json()
@@ -108,7 +106,6 @@ def esegui_e_attendi_workflow(workflow_name):
         st.warning("⏱️ Timeout raggiunto. Verifica lo stato direttamente su GitHub.")
 
 
-# Pulsanti Fasi con monitoraggio corretto
 col1, col2 = st.columns(2)
 with col1:
     if st.button("🚀 Avvia Fase 1 (Pre-Match)", use_container_width=True):
@@ -163,25 +160,27 @@ with tabs[0]:
         st.info("ℹ️ Nessun match in palinsesto calcolato. Avvia la Fase 1.")
 
 
-# TAB 2: STORICO (ACCURATEZZA TOTALMENTE CORRETTA E AGGRESSIVA SUI FILTRI)
+# TAB 2: STORICO (ACCURATEZZA RIGOROSA E CORRETTA)
 with tabs[1]:
     if not df_g.empty:
-        # Pulizia totale della colonna per evitare falsi scarti
-        df_g['Risultato_Reale_Clean'] = df_g['Risultato_Reale'].astype(str).str.strip().str.upper()
+        # Funzione per identificare solo i veri punteggi finali (Es. 2-1, 0-0)
+        def is_match_terminato(val):
+            v_str = str(val).strip()
+            return bool(re.match(r'^\d+-\d+$', v_str))
         
-        # Filtriamo escludendo tutto ciò che indica che la partita non è finita o valida
-        match_validi = df_g[
-            (df_g['Risultato_Reale_Clean'] != '') & 
-            (df_g['Risultato_Reale_Clean'] != '-') & 
-            (df_g['Risultato_Reale_Clean'] != 'NAN') & 
-            (~df_g['Risultato_Reale_Clean'].str.contains('NON ANCORA REALE|VALIDARE|DA GIOCARE|ATTESA', na=False))
-        ]
+        # Estraiamo solo le righe che hanno un vero punteggio finale numerico
+        mask_terminati = df_g['Risultato_Reale'].apply(is_match_terminato)
+        match_validi = df_g[mask_terminati].copy()
         tot = len(match_validi)
         
         def calc_acc(col, is_corner=False):
             if is_corner: return "<span class='accuracy-value-nd'>N.D.</span>"
-            val = f"{(len(match_validi[match_validi[col] == 'VINCENTE']) / tot * 100):.1f}%" if tot > 0 and col in match_validi.columns else "0.0%"
-            return f"<span class='accuracy-value'>{val}</span>"
+            if tot == 0 or col not in match_validi.columns: return "<span class='accuracy-value'>0.0%</span>"
+            
+            # Conta quanti sono VINCENTE tra quelli realmente terminati
+            vincenti = len(match_validi[match_validi[col].astype(str).str.strip().str.upper() == 'VINCENTE'])
+            percentuale = (vincenti / tot) * 100
+            return f"<span class='accuracy-value'>{percentuale:.1f}%</span>"
 
         st.write(f"📊 **Resoconto Accuratezza su {tot} Match Terminati presenti nel Database Totale:**")
         st.markdown(f"""
@@ -208,7 +207,9 @@ with tabs[1]:
         df_storico = pd.read_excel(STORICO_FILE)
         if not df_storico.empty:
             for idx, row in df_storico.iterrows():
-                res_reale = row.get('Risultato_Reale', 'NON ANCORA REALE/DA VALIDARE')
+                res_reale = str(row.get('Risultato_Reale', '')).strip().upper()
+                if "ELABORAZIONE" in res_reale or "VALIDARE" in res_reale or "NON ANCORA" in res_reale:
+                    res_reale = "IN ATTESA DI VALIDAZIONE"
                 
                 def get_badge(col_name):
                     val = str(row.get(col_name, '-')).strip().upper()
@@ -241,7 +242,6 @@ with tabs[1]:
 # TAB 3: DATABASE TOTALMENTE AUTOMATIZZATO
 with tabs[2]:
     if not df_g.empty:
-        # Ordinamento CRESCENTE (dal meno recente al più recente)
         if 'Data_Ora_Match' in df_g.columns:
             df_g['Data_Ora_Match_Parsed'] = pd.to_datetime(df_g['Data_Ora_Match'], format='%d/%m/%Y %H:%M', errors='coerce')
             df_g = df_g.sort_values(by='Data_Ora_Match_Parsed', ascending=True)
@@ -254,7 +254,9 @@ with tabs[2]:
         
         for idx, row in df_m.iterrows():
             res_r = str(row.get('Risultato_Reale', '-')).strip()
-            if res_r in ['-', 'nan', '', 'NON ANCORA REALE/DA VALIDARE']:
+            res_r_up = res_r.upper()
+            
+            if res_r in ['-', 'nan', ''] or "ELABORAZIONE" in res_r_up or "VALIDARE" in res_r_up or "NON ANCORA" in res_r_up:
                 res_r = "DA GIOCARE / IN ATTESA DI VALIDAZIONE"
             
             def b_db(col):
