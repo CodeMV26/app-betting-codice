@@ -75,13 +75,16 @@ with tabs[0]:
                 </div>
             </div>
             """, unsafe_allow_html=True)
+    else:
+        st.info("ℹ️ Nessun match in palinsesto calcolato. Avvia la Fase 1.")
 
 # TAB 2: STORICO
 with tabs[1]:
     if os.path.exists("Storico_Validato_Betting.xlsx"):
         df_storico = pd.read_excel("Storico_Validato_Betting.xlsx")
         if not df_storico.empty:
-            match_validi = df_storico[df_storico['Risultato_Reale'] != 'NON ANCORA REALE/DA VALIDARE']
+            df_storico['Risultato_Reale'] = df_storico['Risultato_Reale'].astype(str).str.strip()
+            match_validi = df_storico[~df_storico['Risultato_Reale'].str.contains('NON ANCORA REALE|VALIDARE', case=False, na=True)]
             tot = len(match_validi)
             
             def calc_acc(col, is_corner=False):
@@ -89,7 +92,7 @@ with tabs[1]:
                 val = f"{(len(match_validi[match_validi[col] == 'VINCENTE']) / tot * 100):.1f}%" if tot > 0 and col in match_validi.columns else "0.0%"
                 return f"<span class='accuracy-value'>{val}</span>"
 
-            st.write(f"📊 **Resoconto Accuratezza globale su {tot} Match Storici:**")
+            st.write(f"📊 **Resoconto Accuratezza globale su {tot} Match Storici Conclusi:**")
             st.markdown(f"""
             <div class="accuracy-grid">
                 <div class="accuracy-card"><span class="accuracy-market">1X2</span> {calc_acc('Esito_1X2')}</div>
@@ -112,7 +115,7 @@ with tabs[1]:
                 res_reale = row.get('Risultato_Reale', 'NON ANCORA REALE/DA VALIDARE')
                 
                 def get_badge(col_name):
-                    val = row.get(col_name, '-')
+                    val = str(row.get(col_name, '-')).strip().upper()
                     if val == "VINCENTE": return "✅ <span class='esito-vincente'>VINCENTE</span>"
                     if val == "PERDENTE": return "❌ <span class='esito-perdente'>PERDENTE</span>"
                     return "⏳ <span>In attesa</span>"
@@ -137,25 +140,31 @@ with tabs[1]:
                     </div>
                 </div>
                 """, unsafe_allow_html=True)
+        else:
+            st.info("📋 Il file storico temporaneo è vuoto.")
+    else:
+        st.info("ℹ️ Nessun dato storico elaborato in questa sessione.")
 
-# TAB 3: DATABASE CON SCANSIONE DINAMICA TOTALMENTE AUTOMATIZZATA
+# TAB 3: DATABASE TOTALMENTE AUTOMATIZZATO
 with tabs[2]:
     DB_FILE = "Database_Storico_Completo.xlsx"
     if os.path.exists(DB_FILE):
         try:
             df_g = pd.read_excel(DB_FILE)
             if not df_g.empty:
-                st.write(f"🗄️ **Partite in Archivio: {len(df_g)}**")
+                st.write(f"🗄️ **Partite totali registrate in Archivio Storico: {len(df_g)}**")
                 list_c = ["TUTTI"] + list(df_g['Campionato'].dropna().unique())
                 scelta_c = st.selectbox("Filtra competizione:", list_c, key="filt_t3")
                 df_m = df_g if scelta_c == "TUTTI" else df_g[df_g['Campionato'] == scelta_c]
                 
                 for idx, row in df_m.iterrows():
-                    res_r = row.get('Risultato_Reale', 'N.D.')
+                    res_r = row.get('Risultato_Reale', 'NON ANCORA REALE/DA VALIDARE')
                     
                     def b_db(col):
-                        v = row.get(col, '-')
-                        return "✅ VINCENTE" if v == "VINCENTE" else "❌ PERDENTE" if v == "PERDENTE" else "⏳ In attesa"
+                        v = str(row.get(col, '-')).strip().upper()
+                        if v == "VINCENTE": return "✅ VINCENTE"
+                        if v == "PERDENTE": return "❌ PERDENTE"
+                        return "⏳ In attesa"
 
                     mappa_colonne = {str(c).strip().lower(): str(c) for c in df_g.columns}
                     
@@ -168,7 +177,6 @@ with tabs[2]:
                                     return val
                         return None
 
-                    # Mappatura esatta basata sui dati arricchiti del Modulo 01
                     v_punti_c = estrai_valore(["punti_casa"])
                     v_punti_o = estrai_valore(["punti_trasferta"])
                     v_gf_c = estrai_valore(["media_goal_casa"])
@@ -179,14 +187,14 @@ with tabs[2]:
                     v_forma_o = estrai_valore(["forma_trasferta"])
 
                     el_st = []
-                    if v_punti_c: el_st.append(f'<div class="market-item"><b>Punti Casa:</b> {v_punti_c}</div>')
-                    if v_punti_o: el_st.append(f'<div class="market-item"><b>Punti Ospite:</b> {v_punti_o}</div>')
-                    if v_gf_c: el_st.append(f'<div class="market-item"><b>Media GF Casa:</b> {v_gf_c}</div>')
-                    if v_gs_c: el_st.append(f'<div class="market-item"><b>Media GS Casa:</b> {v_gs_c}</div>')
-                    if v_gf_o: el_st.append(f'<div class="market-item"><b>Media GF Ospite:</b> {v_gf_o}</div>')
-                    if v_gs_o: el_st.append(f'<div class="market-item"><b>Media GS Ospite:</b> {v_gs_o}</div>')
-                    if v_forma_c: el_st.append(f'<div class="market-item"><b>Forma Casa:</b> {v_forma_c}</div>')
-                    if v_forma_o: el_st.append(f'<div class="market-item"><b>Forma Ospite:</b> {v_forma_o}</div>')
+                    if v_punti_c is not None: el_st.append(f'<div class="market-item"><b>Punti Casa:</b> {v_punti_c}</div>')
+                    if v_punti_o is not None: el_st.append(f'<div class="market-item"><b>Punti Ospite:</b> {v_punti_o}</div>')
+                    if v_gf_c is not None: el_st.append(f'<div class="market-item"><b>Media GF Casa:</b> {v_gf_c}</div>')
+                    if v_gs_c is not None: el_st.append(f'<div class="market-item"><b>Media GS Casa:</b> {v_gs_c}</div>')
+                    if v_gf_o is not None: el_st.append(f'<div class="market-item"><b>Media GF Ospite:</b> {v_gf_o}</div>')
+                    if v_gs_o is not None: el_st.append(f'<div class="market-item"><b>Media GS Ospite:</b> {v_gs_o}</div>')
+                    if v_forma_c is not None: el_st.append(f'<div class="market-item"><b>Forma Casa:</b> {v_forma_c}</div>')
+                    if v_forma_o is not None: el_st.append(f'<div class="market-item"><b>Forma Ospite:</b> {v_forma_o}</div>')
                     
                     h_st = '<div class="section-title">📊 Statistiche Input</div>' + "".join(el_st) if el_st else ""
 
@@ -207,18 +215,17 @@ with tabs[2]:
                     
                     h_m = '<div class="section-title">🎯 Pronostici ed Esiti</div>' + "".join(el_m) if el_m else ""
 
-                    if el_st or el_m:
-                        st.markdown(f"""
-                        <div class="card-database">
-                            <div class="time-label">🏆 {row.get('Campionato', '-')} | {row.get('Data_Ora_Match', '-')}</div>
-                            <h4 style="margin: 4px 0; color: #1c1c1e;">{row.get('3. Match', 'Match')}</h4>
-                            <div class="result-label" style="background: #ffe5cc; color: #d97706;">⚽ Finale: {res_r}</div>
-                            <div class="market-grid">{h_st}{h_m}</div>
-                        </div>
-                        """, unsafe_allow_html=True)
+                    st.markdown(f"""
+                    <div class="card-database">
+                        <div class="time-label">🏆 {row.get('Campionato', '-')} | {row.get('Data_Ora_Match', '-')}</div>
+                        <h4 style="margin: 4px 0; color: #1c1c1e;">{row.get('3. Match', 'Match')}</h4>
+                        <div class="result-label" style="background: #ffe5cc; color: #d97706;">⚽ Finale: {res_r}</div>
+                        <div class="market-grid">{h_st}{h_m}</div>
+                    </div>
+                    """, unsafe_allow_html=True)
             else:
                 st.warning("📋 Archivio presente ma vuoto.")
         except Exception as e:
             st.error(f"⚠️ Errore di lettura archivio: {e}")
     else:
-        st.info("ℹ️ Il file database verrà popolato automaticamente alla prima esecuzione della Fase 2.")
+        st.info("ℹ️ Il file database storico verrà popolato non appena salverai i match con il Modulo 02.")
