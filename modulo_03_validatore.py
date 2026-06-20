@@ -46,7 +46,6 @@ def esegui_validazione():
 
     cache_risultati = {}
     
-    # Inizializziamo le colonne degli esiti direttamente sul DataFrame originario
     colonne_esiti = [
         'Risultato_Reale', 'Esito_1X2', 'Esito_Risultato_Esatto', 'Esito_Doppia_Chance', 
         'Esito_Goal_NoGoal', 'Esito_U/O_1.5', 'Esito_U/O_2.5', 'Esito_U/O_3.5', 
@@ -70,8 +69,8 @@ def esegui_validazione():
         p_uo15 = riga.get('U/O_1.5', '-')
         p_uo25 = riga.get('U/O_2.5', '-')
         p_uo35 = riga.get('U/O_3.5', '-')
-        p_mg_casa = riga.get('Media_Goal_Casa', '-')
-        p_mg_out = riga.get('Media_Goal_Trasferta', '-')
+        p_mg_casa = riga.get('Pronostico_MG_Casa', '-')
+        p_mg_out = riga.get('Pronostico_MG_Trasferta', '-')
         
         try:
             casa_p, trasf_p = str(match_str).split(" - ")
