@@ -145,87 +145,114 @@ with tabs[1]:
     else:
         st.info("ℹ️ Nessun dato storico elaborato in questa sessione.")
 
-# TAB 3: DATABASE TOTALMENTE AUTOMATIZZATO
+# TAB 3: DATABASE TOTALMENTE AUTOMATIZZATO (CON UNIONE IN MEMORIA TRA STORICO E PALINSESTO)
 with tabs[2]:
     DB_FILE = "Database_Storico_Completo.xlsx"
+    PALINSESTO_FILE = "Pronostici_App_Betting.xlsx"
+    
+    df_database = pd.DataFrame()
+    df_palinsesto = pd.DataFrame()
+    
     if os.path.exists(DB_FILE):
         try:
-            df_g = pd.read_excel(DB_FILE)
-            if not df_g.empty:
-                st.write(f"🗄️ **Partite totali registrate in Archivio Storico: {len(df_g)}**")
-                list_c = ["TUTTI"] + list(df_g['Campionato'].dropna().unique())
-                scelta_c = st.selectbox("Filtra competizione:", list_c, key="filt_t3")
-                df_m = df_g if scelta_c == "TUTTI" else df_g[df_g['Campionato'] == scelta_c]
-                
-                for idx, row in df_m.iterrows():
-                    res_r = row.get('Risultato_Reale', 'NON ANCORA REALE/DA VALIDARE')
-                    
-                    def b_db(col):
-                        v = str(row.get(col, '-')).strip().upper()
-                        if v == "VINCENTE": return "✅ VINCENTE"
-                        if v == "PERDENTE": return "❌ PERDENTE"
-                        return "⏳ In attesa"
-
-                    mappa_colonne = {str(c).strip().lower(): str(c) for c in df_g.columns}
-                    
-                    def estrai_valore(lista_possibili_nomi):
-                        for nome in lista_possibili_nomi:
-                            nome_puro = nome.strip().lower()
-                            if nome_puro in mappa_colonne:
-                                val = str(row.get(mappa_colonne[nome_puro], '-')).strip()
-                                if val not in ['-', 'nan', '']:
-                                    return val
-                        return None
-
-                    v_punti_c = estrai_valore(["punti_casa"])
-                    v_punti_o = estrai_valore(["punti_trasferta"])
-                    v_gf_c = estrai_valore(["media_goal_casa"])
-                    v_gs_c = estrai_valore(["media_goal_subiti_casa"])
-                    v_gf_o = estrai_valore(["media_goal_trasferta"])
-                    v_gs_o = estrai_valore(["media_goal_subiti_trasferta"])
-                    v_forma_c = estrai_valore(["forma_casa"])
-                    v_forma_o = estrai_valore(["forma_trasferta"])
-
-                    el_st = []
-                    if v_punti_c is not None: el_st.append(f'<div class="market-item"><b>Punti Casa:</b> {v_punti_c}</div>')
-                    if v_punti_o is not None: el_st.append(f'<div class="market-item"><b>Punti Ospite:</b> {v_punti_o}</div>')
-                    if v_gf_c is not None: el_st.append(f'<div class="market-item"><b>Media GF Casa:</b> {v_gf_c}</div>')
-                    if v_gs_c is not None: el_st.append(f'<div class="market-item"><b>Media GS Casa:</b> {v_gs_c}</div>')
-                    if v_gf_o is not None: el_st.append(f'<div class="market-item"><b>Media GF Ospite:</b> {v_gf_o}</div>')
-                    if v_gs_o is not None: el_st.append(f'<div class="market-item"><b>Media GS Ospite:</b> {v_gs_o}</div>')
-                    if v_forma_c is not None: el_st.append(f'<div class="market-item"><b>Forma Casa:</b> {v_forma_c}</div>')
-                    if v_forma_o is not None: el_st.append(f'<div class="market-item"><b>Forma Ospite:</b> {v_forma_o}</div>')
-                    
-                    h_st = '<div class="section-title">📊 Statistiche Input</div>' + "".join(el_st) if el_st else ""
-
-                    m_keys = [
-                        ('1X2', '1X2', 'Esito_1X2'), ('Esatto', 'Risultato_Esatto', 'Esito_Risultato_Esatto'),
-                        ('Doppia Ch.', 'Doppia_Chance', 'Esito_Doppia_Chance'), ('Combo DC', 'DC+U/O2.5', 'Esito_DC+U/O2.5'),
-                        ('U/O 1.5', 'U/O_1.5', 'Esito_U/O_1.5'), ('U/O 2.5', 'U/O_2.5', 'Esito_U/O_2.5'),
-                        ('U/O 3.5', 'U/O_3.5', 'Esito_U/O_3.5'), ('G/NG', 'Goal_NoGoal', 'Esito_Goal_NoGoal'),
-                        ('Corner 1X2', 'Corner_1X2', 'Esito_Corner_1X2'),
-                        ('MG Casa', 'Pronostico_MG_Casa', 'Esito_Media_Goal_Casa'),
-                        ('MG Ospite', 'Pronostico_MG_Trasferta', 'Esito_Media_Goal_Trasferta')
-                    ]
-                    el_m = []
-                    for k, cp, ce in m_keys:
-                        vp = str(row.get(cp, '-')).strip()
-                        if vp not in ['-', 'nan', '']:
-                            el_m.append(f'<div class="market-item"><b>{k}:</b> {vp} <br><small>{b_db(ce)}</small></div>')
-                    
-                    h_m = '<div class="section-title">🎯 Pronostici ed Esiti</div>' + "".join(el_m) if el_m else ""
-
-                    st.markdown(f"""
-                    <div class="card-database">
-                        <div class="time-label">🏆 {row.get('Campionato', '-')} | {row.get('Data_Ora_Match', '-')}</div>
-                        <h4 style="margin: 4px 0; color: #1c1c1e;">{row.get('3. Match', 'Match')}</h4>
-                        <div class="result-label" style="background: #ffe5cc; color: #d97706;">⚽ Finale: {res_r}</div>
-                        <div class="market-grid">{h_st}{h_m}</div>
-                    </div>
-                    """, unsafe_allow_html=True)
-            else:
-                st.warning("📋 Archivio presente ma vuoto.")
+            df_database = pd.read_excel(DB_FILE)
         except Exception as e:
-            st.error(f"⚠️ Errore di lettura archivio: {e}")
+            st.error(f"⚠️ Errore lettura Archivio Storico: {e}")
+            
+    if os.path.exists(PALINSESTO_FILE):
+        try:
+            df_palinsesto = pd.read_excel(PALINSESTO_FILE)
+        except Exception as e:
+            st.error(f"⚠️ Errore lettura Palinsesto in DB: {e}")
+
+    if not df_database.empty or not df_palinsesto.empty:
+        if not df_database.empty and not df_palinsesto.empty:
+            df_g = pd.concat([df_database, df_palinsesto], ignore_index=True)
+            df_g = df_g.drop_duplicates(subset=['3. Match'], keep='first')
+        elif not df_database.empty:
+            df_g = df_database
+        else:
+            df_g = df_palinsesto
+
+        if 'Data_Ora_Match' in df_g.columns:
+            df_g = df_g.sort_values(by='Data_Ora_Match', ascending=False)
+
+        st.write(f"🗄️ **Partite totali rilevate (Storico + Palinsesto Corrente): {len(df_g)}**")
+        
+        list_c = ["TUTTI"] + list(df_g['Campionato'].dropna().unique())
+        scelta_c = st.selectbox("Filtra competizione:", list_c, key="filt_t3")
+        df_m = df_g if scelta_c == "TUTTI" else df_g[df_g['Campionato'] == scelta_c]
+        
+        for idx, row in df_m.iterrows():
+            res_r = str(row.get('Risultato_Reale', '-')).strip()
+            if res_r in ['-', 'nan', '', 'NON ANCORA REALE/DA VALIDARE']:
+                res_r = "DA GIOCARE / IN ATTESA DI VALIDAZIONE"
+            
+            def b_db(col):
+                v = str(row.get(col, '-')).strip().upper()
+                if v == "VINCENTE": return "✅ VINCENTE"
+                if v == "PERDENTE": return "❌ PERDENTE"
+                return "⏳ In attesa"
+
+            mappa_colonne = {str(c).strip().lower(): str(c) for c in df_g.columns}
+            
+            def estrai_valore(lista_possibili_nomi):
+                for nome in lista_possibili_nomi:
+                    nome_puro = nome.strip().lower()
+                    if nome_puro in mappa_colonne:
+                        val = str(row.get(mappa_colonne[nome_puro], '-')).strip()
+                        if val not in ['-', 'nan', '']:
+                            return val
+                return None
+
+            v_punti_c = estrai_valore(["punti_casa"])
+            v_punti_o = estrai_valore(["punti_trasferta"])
+            v_gf_c = estrai_valore(["media_goal_casa"])
+            v_gs_c = estrai_valore(["media_goal_subiti_casa"])
+            v_gf_o = estrai_valore(["media_goal_trasferta"])
+            v_gs_o = estrai_valore(["media_goal_subiti_trasferta"])
+            v_forma_c = estrai_valore(["forma_casa"])
+            v_forma_o = estrai_valore(["forma_trasferta"])
+
+            el_st = []
+            if v_punti_c is not None: el_st.append(f'<div class="market-item"><b>Punti Casa:</b> {v_punti_c}</div>')
+            if v_punti_o is not None: el_st.append(f'<div class="market-item"><b>Punti Ospite:</b> {v_punti_o}</div>')
+            if v_gf_c is not None: el_st.append(f'<div class="market-item"><b>Media GF Casa:</b> {v_gf_c}</div>')
+            if v_gs_c is not None: el_st.append(f'<div class="market-item"><b>Media GS Casa:</b> {v_gs_c}</div>')
+            if v_gf_o is not None: el_st.append(f'<div class="market-item"><b>Media GF Ospite:</b> {v_gf_o}</div>')
+            if v_gs_o is not None: el_st.append(f'<div class="market-item"><b>Media GS Ospite:</b> {v_gs_o}</div>')
+            if v_forma_c is not None: el_st.append(f'<div class="market-item"><b>Forma Casa:</b> {v_forma_c}</div>')
+            if v_forma_o is not None: el_st.append(f'<div class="market-item"><b>Forma Ospite:</b> {v_forma_o}</div>')
+            
+            h_st = '<div class="section-title">📊 Statistiche Input</div>' + "".join(el_st) if el_st else ""
+
+            m_keys = [
+                ('1X2', '1X2', 'Esito_1X2'), ('Esatto', 'Risultato_Esatto', 'Esito_Risultato_Esatto'),
+                ('Doppia Ch.', 'Doppia_Chance', 'Esito_Doppia_Chance'), ('Combo DC', 'DC+U/O2.5', 'Esito_DC+U/O2.5'),
+                ('U/O 1.5', 'U/O_1.5', 'Esito_U/O_1.5'), ('U/O 2.5', 'U/O_2.5', 'Esito_U/O_2.5'),
+                ('U/O 3.5', 'U/O_3.5', 'Esito_U/O_3.5'), ('G/NG', 'Goal_NoGoal', 'Esito_Goal_NoGoal'),
+                ('Corner 1X2', 'Corner_1X2', 'Esito_Corner_1X2'),
+                ('MG Casa', 'Pronostico_MG_Casa', 'Esito_Media_Goal_Casa'),
+                ('MG Ospite', 'Pronostico_MG_Trasferta', 'Esito_Media_Goal_Trasferta')
+            ]
+            el_m = []
+            for k, cp, ce in m_keys:
+                vp = str(row.get(cp, '-')).strip()
+                if vp not in ['-', 'nan', '']:
+                    el_m.append(f'<div class="market-item"><b>{k}:</b> {vp} <br><small>{b_db(ce)}</small></div>')
+            
+            h_m = '<div class="section-title">🎯 Pronostici ed Esiti</div>' + "".join(el_m) if el_m else ""
+
+            bg_color = "#e5e5ea" if "DA GIOCARE" in res_r else "#ffe5cc"
+            text_color = "#1c1c1e" if "DA GIOCARE" in res_r else "#d97706"
+
+            st.markdown(f"""
+            <div class="card-database">
+                <div class="time-label">🏆 {row.get('Campionato', '-')} | {row.get('Data_Ora_Match', '-')}</div>
+                <h4 style="margin: 4px 0; color: #1c1c1e;">{row.get('3. Match', 'Match')}</h4>
+                <div class="result-label" style="background: {bg_color}; color: {text_color};">⚽ Finale: {res_r}</div>
+                <div class="market-grid">{h_st}{h_m}</div>
+            </div>
+            """, unsafe_allow_html=True)
     else:
-        st.info("ℹ️ Il file database storico verrà popolato non appena salverai i match con il Modulo 02.")
+        st.info("ℹ️ Nessun dato presente nel database storico o nel palinsesto.")
