@@ -3,9 +3,11 @@ import pandas as pd
 import os
 import requests
 from datetime import datetime
+import pytz
 
 st.set_page_config(page_title="Pannello Betting", page_icon="⚽", layout="centered")
 
+# Stili CSS ottimizzati per iPhone e componenti grafici
 st.markdown("""
     <style>
     .main { background-color: #f2f2f7; }
@@ -31,30 +33,48 @@ st.markdown("""
 
 TOKEN = st.secrets.get("GITHUB_TOKEN", "")
 REPO = st.secrets.get("GITHUB_REPO", "")
+FUSO_ROMA = pytz.timezone("Europe/Rome")
 
 st.title("⚽ Controllo Betting Pro")
 
+# Ottimizzazione 3: Pulsante di Refresh rapido in cima per iPhone
+if st.button("🔄 Aggiorna Schermata", use_container_width=True):
+    st.rerun()
+
+# Ottimizzazione 2: Orario regolato sul fuso orario di Roma
 if os.path.exists("Pronostici_App_Betting.xlsx"):
     mtime = os.path.getmtime("Pronostici_App_Betting.xlsx")
-    data_ora = datetime.fromtimestamp(mtime).strftime('%d/%m/%Y %H:%M:%S')
-    st.markdown(f"<div class='update-label'>🔄 Ultimo aggiornamento dati: {data_ora}</div>", unsafe_allow_html=True)
+    data_ora = datetime.fromtimestamp(mtime, tz=FUSO_ROMA).strftime('%d/%m/%Y %H:%M:%S')
+    st.markdown(f"<div class='update-label'>🔄 Ultimo aggiornamento dati (Roma): {data_ora}</div>", unsafe_allow_html=True)
 else:
     st.markdown("<div class='update-label'>🔄 Ultimo aggiornamento dati: Non disponibile</div>", unsafe_allow_html=True)
 
+# File di riferimento
+DB_FILE = "Database_Storico_Completo.xlsx"
+STORICO_FILE = "Storico_Validato_Betting.xlsx"
+PALINSESTO_FILE = "Pronostici_App_Betting.xlsx"
+
+# Ottimizzazione 4: Indicatori "In Progress" visivi durante i click delle Fasi
 col1, col2 = st.columns(2)
 with col1:
-    if st.button("🚀 Avvia Fase 1 (Pre-Match)"):
-        if TOKEN and REPO: requests.post(f"https://api.github.com/repos/{REPO}/actions/workflows/pre-match.yml/dispatches", headers={"Authorization": f"token {TOKEN}", "Accept": "application/vnd.github.v3+json"}, json={"ref": "main"})
+    if st.button("🚀 Avvia Fase 1 (Pre-Match)", use_container_width=True):
+        with st.spinner("⏳ Fase 1 in progress..."):
+            if TOKEN and REPO: 
+                requests.post(f"https://api.github.com/repos/{REPO}/actions/workflows/pre-match.yml/dispatches", headers={"Authorization": f"token {TOKEN}", "Accept": "application/vnd.github.v3+json"}, json={"ref": "main"})
+                st.success("Fase 1 avviata!")
 with col2:
-    if st.button("📊 Avvia Fase 2 (Post-Match)"):
-        if TOKEN and REPO: requests.post(f"https://api.github.com/repos/{REPO}/actions/workflows/validazione_storico.yml/dispatches", headers={"Authorization": f"token {TOKEN}", "Accept": "application/vnd.github.v3+json"}, json={"ref": "main"})
+    if st.button("📊 Avvia Fase 2 (Post-Match)", use_container_width=True):
+        with st.spinner("⏳ Fase 2 in progress..."):
+            if TOKEN and REPO: 
+                requests.post(f"https://api.github.com/repos/{REPO}/actions/workflows/validazione_storico.yml/dispatches", headers={"Authorization": f"token {TOKEN}", "Accept": "application/vnd.github.v3+json"}, json={"ref": "main"})
+                st.success("Fase 2 avviata!")
 
 tabs = st.tabs(["🎯 Palinsesto", "📊 Storico", "🗄️ Database Totale"])
 
 # TAB 1: PALINSESTO
 with tabs[0]:
-    if os.path.exists("Pronostici_App_Betting.xlsx"):
-        df = pd.read_excel("Pronostici_App_Betting.xlsx")
+    if os.path.exists(PALINSESTO_FILE):
+        df = pd.read_excel(PALINSESTO_FILE)
         for idx, row in df.iterrows():
             st.markdown(f"""
             <div class="card">
@@ -78,39 +98,55 @@ with tabs[0]:
     else:
         st.info("ℹ️ Nessun match in palinsesto calcolato. Avvia la Fase 1.")
 
-# TAB 2: STORICO
+# TAB 2: STORICO (CON ACCURATEZZA GLOBALIZZATA)
 with tabs[1]:
-    if os.path.exists("Storico_Validato_Betting.xlsx"):
-        df_storico = pd.read_excel("Storico_Validato_Betting.xlsx")
-        if not df_storico.empty:
-            df_storico['Risultato_Reale'] = df_storico['Risultato_Reale'].astype(str).str.strip()
-            match_validi = df_storico[~df_storico['Risultato_Reale'].str.contains('NON ANCORA REALE|VALIDARE', case=False, na=True)]
-            tot = len(match_validi)
-            
-            def calc_acc(col, is_corner=False):
-                if is_corner: return "<span class='accuracy-value-nd'>N.D.</span>"
-                val = f"{(len(match_validi[match_validi[col] == 'VINCENTE']) / tot * 100):.1f}%" if tot > 0 and col in match_validi.columns else "0.0%"
-                return f"<span class='accuracy-value'>{val}</span>"
-
-            st.write(f"📊 **Resoconto Accuratezza globale su {tot} Match Storici Conclusi:**")
-            st.markdown(f"""
-            <div class="accuracy-grid">
-                <div class="accuracy-card"><span class="accuracy-market">1X2</span> {calc_acc('Esito_1X2')}</div>
-                <div class="accuracy-card"><span class="accuracy-market">Risultato Esatto</span> {calc_acc('Esito_Risultato_Esatto')}</div>
-                <div class="accuracy-card"><span class="accuracy-market">Doppia Chance</span> {calc_acc('Esito_Doppia_Chance')}</div>
-                <div class="accuracy-card"><span class="accuracy-market">Combo DC+U/O2.5</span> {calc_acc('Esito_DC+U/O2.5')}</div>
-                <div class="accuracy-card"><span class="accuracy-market">Under/Over 1.5</span> {calc_acc('Esito_U/O_1.5')}</div>
-                <div class="accuracy-card"><span class="accuracy-market">Under/Over 2.5</span> {calc_acc('Esito_U/O_2.5')}</div>
-                <div class="accuracy-card"><span class="accuracy-market">Under/Over 3.5</span> {calc_acc('Esito_U/O_3.5')}</div>
-                <div class="accuracy-card"><span class="accuracy-market">Goal/NoGoal</span> {calc_acc('Esito_Goal_NoGoal')}</div>
-                <div class="accuracy-card"><span class="accuracy-market">MG Casa</span> {calc_acc('Esito_Media_Goal_Casa')}</div>
-                <div class="accuracy-card"><span class="accuracy-market">MG Ospite</span> {calc_acc('Esito_Media_Goal_Trasferta')}</div>
-                <div class="accuracy-card"><span class="accuracy-market">Corner 1X2</span> {calc_acc('Esito_Corner_1X2', True)}</div>
-            </div>
-            """, unsafe_allow_html=True)
+    # Ottimizzazione 5: Recupero globale di tutti i match terminati nel sistema per l'accuratezza
+    liste_df_finiti = []
+    for f in [STORICO_FILE, DB_FILE]:
+        if os.path.exists(f):
+            try:
+                temp_df = pd.read_excel(f)
+                if not temp_df.empty:
+                    liste_df_finiti.append(temp_df)
+            except:
+                pass
                 
-            st.markdown("<br><hr>", unsafe_allow_html=True)
-            
+    if liste_df_finiti:
+        df_totale_finiti = pd.concat(liste_df_finiti, ignore_index=True)
+        df_totale_finiti = df_totale_finiti.drop_duplicates(subset=['3. Match'], keep='first')
+        df_totale_finiti['Risultato_Reale'] = df_totale_finiti['Risultato_Reale'].astype(str).str.strip()
+        match_validi = df_totale_finiti[~df_totale_finiti['Risultato_Reale'].str.contains('NON ANCORA REALE|VALIDARE|DA GIOCARE|-|NAN', case=False, na=True)]
+        tot = len(match_validi)
+        
+        def calc_acc(col, is_corner=False):
+            if is_corner: return "<span class='accuracy-value-nd'>N.D.</span>"
+            val = f"{(len(match_validi[match_validi[col] == 'VINCENTE']) / tot * 100):.1f}%" if tot > 0 and col in match_validi.columns else "0.0%"
+            return f"<span class='accuracy-value'>{val}</span>"
+
+        st.write(f"📊 **Resoconto Accuratezza globale su {tot} Match Storici Conclusi (Database + Sessione):**")
+        st.markdown(f"""
+        <div class="accuracy-grid">
+            <div class="accuracy-card"><span class="accuracy-market">1X2</span> {calc_acc('Esito_1X2')}</div>
+            <div class="accuracy-card"><span class="accuracy-market">Risultato Esatto</span> {calc_acc('Esito_Risultato_Esatto')}</div>
+            <div class="accuracy-card"><span class="accuracy-market">Doppia Chance</span> {calc_acc('Esito_Doppia_Chance')}</div>
+            <div class="accuracy-card"><span class="accuracy-market">Combo DC+U/O2.5</span> {calc_acc('Esito_DC+U/O2.5')}</div>
+            <div class="accuracy-card"><span class="accuracy-market">Under/Over 1.5</span> {calc_acc('Esito_U/O_1.5')}</div>
+            <div class="accuracy-card"><span class="accuracy-market">Under/Over 2.5</span> {calc_acc('Esito_U/O_2.5')}</div>
+            <div class="accuracy-card"><span class="accuracy-market">Under/Over 3.5</span> {calc_acc('Esito_U/O_3.5')}</div>
+            <div class="accuracy-card"><span class="accuracy-market">Goal/NoGoal</span> {calc_acc('Esito_Goal_NoGoal')}</div>
+            <div class="accuracy-card"><span class="accuracy-market">MG Casa</span> {calc_acc('Esito_Media_Goal_Casa')}</div>
+            <div class="accuracy-card"><span class="accuracy-market">MG Ospite</span> {calc_acc('Esito_Media_Goal_Trasferta')}</div>
+            <div class="accuracy-card"><span class="accuracy-market">Corner 1X2</span> {calc_acc('Esito_Corner_1X2', True)}</div>
+        </div>
+        """, unsafe_allow_html=True)
+    else:
+        st.info("ℹ️ Dati insufficienti per generare il resoconto accuratezza.")
+
+    st.markdown("<br><hr>", unsafe_allow_html=True)
+
+    if os.path.exists(STORICO_FILE):
+        df_storico = pd.read_excel(STORICO_FILE)
+        if not df_storico.empty:
             for idx, row in df_storico.iterrows():
                 res_reale = row.get('Risultato_Reale', 'NON ANCORA REALE/DA VALIDARE')
                 
@@ -140,16 +176,9 @@ with tabs[1]:
                     </div>
                 </div>
                 """, unsafe_allow_html=True)
-        else:
-            st.info("📋 Il file storico temporaneo è vuoto.")
-    else:
-        st.info("ℹ️ Nessun dato storico elaborato in questa sessione.")
 
-# TAB 3: DATABASE TOTALMENTE AUTOMATIZZATO (CON UNIONE IN MEMORIA TRA STORICO E PALINSESTO)
+# TAB 3: DATABASE TOTALMENTE AUTOMATIZZATO
 with tabs[2]:
-    DB_FILE = "Database_Storico_Completo.xlsx"
-    PALINSESTO_FILE = "Pronostici_App_Betting.xlsx"
-    
     df_database = pd.DataFrame()
     df_palinsesto = pd.DataFrame()
     
@@ -174,10 +203,12 @@ with tabs[2]:
         else:
             df_g = df_palinsesto
 
+        # Ottimizzazione 1: Ordinamento cronologico robusto (dalla più recente alla più lontana)
         if 'Data_Ora_Match' in df_g.columns:
-            df_g = df_g.sort_values(by='Data_Ora_Match', ascending=False)
+            df_g['Data_Ora_Match_Parsed'] = pd.to_datetime(df_g['Data_Ora_Match'], format='%d/%m/%Y %H:%M', errors='coerce')
+            df_g = df_g.sort_values(by='Data_Ora_Match_Parsed', ascending=False)
 
-        st.write(f"🗄️ **Partite totali rilevate (Storico + Palinsesto Corrente): {len(df_g)}**")
+        st.write(f"🗄️ **Partite totali rilevate (Ordinamento Decrescente): {len(df_g)}**")
         
         list_c = ["TUTTI"] + list(df_g['Campionato'].dropna().unique())
         scelta_c = st.selectbox("Filtra competizione:", list_c, key="filt_t3")
@@ -226,9 +257,10 @@ with tabs[2]:
             
             h_st = '<div class="section-title">📊 Statistiche Input</div>' + "".join(el_st) if el_st else ""
 
+            # Ottimizzazione 7: Cambiato il nome visualizzato in "Combo DC+U/O2.5" per uniformità totale
             m_keys = [
                 ('1X2', '1X2', 'Esito_1X2'), ('Esatto', 'Risultato_Esatto', 'Esito_Risultato_Esatto'),
-                ('Doppia Ch.', 'Doppia_Chance', 'Esito_Doppia_Chance'), ('Combo DC', 'DC+U/O2.5', 'Esito_DC+U/O2.5'),
+                ('Doppia Ch.', 'Doppia_Chance', 'Esito_Doppia_Chance'), ('Combo DC+U/O2.5', 'DC+U/O2.5', 'Esito_DC+U/O2.5'),
                 ('U/O 1.5', 'U/O_1.5', 'Esito_U/O_1.5'), ('U/O 2.5', 'U/O_2.5', 'Esito_U/O_2.5'),
                 ('U/O 3.5', 'U/O_3.5', 'Esito_U/O_3.5'), ('G/NG', 'Goal_NoGoal', 'Esito_Goal_NoGoal'),
                 ('Corner 1X2', 'Corner_1X2', 'Esito_Corner_1X2'),
@@ -254,5 +286,26 @@ with tabs[2]:
                 <div class="market-grid">{h_st}{h_m}</div>
             </div>
             """, unsafe_allow_html=True)
+            
+        # Ottimizzazione 6: Pulsante Reset Database con Pop-up dialog di conferma di sicurezza
+        st.markdown("<br><hr>", unsafe_allow_html=True)
+        
+        @st.dialog("⚠️ CONFERMA CANCELLAZIONE")
+        def conferma_reset_dialog():
+            st.warning("Sei veramente sicuro di voler svuotare interamente l'archivio storico? Questa azione eliminerà tutti i record salvati in modo definitivo.")
+            col_yes, col_no = st.columns(2)
+            if col_yes.button("🔥 Sì, Cancella Tutto", use_container_width=True):
+                if os.path.exists(DB_FILE):
+                    os.remove(DB_FILE)
+                if os.path.exists(STORICO_FILE):
+                    os.remove(STORICO_FILE)
+                st.success("Database svuotato con successo!")
+                st.rerun()
+            if col_no.button("❌ Annulla", use_container_width=True):
+                st.rerun()
+
+        if st.button("🗑️ Reset Database Storico", type="primary", use_container_width=True):
+            conferma_reset_dialog()
+            
     else:
         st.info("ℹ️ Nessun dato presente nel database storico o nel palinsesto.")
