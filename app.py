@@ -48,7 +48,7 @@ DB_FILE = "Database_Storico_Completo.xlsx"
 STORICO_FILE = "Storico_Validato_Betting.xlsx"
 PALINSESTO_FILE = "Pronostici_App_Betting.xlsx"
 
-# Mostra i due orari distinti (Fase 1 e Fase 2) sul fuso di Roma
+# Mostra i due orari distinti (Fase 1 e Fase 2) sul fuso di Roma - CRITERI UNIFICATI
 st.markdown('<div class="update-container">', unsafe_allow_html=True)
 if os.path.exists(PALINSESTO_FILE):
     t_f1 = datetime.fromtimestamp(os.path.getmtime(PALINSESTO_FILE), tz=FUSO_ROMA).strftime('%d/%m/%Y %H:%M:%S')
