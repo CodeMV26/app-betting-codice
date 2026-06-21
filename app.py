@@ -40,7 +40,7 @@ FUSO_ROMA = pytz.timezone("Europe/Rome")
 
 st.title("⚽ Controllo Betting Pro")
 
-# Il pulsante ora distrugge attivamente la vecchia cache prima di ricaricare la pagina
+# Il pulsante distrugge la vecchia cache prima di ricaricare la pagina
 if st.button("🔄 Aggiorna Schermata", use_container_width=True):
     st.cache_data.clear()
     st.rerun()
@@ -51,21 +51,43 @@ STORICO_FILE = "Storico_Validato_Betting.xlsx"
 PALINSESTO_FILE = "Pronostici_App_Betting.xlsx"
 
 # ========================================================================
-# BLOCCO DATE RIGIDAMENTE ISOLATE CON AUTO-PULIZIA CACHE
+# BLOCCO DATE RIGIDAMENTE ISOLATE - LETTURA STATICA DA LOG LOGISTICI
 # ========================================================================
 st.markdown('<div class="update-container">', unsafe_allow_html=True)
 
-if os.path.exists(PALINSESTO_FILE):
+# 1. LETTURA STATICA FASE 1
+if os.path.exists("timestamp_fase1.txt"):
+    try:
+        with open("timestamp_fase1.txt", "r") as f:
+            stringa_data_fase1 = f.read().strip()
+        if stringa_data_fase1:
+            st.markdown(f"<div class='update-label'>📅 <b>Ultimo calcolo Palinsesto (Fase 1):</b> {stringa_data_fase1}</div>", unsafe_allow_html=True)
+        else:
+            st.markdown("<div class='update-label'>📅 <b>Ultimo calcolo Palinsesto (Fase 1):</b> Non disponibile (File log vuoto)</div>", unsafe_allow_html=True)
+    except:
+        st.markdown("<div class='update-label'>📅 <b>Ultimo calcolo Palinsesto (Fase 1):</b> Errore lettura log</div>", unsafe_allow_html=True)
+elif os.path.exists(PALINSESTO_FILE):
     timestamp_fase1 = os.path.getmtime(PALINSESTO_FILE)
     stringa_data_fase1 = datetime.fromtimestamp(timestamp_fase1, tz=FUSO_ROMA).strftime('%d/%m/%Y %H:%M:%S')
-    st.markdown(f"<div class='update-label'>📅 <b>Ultimo calcolo Palinsesto (Fase 1):</b> {stringa_data_fase1}</div>", unsafe_allow_html=True)
+    st.markdown(f"<div class='update-label'>📅 <b>Ultimo calcolo Palinsesto (Fase 1):</b> {stringa_data_fase1} (Da File)</div>", unsafe_allow_html=True)
 else:
     st.markdown("<div class='update-label'>📅 <b>Ultimo calcolo Palinsesto (Fase 1):</b> Non disponibile</div>", unsafe_allow_html=True)
 
-if os.path.exists(STORICO_FILE):
+# 2. LETTURA STATICA FASE 2
+if os.path.exists("timestamp_fase2.txt"):
+    try:
+        with open("timestamp_fase2.txt", "r") as f:
+            stringa_data_fase2 = f.read().strip()
+        if stringa_data_fase2:
+            st.markdown(f"<div class='update-label'>🗄️ <b>Ultima Validazione Storico (Fase 2):</b> {stringa_data_fase2}</div>", unsafe_allow_html=True)
+        else:
+            st.markdown("<div class='update-label'>🗄️ <b>Ultima Validazione Storico (Fase 2):</b> Non disponibile (File log vuoto)</div>", unsafe_allow_html=True)
+    except:
+        st.markdown("<div class='update-label'>🗄️ <b>Ultima Validazione Storico (Fase 2):</b> Errore lettura log</div>", unsafe_allow_html=True)
+elif os.path.exists(STORICO_FILE):
     timestamp_fase2 = os.path.getmtime(STORICO_FILE)
     stringa_data_fase2 = datetime.fromtimestamp(timestamp_fase2, tz=FUSO_ROMA).strftime('%d/%m/%Y %H:%M:%S')
-    st.markdown(f"<div class='update-label'>🗄️ <b>Ultima Validazione Storico (Fase 2):</b> {stringa_data_fase2}</div>", unsafe_allow_html=True)
+    st.markdown(f"<div class='update-label'>🗄️ <b>Ultima Validazione Storico (Fase 2):</b> {stringa_data_fase2} (Da File)</div>", unsafe_allow_html=True)
 else:
     st.markdown("<div class='update-label'>🗄️ <b>Ultima Validazione Storico (Fase 2):</b> Non disponibile</div>", unsafe_allow_html=True)
 
@@ -105,7 +127,6 @@ def esegui_e_attendi_workflow(workflow_name):
         time.sleep(6)
     
     if completato:
-        # Forza lo svuotamento della cache per accogliere immediatamente i nuovi file aggiornati
         st.cache_data.clear()
         if successo:
             st.toast("✅ Elaborazione completata con successo!", icon="🎉")
@@ -215,7 +236,7 @@ elif "📊 Storico" in scelta_tab:
         st.write(f"📊 **Resoconto Accuratezza su {tot} Match Terminati presenti nel Database Totale:**")
         st.markdown(f"""
         <div class="accuracy-grid">
-            <div class="accuracy-card"><span class="accuracy-market">1X2</span> {calc_acc('Esito_1X2')}</div>
+            <div class="accuracy-card"><span class="accuracy-market">1X2</span> {calc_acc('App_Esito_1X2' if 'App_Esito_1X2' in match_validi.columns else 'Esito_1X2')}</div>
             <div class="accuracy-card"><span class="accuracy-market">Risultato Esatto</span> {calc_acc('Esito_Risultato_Esatto')}</div>
             <div class="accuracy-card"><span class="accuracy-market">Doppia Chance</span> {calc_acc('Esito_Doppia_Chance')}</div>
             <div class="accuracy-card"><span class="accuracy-market">Combo DC+U/O2.5</span> {calc_acc('Esito_DC+U/O2.5')}</div>
