@@ -4,7 +4,7 @@ import os
 import pytz
 from datetime import datetime
 
-print("✅ --- MODULO 03: VALIDATORE STRUTTURA MULTIGOAL MULTI-RANGE ---")
+print("✅ --- MODULO 03: VALIDATORE STRUTTURA MULTIGOAL MULTI-RANGE (V2.0) ---")
 
 PRONOSTICI_FILE = "Pronostici_App_Betting.xlsx"
 OUTPUT_VALIDATO = "Storico_Validato_Betting.xlsx"
@@ -47,22 +47,18 @@ def esegui_validazione():
         return
 
     cache_risultati = {}
-    
     colonne_esiti = [
         'Risultato_Reale', 'Esito_1X2', 'Esito_Risultato_Esatto', 'Esito_Doppia_Chance', 
         'Esito_Goal_NoGoal', 'Esito_U/O_1.5', 'Esito_U/O_2.5', 'Esito_U/O_3.5', 
         'Esito_Media_Goal_Casa', 'Esito_Media_Goal_Trasferta', 'Esito_Corner_1X2', 'Esito_DC+U/O2.5'
     ]
     for c in colonne_esiti:
-        if c not in df_prono.columns:
-            df_prono[c] = 'Non Disponibile'
+        if c not in df_prono.columns: df_prono[c] = 'Non Disponibile'
 
     for idx, riga in df_prono.iterrows():
         camp = riga.get('Campionato')
         match_str = riga.get('3. Match')
-        
-        if pd.isna(camp) or pd.isna(match_str):
-            continue
+        if pd.isna(camp) or pd.isna(match_str): continue
 
         p_1x2 = riga.get('1X2', '-')
         p_esatto = riga.get('Risultato_Esatto', '-')
@@ -77,12 +73,10 @@ def esegui_validazione():
         try:
             casa_p, trasf_p = str(match_str).split(" - ")
             casa_p, trasf_p = casa_p.strip().lower(), trasf_p.strip().lower()
-        except: 
-            continue
+        except: continue
 
         league_id = MAPPA_COMPETIZIONI.get(str(camp).strip())
-        if not league_id: 
-            continue
+        if not league_id: continue
 
         if league_id not in cache_risultati:
             cache_risultati[league_id] = recupera_risultati_api(league_id)
@@ -124,12 +118,10 @@ def esegui_validazione():
             df_prono.at[idx, 'Esito_DC+U/O2.5'] = 'VINCENTE' if df_prono.at[idx, 'Esito_Doppia_Chance'] == 'VINCENTE' and df_prono.at[idx, 'Esito_U/O_2.5'] == 'VINCENTE' else 'PERDENTE'
         else:
             df_prono.at[idx, 'Risultato_Reale'] = 'NON ANCORA REALE/DA VALIDARE'
-            for k in colonne_esiti[1:]:
-                df_prono.at[idx, k] = 'Non Disponibile'
+            for k in colonne_esiti[1:]: df_prono.at[idx, k] = 'Non Disponibile'
 
     df_prono.to_excel(OUTPUT_VALIDATO, index=False)
     
-    # Scrittura del file timestamp indipendente per la Fase 2
     try:
         fuso_roma = pytz.timezone("Europe/Rome")
         with open("timestamp_fase2.txt", "w") as f:
@@ -138,7 +130,7 @@ def esegui_validazione():
     except Exception as e:
         print(f"⚠️ Errore scrittura timestamp log: {e}")
 
-    print("✅ Validazione completata e salvata con successo mantenendo tutte le colonne originarie.")
+    print("✅ Validazione completata con successo.")
 
 if __name__ == "__main__":
     esegui_validazione()
