@@ -48,19 +48,23 @@ DB_FILE = "Database_Storico_Completo.xlsx"
 STORICO_FILE = "Storico_Validato_Betting.xlsx"
 PALINSESTO_FILE = "Pronostici_App_Betting.xlsx"
 
-# Mostra i due orari distinti (Fase 1 e Fase 2) sul fuso di Roma - CRITERI UNIFICATI
+# MOSTRA I DUE ORARI CON GLI STESSI IDENTICI CRITERI NATIVI
 st.markdown('<div class="update-container">', unsafe_allow_html=True)
+
+# Blocco Fase 1
 if os.path.exists(PALINSESTO_FILE):
     t_f1 = datetime.fromtimestamp(os.path.getmtime(PALINSESTO_FILE), tz=FUSO_ROMA).strftime('%d/%m/%Y %H:%M:%S')
     st.markdown(f"<div class='update-label'>📅 <b>Ultimo calcolo Palinsesto (Fase 1):</b> {t_f1}</div>", unsafe_allow_html=True)
 else:
     st.markdown("<div class='update-label'>📅 <b>Ultimo calcolo Palinsesto (Fase 1):</b> Non disponibile</div>", unsafe_allow_html=True)
 
+# Blocco Fase 2 (Allineato e indipendente dal precedente)
 if os.path.exists(STORICO_FILE):
     t_f2 = datetime.fromtimestamp(os.path.getmtime(STORICO_FILE), tz=FUSO_ROMA).strftime('%d/%m/%Y %H:%M:%S')
     st.markdown(f"<div class='update-label'>🗄️ <b>Ultima Validazione Storico (Fase 2):</b> {t_f2}</div>", unsafe_allow_html=True)
 else:
     st.markdown("<div class='update-label'>🗄️ <b>Ultima Validazione Storico (Fase 2):</b> Non disponibile</div>", unsafe_allow_html=True)
+
 st.markdown('</div>', unsafe_allow_html=True)
 
 
