@@ -43,29 +43,32 @@ st.title("⚽ Controllo Betting Pro")
 if st.button("🔄 Aggiorna Schermata", use_container_width=True):
     st.rerun()
 
-# Definizione File
+# Definizione File fisici obbligatori
 DB_FILE = "Database_Storico_Completo.xlsx"
 STORICO_FILE = "Storico_Validato_Betting.xlsx"
 PALINSESTO_FILE = "Pronostici_App_Betting.xlsx"
 
-# MOSTRA I DUE ORARI CON GLI STESSI IDENTICI CRITERI NATIVI
+# ========================================================================
+# BLOCCO DATE STRICLY ISOLATE (Nessuna variabile qui dentro viene riutilizzata sotto)
+# ========================================================================
 st.markdown('<div class="update-container">', unsafe_allow_html=True)
 
-# Blocco Fase 1
 if os.path.exists(PALINSESTO_FILE):
-    t_f1 = datetime.fromtimestamp(os.path.getmtime(PALINSESTO_FILE), tz=FUSO_ROMA).strftime('%d/%m/%Y %H:%M:%S')
-    st.markdown(f"<div class='update-label'>📅 <b>Ultimo calcolo Palinsesto (Fase 1):</b> {t_f1}</div>", unsafe_allow_html=True)
+    timestamp_fase1 = os.path.getmtime(PALINSESTO_FILE)
+    stringa_data_fase1 = datetime.fromtimestamp(timestamp_fase1, tz=FUSO_ROMA).strftime('%d/%m/%Y %H:%M:%S')
+    st.markdown(f"<div class='update-label'>📅 <b>Ultimo calcolo Palinsesto (Fase 1):</b> {stringa_data_fase1}</div>", unsafe_allow_html=True)
 else:
     st.markdown("<div class='update-label'>📅 <b>Ultimo calcolo Palinsesto (Fase 1):</b> Non disponibile</div>", unsafe_allow_html=True)
 
-# Blocco Fase 2 (Allineato e indipendente dal precedente)
 if os.path.exists(STORICO_FILE):
-    t_f2 = datetime.fromtimestamp(os.path.getmtime(STORICO_FILE), tz=FUSO_ROMA).strftime('%d/%m/%Y %H:%M:%S')
-    st.markdown(f"<div class='update-label'>🗄️ <b>Ultima Validazione Storico (Fase 2):</b> {t_f2}</div>", unsafe_allow_html=True)
+    timestamp_fase2 = os.path.getmtime(STORICO_FILE)
+    stringa_data_fase2 = datetime.fromtimestamp(timestamp_fase2, tz=FUSO_ROMA).strftime('%d/%m/%Y %H:%M:%S')
+    st.markdown(f"<div class='update-label'>🗄️ <b>Ultima Validazione Storico (Fase 2):</b> {stringa_data_fase2}</div>", unsafe_allow_html=True)
 else:
     st.markdown("<div class='update-label'>🗄️ <b>Ultima Validazione Storico (Fase 2):</b> Non disponibile</div>", unsafe_allow_html=True)
 
 st.markdown('</div>', unsafe_allow_html=True)
+# ========================================================================
 
 
 # Funzione per monitorare i workflow
@@ -138,24 +141,17 @@ if not df_g.empty and 'Risultato_Reale' not in df_g.columns:
 
 
 # CONTEGGI DINAMICI
-count_palinsesto = 0
-if os.path.exists(PALINSESTO_FILE):
-    try:
-        count_palinsesto = len(pd.read_excel(PALINSESTO_FILE))
-    except:
-        pass
-
+count_palinsesto = len(df_palinsesto) if not df_palinsesto.empty else 0
 count_storico = 0
 if os.path.exists(STORICO_FILE):
     try:
         count_storico = len(pd.read_excel(STORICO_FILE))
     except:
         pass
-
 count_database = len(df_g) if not df_g.empty else 0
 
 
-# SELETTORE ALTERNATIVO OTTIMIZZATO PER IPHONE X
+# SELETTORE
 scelta_tab = st.selectbox(
     "📂 Seleziona Sezione da Visualizzare:",
     [
@@ -167,9 +163,8 @@ scelta_tab = st.selectbox(
 
 # SEZIONE 1: PALINSESTO
 if "🎯 Palinsesto" in scelta_tab:
-    if os.path.exists(PALINSESTO_FILE):
-        df = pd.read_excel(PALINSESTO_FILE)
-        for idx, row in df.iterrows():
+    if not df_palinsesto.empty:
+        for idx, row in df_palinsesto.iterrows():
             st.markdown(f"""
             <div class="card">
                 <div class="time-label">🏆 {row.get('Campionato', '-')} | {row.get('Data_Ora_Match', '-')}</div>
