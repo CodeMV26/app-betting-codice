@@ -40,7 +40,9 @@ FUSO_ROMA = pytz.timezone("Europe/Rome")
 
 st.title("⚽ Controllo Betting Pro")
 
+# Il pulsante ora distrugge attivamente la vecchia cache prima di ricaricare la pagina
 if st.button("🔄 Aggiorna Schermata", use_container_width=True):
+    st.cache_data.clear()
     st.rerun()
 
 # Definizione File fisici obbligatori
@@ -49,7 +51,7 @@ STORICO_FILE = "Storico_Validato_Betting.xlsx"
 PALINSESTO_FILE = "Pronostici_App_Betting.xlsx"
 
 # ========================================================================
-# BLOCCO DATE STRICLY ISOLATE (Nessuna variabile qui dentro viene riutilizzata sotto)
+# BLOCCO DATE RIGIDAMENTE ISOLATE CON AUTO-PULIZIA CACHE
 # ========================================================================
 st.markdown('<div class="update-container">', unsafe_allow_html=True)
 
@@ -103,6 +105,8 @@ def esegui_e_attendi_workflow(workflow_name):
         time.sleep(6)
     
     if completato:
+        # Forza lo svuotamento della cache per accogliere immediatamente i nuovi file aggiornati
+        st.cache_data.clear()
         if successo:
             st.toast("✅ Elaborazione completata con successo!", icon="🎉")
         else:
@@ -124,9 +128,15 @@ with col2:
             esegui_e_attendi_workflow("validazione_storico.yml")
 
 
-# Costruzione Database Totale Unito in Memoria
-df_database = pd.read_excel(DB_FILE) if os.path.exists(DB_FILE) else pd.DataFrame()
-df_palinsesto = pd.read_excel(PALINSESTO_FILE) if os.path.exists(PALINSESTO_FILE) else pd.DataFrame()
+# Lettura file forzata senza memorizzazione vecchia in cache
+@st.cache_data(ttl=10)
+def leggi_excel_fresco(file_path):
+    if os.path.exists(file_path):
+        return pd.read_excel(file_path)
+    return pd.DataFrame()
+
+df_database = leggi_excel_fresco(DB_FILE)
+df_palinsesto = leggi_excel_fresco(PALINSESTO_FILE)
 
 if not df_database.empty and not df_palinsesto.empty:
     df_g = pd.concat([df_database, df_palinsesto], ignore_index=True)
@@ -142,12 +152,8 @@ if not df_g.empty and 'Risultato_Reale' not in df_g.columns:
 
 # CONTEGGI DINAMICI
 count_palinsesto = len(df_palinsesto) if not df_palinsesto.empty else 0
-count_storico = 0
-if os.path.exists(STORICO_FILE):
-    try:
-        count_storico = len(pd.read_excel(STORICO_FILE))
-    except:
-        pass
+df_storico_conteggio = leggi_excel_fresco(STORICO_FILE)
+count_storico = len(df_storico_conteggio) if not df_storico_conteggio.empty else 0
 count_database = len(df_g) if not df_g.empty else 0
 
 
@@ -227,40 +233,38 @@ elif "📊 Storico" in scelta_tab:
 
     st.markdown("<br><hr>", unsafe_allow_html=True)
 
-    if os.path.exists(STORICO_FILE):
-        df_storico = pd.read_excel(STORICO_FILE)
-        if not df_storico.empty:
-            for idx, row in df_storico.iterrows():
-                res_reale = str(row.get('Risultato_Reale', '')).strip().upper()
-                if "ELABORAZIONE" in res_reale or "VALIDARE" in res_reale or "NON ANCORA" in res_reale:
-                    res_reale = "IN ATTESA DI VALIDAZIONE"
-                
-                def get_badge(col_name):
-                    val = str(row.get(col_name, '-')).strip().upper()
-                    if val == "VINCENTE": return "✅ <span class='esito-vincente'>VINCENTE</span>"
-                    if val == "PERDENTE": return "❌ <span class='esito-perdente'>PERDENTE</span>"
-                    return "⏳ <span>In attesa</span>"
+    if not df_storico_conteggio.empty:
+        for idx, row in df_storico_conteggio.iterrows():
+            res_reale = str(row.get('Risultato_Reale', '')).strip().upper()
+            if "ELABORAZIONE" in res_reale or "VALIDARE" in res_reale or "NON ANCORA" in res_reale:
+                res_reale = "IN ATTESA DI VALIDAZIONE"
+            
+            def get_badge(col_name):
+                val = str(row.get(col_name, '-')).strip().upper()
+                if val == "VINCENTE": return "✅ <span class='esito-vincente'>VINCENTE</span>"
+                if val == "PERDENTE": return "❌ <span class='esito-perdente'>PERDENTE</span>"
+                return "⏳ <span>In attesa</span>"
 
-                st.markdown(f"""
-                <div class="card-storico">
-                    <div class="time-label">🏆 {row.get('Campionato', '-')} | {row.get('Data_Ora_Match', '-')}</div>
-                    <h4 style="margin: 4px 0;">{row.get('3. Match', 'Match')}</h4>
-                    <div class="result-label">⚽ Finale: {res_reale}</div>
-                    <div class="market-grid">
-                        <div class="market-item"><b>1X2:</b> {row.get('1X2', '-')} <br> {get_badge('Esito_1X2')}</div>
-                        <div class="market-item"><b>Esatto:</b> {row.get('Risultato_Esatto', '-')} <br> {get_badge('Esito_Risultato_Esatto')}</div>
-                        <div class="market-item"><b>Doppia:</b> {row.get('Doppia_Chance', '-')} <br> {get_badge('Esito_Doppia_Chance')}</div>
-                        <div class="market-item"><b>Combo DC+U/O2.5:</b> {row.get('DC+U/O2.5', '-')} <br> {get_badge('Esito_DC+U/O2.5')}</div>
-                        <div class="market-item"><b>U/O 1.5:</b> {row.get('U/O_1.5', '-')} <br> {get_badge('Esito_U/O_1.5')}</div>
-                        <div class="market-item"><b>U/O 2.5:</b> {row.get('U/O_2.5', '-')} <br> {get_badge('Esito_U/O_2.5')}</div>
-                        <div class="market-item"><b>U/O 3.5:</b> {row.get('U/O_3.5', '-')} <br> {get_badge('Esito_U/O_3.5')}</div>
-                        <div class="market-item"><b>G/NG:</b> {row.get('Goal_NoGoal', '-')} <br> {get_badge('Esito_Goal_NoGoal')}</div>
-                        <div class="market-item"><b>MG Casa:</b> {row.get('Pronostico_MG_Casa', '-')} <br> {get_badge('Esito_Media_Goal_Casa')}</div>
-                        <div class="market-item"><b>MG Ospite:</b> {row.get('Pronostico_MG_Trasferta', '-')} <br> {get_badge('Esito_Media_Goal_Trasferta')}</div>
-                        <div class="market-item"><b>Corner 1X2:</b> {row.get('Corner_1X2', '-')} <br> {get_badge('Esito_Corner_1X2')}</div>
-                    </div>
+            st.markdown(f"""
+            <div class="card-storico">
+                <div class="time-label">🏆 {row.get('Campionato', '-')} | {row.get('Data_Ora_Match', '-')}</div>
+                <h4 style="margin: 4px 0;">{row.get('3. Match', 'Match')}</h4>
+                <div class="result-label">⚽ Finale: {res_reale}</div>
+                <div class="market-grid">
+                    <div class="market-item"><b>1X2:</b> {row.get('1X2', '-')} <br> {get_badge('Esito_1X2')}</div>
+                    <div class="market-item"><b>Esatto:</b> {row.get('Risultato_Esatto', '-')} <br> {get_badge('Esito_Risultato_Esatto')}</div>
+                    <div class="market-item"><b>Doppia:</b> {row.get('Doppia_Chance', '-')} <br> {get_badge('Esito_Doppia_Chance')}</div>
+                    <div class="market-item"><b>Combo DC+U/O2.5:</b> {row.get('DC+U/O2.5', '-')} <br> {get_badge('Esito_DC+U/O2.5')}</div>
+                    <div class="market-item"><b>U/O 1.5:</b> {row.get('U/O_1.5', '-')} <br> {get_badge('Esito_U/O_1.5')}</div>
+                    <div class="market-item"><b>U/O 2.5:</b> {row.get('U/O_2.5', '-')} <br> {get_badge('Esito_U/O_2.5')}</div>
+                    <div class="market-item"><b>U/O 3.5:</b> {row.get('U/O_3.5', '-')} <br> {get_badge('Esito_U/O_3.5')}</div>
+                    <div class="market-item"><b>G/NG:</b> {row.get('Goal_NoGoal', '-')} <br> {get_badge('Esito_Goal_NoGoal')}</div>
+                    <div class="market-item"><b>MG Casa:</b> {row.get('Pronostico_MG_Casa', '-')} <br> {get_badge('Esito_Media_Goal_Casa')}</div>
+                    <div class="market-item"><b>MG Ospite:</b> {row.get('Pronostico_MG_Trasferta', '-')} <br> {get_badge('Esito_Media_Goal_Trasferta')}</div>
+                    <div class="market-item"><b>Corner 1X2:</b> {row.get('Corner_1X2', '-')} <br> {get_badge('Esito_Corner_1X2')}</div>
                 </div>
-                """, unsafe_allow_html=True)
+            </div>
+            """, unsafe_allow_html=True)
 
 # SEZIONE 3: DATABASE TOTALMENTE AUTOMATIZZATO
 elif "🗄️ Database Totale" in scelta_tab:
@@ -374,6 +378,7 @@ elif "🗄️ Database Totale" in scelta_tab:
                             }
                             requests.delete(url_file, headers=headers, json=payload)
                 
+                st.cache_data.clear()
                 st.success("Database svuotato con successo localmente e su GitHub!")
                 st.rerun()
             if col_no.button("❌ Annulla", use_container_width=True):
