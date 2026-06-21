@@ -51,11 +51,11 @@ STORICO_FILE = "Storico_Validato_Betting.xlsx"
 PALINSESTO_FILE = "Pronostici_App_Betting.xlsx"
 
 # ========================================================================
-# BLOCCO DATE RIGIDAMENTE ISOLATE - LETTURA STATICA DA LOG LOGISTICI
+# BLOCCO DATE RIGIDAMENTE ISOLATE - SOLO ED ESCLUSIVAMENTE DA LOG LOGISTICI
 # ========================================================================
 st.markdown('<div class="update-container">', unsafe_allow_html=True)
 
-# 1. LETTURA STATICA FASE 1
+# 1. LETTURA STATICA FASE 1 (SOLO DA LOG)
 if os.path.exists("timestamp_fase1.txt"):
     try:
         with open("timestamp_fase1.txt", "r") as f:
@@ -63,17 +63,13 @@ if os.path.exists("timestamp_fase1.txt"):
         if stringa_data_fase1:
             st.markdown(f"<div class='update-label'>📅 <b>Ultimo calcolo Palinsesto (Fase 1):</b> {stringa_data_fase1}</div>", unsafe_allow_html=True)
         else:
-            st.markdown("<div class='update-label'>📅 <b>Ultimo calcolo Palinsesto (Fase 1):</b> Non disponibile (File log vuoto)</div>", unsafe_allow_html=True)
+            st.markdown("<div class='update-label'>📅 <b>Ultimo calcolo Palinsesto (Fase 1):</b> Log presente ma vuoto</div>", unsafe_allow_html=True)
     except:
         st.markdown("<div class='update-label'>📅 <b>Ultimo calcolo Palinsesto (Fase 1):</b> Errore lettura log</div>", unsafe_allow_html=True)
-elif os.path.exists(PALINSESTO_FILE):
-    timestamp_fase1 = os.path.getmtime(PALINSESTO_FILE)
-    stringa_data_fase1 = datetime.fromtimestamp(timestamp_fase1, tz=FUSO_ROMA).strftime('%d/%m/%Y %H:%M:%S')
-    st.markdown(f"<div class='update-label'>📅 <b>Ultimo calcolo Palinsesto (Fase 1):</b> {stringa_data_fase1} (Da File)</div>", unsafe_allow_html=True)
 else:
-    st.markdown("<div class='update-label'>📅 <b>Ultimo calcolo Palinsesto (Fase 1):</b> Non disponibile</div>", unsafe_allow_html=True)
+    st.markdown("<div class='update-label'>📅 <b>Ultimo calcolo Palinsesto (Fase 1):</b> In attesa del primo avvio della Fase 1</div>", unsafe_allow_html=True)
 
-# 2. LETTURA STATICA FASE 2
+# 2. LETTURA STATICA FASE 2 (SOLO DA LOG)
 if os.path.exists("timestamp_fase2.txt"):
     try:
         with open("timestamp_fase2.txt", "r") as f:
@@ -81,15 +77,11 @@ if os.path.exists("timestamp_fase2.txt"):
         if stringa_data_fase2:
             st.markdown(f"<div class='update-label'>🗄️ <b>Ultima Validazione Storico (Fase 2):</b> {stringa_data_fase2}</div>", unsafe_allow_html=True)
         else:
-            st.markdown("<div class='update-label'>🗄️ <b>Ultima Validazione Storico (Fase 2):</b> Non disponibile (File log vuoto)</div>", unsafe_allow_html=True)
+            st.markdown("<div class='update-label'>🗄️ <b>Ultima Validazione Storico (Fase 2):</b> Log presente ma vuoto</div>", unsafe_allow_html=True)
     except:
         st.markdown("<div class='update-label'>🗄️ <b>Ultima Validazione Storico (Fase 2):</b> Errore lettura log</div>", unsafe_allow_html=True)
-elif os.path.exists(STORICO_FILE):
-    timestamp_fase2 = os.path.getmtime(STORICO_FILE)
-    stringa_data_fase2 = datetime.fromtimestamp(timestamp_fase2, tz=FUSO_ROMA).strftime('%d/%m/%Y %H:%M:%S')
-    st.markdown(f"<div class='update-label'>🗄️ <b>Ultima Validazione Storico (Fase 2):</b> {stringa_data_fase2} (Da File)</div>", unsafe_allow_html=True)
 else:
-    st.markdown("<div class='update-label'>🗄️ <b>Ultima Validazione Storico (Fase 2):</b> Non disponibile</div>", unsafe_allow_html=True)
+    st.markdown("<div class='update-label'>🗄️ <b>Ultima Validazione Storico (Fase 2):</b> In attesa del primo avvio della Fase 2</div>", unsafe_allow_html=True)
 
 st.markdown('</div>', unsafe_allow_html=True)
 # ========================================================================
