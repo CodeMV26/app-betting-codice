@@ -50,44 +50,63 @@ DB_FILE = "Database_Storico_Completo.xlsx"
 STORICO_FILE = "Storico_Validato_Betting.xlsx"
 PALINSESTO_FILE = "Pronostici_App_Betting.xlsx"
 
+# Lettura dinamica dei file con caching breve per forzare l'allineamento dei dati reali dal repository
+@st.cache_data(ttl=5)
+def leggi_excel_fresco(file_path):
+    if os.path.exists(file_path):
+        try:
+            return pd.read_excel(file_path)
+        except Exception as e:
+            return pd.DataFrame()
+    return pd.DataFrame()
+
+df_database = leggi_excel_fresco(DB_FILE)
+df_palinsesto = leggi_excel_fresco(PALINSESTO_FILE)
+df_storico_conteggio = leggi_excel_fresco(STORICO_FILE)
+
 # ========================================================================
-# BLOCCO DATE RIGIDAMENTE ISOLATE - SOLO ED ESCLUSIVAMENTE DA LOG LOGISTICI
+# REQUISITO DATE: DIAGNOSTICA IBRIDA SICURA (LOG O TIMESTAMPS REALI)
 # ========================================================================
 st.markdown('<div class="update-container">', unsafe_allow_html=True)
 
-# 1. LETTURA STATICA FASE 1 (SOLO DA LOG)
+# Gestione Data Fase 1
 if os.path.exists("timestamp_fase1.txt"):
-    try:
-        with open("timestamp_fase1.txt", "r") as f:
-            stringa_data_fase1 = f.read().strip()
-        if stringa_data_fase1:
-            st.markdown(f"<div class='update-label'>📅 <b>Ultimo calcolo Palinsesto (Fase 1):</b> {stringa_data_fase1}</div>", unsafe_allow_html=True)
-        else:
-            st.markdown("<div class='update-label'>📅 <b>Ultimo calcolo Palinsesto (Fase 1):</b> Log presente ma vuoto</div>", unsafe_allow_html=True)
-    except:
-        st.markdown("<div class='update-label'>📅 <b>Ultimo calcolo Palinsesto (Fase 1):</b> Errore lettura log</div>", unsafe_allow_html=True)
+    with open("timestamp_fase1.txt", "r") as f:
+        d1 = f.read().strip()
+    st.markdown(f"<div class='update-label'>📅 <b>Ultimo calcolo Palinsesto (Fase 1):</b> {d1}</div>", unsafe_allow_html=True)
+elif not df_palinsesto.empty and os.path.exists(PALINSESTO_FILE):
+    d1 = datetime.fromtimestamp(os.path.getmtime(PALINSESTO_FILE), tz=FUSO_ROMA).strftime('%d/%m/%Y %H:%M:%S')
+    st.markdown(f"<div class='update-label'>📅 <b>Ultimo calcolo Palinsesto (Fase 1):</b> {d1}</div>", unsafe_allow_html=True)
 else:
-    st.markdown("<div class='update-label'>📅 <b>Ultimo calcolo Palinsesto (Fase 1):</b> In attesa del primo avvio della Fase 1</div>", unsafe_allow_html=True)
+    st.markdown("<div class='update-label'>📅 <b>Ultimo calcolo Palinsesto (Fase 1):</b> Non disponibile / In attesa</div>", unsafe_allow_html=True)
 
-# 2. LETTURA STATICA FASE 2 (SOLO DA LOG)
+# Gestione Data Fase 2
 if os.path.exists("timestamp_fase2.txt"):
-    try:
-        with open("timestamp_fase2.txt", "r") as f:
-            stringa_data_fase2 = f.read().strip()
-        if stringa_data_fase2:
-            st.markdown(f"<div class='update-label'>🗄️ <b>Ultima Validazione Storico (Fase 2):</b> {stringa_data_fase2}</div>", unsafe_allow_html=True)
-        else:
-            st.markdown("<div class='update-label'>🗄️ <b>Ultima Validazione Storico (Fase 2):</b> Log presente ma vuoto</div>", unsafe_allow_html=True)
-    except:
-        st.markdown("<div class='update-label'>🗄️ <b>Ultima Validazione Storico (Fase 2):</b> Errore lettura log</div>", unsafe_allow_html=True)
+    with open("timestamp_fase2.txt", "r") as f:
+        d2 = f.read().strip()
+    st.markdown(f"<div class='update-label'>🗄️ <b>Ultima Validazione Storico (Fase 2):</b> {d2}</div>", unsafe_allow_html=True)
+elif not df_storico_conteggio.empty and os.path.exists(STORICO_FILE):
+    d2 = datetime.fromtimestamp(os.path.getmtime(STORICO_FILE), tz=FUSO_ROMA).strftime('%d/%m/%Y %H:%M:%S')
+    st.markdown(f"<div class='update-label'>🗄️ <b>Ultima Validazione Storico (Fase 2):</b> {d2}</div>", unsafe_allow_html=True)
 else:
-    st.markdown("<div class='update-label'>🗄️ <b>Ultima Validazione Storico (Fase 2):</b> In attesa del primo avvio della Fase 2</div>", unsafe_allow_html=True)
+    st.markdown("<div class='update-label'>🗄️ <b>Ultima Validazione Storico (Fase 2):</b> Non disponibile / In attesa</div>", unsafe_allow_html=True)
 
 st.markdown('</div>', unsafe_allow_html=True)
 # ========================================================================
 
+# Costruzione corretta del Database Globale unificando Storico e Palinsesto senza sovrascritture esterne
+if not df_database.empty and not df_storico_conteggio.empty:
+    df_g = pd.concat([df_database, df_storico_conteggio], ignore_index=True)
+    df_g = df_g.drop_duplicates(subset=['3. Match'], keep='last')
+elif not df_database.empty:
+    df_g = df_database
+else:
+    df_g = df_storico_conteggio
 
-# Funzione per monitorare i workflow
+if not df_g.empty and 'Risultato_Reale' not in df_g.columns:
+    df_g['Risultato_Reale'] = "-"
+
+# Funzione per eseguire e monitorare i workflow GitHub Actions
 def esegui_e_attendi_workflow(workflow_name):
     if not TOKEN or not REPO:
         st.error("Credenziali GitHub mancanti nei Secrets.")
@@ -105,7 +124,7 @@ def esegui_e_attendi_workflow(workflow_name):
     completato = False
     successo = False
     
-    for _ in range(50): 
+    for _ in range(60): 
         try:
             r = requests.get(url_runs, headers=headers).json()
             if "workflow_runs" in r and len(r["workflow_runs"]) > 0:
@@ -129,7 +148,6 @@ def esegui_e_attendi_workflow(workflow_name):
     else:
         st.warning("⏱️ Timeout raggiunto. Verifica lo stato direttamente su GitHub.")
 
-
 col1, col2 = st.columns(2)
 with col1:
     if st.button("🚀 Avvia Fase 1 (Pre-Match)", use_container_width=True):
@@ -140,37 +158,12 @@ with col2:
         with st.spinner("⏳ Fase 2 in progress su GitHub... Attendi..."):
             esegui_e_attendi_workflow("validazione_storico.yml")
 
-
-# Lettura file forzata senza memorizzazione vecchia in cache
-@st.cache_data(ttl=10)
-def leggi_excel_fresco(file_path):
-    if os.path.exists(file_path):
-        return pd.read_excel(file_path)
-    return pd.DataFrame()
-
-df_database = leggi_excel_fresco(DB_FILE)
-df_palinsesto = leggi_excel_fresco(PALINSESTO_FILE)
-
-if not df_database.empty and not df_palinsesto.empty:
-    df_g = pd.concat([df_database, df_palinsesto], ignore_index=True)
-    df_g = df_g.drop_duplicates(subset=['3. Match'], keep='first')
-elif not df_database.empty:
-    df_g = df_database
-else:
-    df_g = df_palinsesto
-
-if not df_g.empty and 'Risultato_Reale' not in df_g.columns:
-    df_g['Risultato_Reale'] = "-"
-
-
-# CONTEGGI DINAMICI
+# CONTEGGI DINAMICI REALI
 count_palinsesto = len(df_palinsesto) if not df_palinsesto.empty else 0
-df_storico_conteggio = leggi_excel_fresco(STORICO_FILE)
 count_storico = len(df_storico_conteggio) if not df_storico_conteggio.empty else 0
 count_database = len(df_g) if not df_g.empty else 0
 
-
-# SELETTORE
+# SELETTORE TAB
 scelta_tab = st.selectbox(
     "📂 Seleziona Sezione da Visualizzare:",
     [
@@ -206,7 +199,7 @@ if "🎯 Palinsesto" in scelta_tab:
     else:
         st.info("ℹ️ Nessun match in palinsesto calcolato. Avvia la Fase 1.")
 
-# SEZIONE 2: STORICO
+# SEZIONE 2: STORICO (CON RISULTATI REALI ED ESITI COMPLETI DEGLI 11 MERCATI)
 elif "📊 Storico" in scelta_tab:
     if not df_g.empty:
         def is_match_terminato(val):
@@ -217,18 +210,16 @@ elif "📊 Storico" in scelta_tab:
         match_validi = df_g[mask_terminati].copy()
         tot = len(match_validi)
         
-        def calc_acc(col, is_corner=False):
-            if is_corner: return "<span class='accuracy-value-nd'>N.D.</span>"
+        def calc_acc(col):
             if tot == 0 or col not in match_validi.columns: return "<span class='accuracy-value'>0.0%</span>"
-            
             vincenti = len(match_validi[match_validi[col].astype(str).str.strip().str.upper() == 'VINCENTE'])
             percentuale = (vincenti / tot) * 100
             return f"<span class='accuracy-value'>{percentuale:.1f}%</span>"
 
-        st.write(f"📊 **Resoconto Accuratezza su {tot} Match Terminati presenti nel Database Totale:**")
+        st.write(f"📊 **Resoconto Accuratezza su {tot} Match Terminati (Database Unificato):**")
         st.markdown(f"""
         <div class="accuracy-grid">
-            <div class="accuracy-card"><span class="accuracy-market">1X2</span> {calc_acc('App_Esito_1X2' if 'App_Esito_1X2' in match_validi.columns else 'Esito_1X2')}</div>
+            <div class="accuracy-card"><span class="accuracy-market">1X2</span> {calc_acc('Esito_1X2')}</div>
             <div class="accuracy-card"><span class="accuracy-market">Risultato Esatto</span> {calc_acc('Esito_Risultato_Esatto')}</div>
             <div class="accuracy-card"><span class="accuracy-market">Doppia Chance</span> {calc_acc('Esito_Doppia_Chance')}</div>
             <div class="accuracy-card"><span class="accuracy-market">Combo DC+U/O2.5</span> {calc_acc('Esito_DC+U/O2.5')}</div>
@@ -238,18 +229,18 @@ elif "📊 Storico" in scelta_tab:
             <div class="accuracy-card"><span class="accuracy-market">Goal/NoGoal</span> {calc_acc('Esito_Goal_NoGoal')}</div>
             <div class="accuracy-card"><span class="accuracy-market">MG Casa</span> {calc_acc('Esito_Media_Goal_Casa')}</div>
             <div class="accuracy-card"><span class="accuracy-market">MG Ospite</span> {calc_acc('Esito_Media_Goal_Trasferta')}</div>
-            <div class="accuracy-card"><span class="accuracy-market">Corner 1X2</span> {calc_acc('Esito_Corner_1X2', True)}</div>
+            <div class="accuracy-card"><span class="accuracy-market">Corner 1X2</span> {calc_acc('Esito_Corner_1X2')}</div>
         </div>
         """, unsafe_allow_html=True)
     else:
-        st.info("ℹ️ Nessun dato disponibile nel database totale per elaborare l'accuratezza.")
+        st.info("ℹ️ Nessun dato disponibile per elaborare l'accuratezza.")
 
     st.markdown("<br><hr>", unsafe_allow_html=True)
 
     if not df_storico_conteggio.empty:
         for idx, row in df_storico_conteggio.iterrows():
             res_reale = str(row.get('Risultato_Reale', '')).strip().upper()
-            if "ELABORAZIONE" in res_reale or "VALIDARE" in res_reale or "NON ANCORA" in res_reale:
+            if res_reale in ['-', 'NAN', ''] or "ELABORAZIONE" in res_reale or "VALIDARE" in res_reale:
                 res_reale = "IN ATTESA DI VALIDAZIONE"
             
             def get_badge(col_name):
@@ -262,7 +253,7 @@ elif "📊 Storico" in scelta_tab:
             <div class="card-storico">
                 <div class="time-label">🏆 {row.get('Campionato', '-')} | {row.get('Data_Ora_Match', '-')}</div>
                 <h4 style="margin: 4px 0;">{row.get('3. Match', 'Match')}</h4>
-                <div class="result-label">⚽ Finale: {res_reale}</div>
+                <div class="result-label">⚽ Finale Reale: {res_reale}</div>
                 <div class="market-grid">
                     <div class="market-item"><b>1X2:</b> {row.get('1X2', '-')} <br> {get_badge('Esito_1X2')}</div>
                     <div class="market-item"><b>Esatto:</b> {row.get('Risultato_Esatto', '-')} <br> {get_badge('Esito_Risultato_Esatto')}</div>
@@ -278,15 +269,17 @@ elif "📊 Storico" in scelta_tab:
                 </div>
             </div>
             """, unsafe_allow_html=True)
+    else:
+        st.info("ℹ️ Nessun match presente nel file Storico_Validato_Betting.xlsx.")
 
-# SEZIONE 3: DATABASE TOTALMENTE AUTOMATIZZATO
+# SEZIONE 3: DATABASE TOTALE (SPOSTAMENTO E ARCHIVIO COMPLETO DELLE PARTITE TERMINATE)
 elif "🗄️ Database Totale" in scelta_tab:
     if not df_g.empty:
         if 'Data_Ora_Match' in df_g.columns:
             df_g['Data_Ora_Match_Parsed'] = pd.to_datetime(df_g['Data_Ora_Match'], format='%d/%m/%Y %H:%M', errors='coerce')
             df_g = df_g.sort_values(by='Data_Ora_Match_Parsed', ascending=True)
 
-        st.write(f"🗄️ **Partite totali rilevate (Ordinamento Crescente): {len(df_g)}**")
+        st.write(f"🗄️ **Partite totali rilevate in archivio: {len(df_g)}**")
         
         list_c = ["TUTTI"] + list(df_g['Campionato'].dropna().unique())
         scelta_c = st.selectbox("Filtra competizione:", list_c, key="filt_t3")
@@ -296,7 +289,7 @@ elif "🗄️ Database Totale" in scelta_tab:
             res_r = str(row.get('Risultato_Reale', '-')).strip()
             res_r_up = res_r.upper()
             
-            if res_r in ['-', 'nan', ''] or "ELABORAZIONE" in res_r_up or "VALIDARE" in res_r_up or "NON ANCORA" in res_r_up:
+            if res_r in ['-', 'NAN', ''] or "ELABORAZIONE" in res_r_up or "VALIDARE" in res_r_up:
                 res_r = "DA GIOCARE / IN ATTESA DI VALIDAZIONE"
             
             def b_db(col):
@@ -371,7 +364,7 @@ elif "🗄️ Database Totale" in scelta_tab:
         # RESET AVANZATO (STREAMLIT + GITHUB)
         @st.dialog("⚠️ CONFERMA CANCELLAZIONE")
         def conferma_reset_dialog():
-            st.warning("Sei veramente sicuro di voler svuotare interamente l'archivio storico anche su GitHub? Questa azione eliminerà tutti i record in modo definitivo.")
+            st.warning("Sei veramente sicuro di voler svuotare interamente l'archivio storico anche su GitHub?")
             col_yes, col_no = st.columns(2)
             if col_yes.button("🔥 Sì, Cancella Tutto", use_container_width=True):
                 if os.path.exists(DB_FILE): os.remove(DB_FILE)
@@ -392,7 +385,7 @@ elif "🗄️ Database Totale" in scelta_tab:
                             requests.delete(url_file, headers=headers, json=payload)
                 
                 st.cache_data.clear()
-                st.success("Database svuotato con successo localmente e su GitHub!")
+                st.success("Database svuotato con successo!")
                 st.rerun()
             if col_no.button("❌ Annulla", use_container_width=True):
                 st.rerun()
