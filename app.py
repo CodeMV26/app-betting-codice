@@ -153,3 +153,91 @@ opzione_tab = st.selectbox("📂 Visualizza File:", [
     f"📊 Storico Convalidato ({len(df_storico)})", 
     f"🗄️ Database Totale ({len(df_database)})"
 ], label_visibility="collapsed")
+
+# BLOCCO ACCURATEZZA CON INTEGRAZIONE DEI 12 MERCATI COMPLETI
+dict_acc = calcola_accuratezza_globale()
+if dict_acc:
+    st.markdown("""
+    <div class="accuracy-container">
+        <div class="accuracy-title">📈 Accuratezza Algoritmo Dixon-Coles</div>
+        <div class="accuracy-grid">
+    """, unsafe_allow_html=True)
+    for m_name, m_val in dict_acc.items():
+        st.markdown(f'<div class="accuracy-item"><span>{m_name}</span><span class="accuracy-val">{m_val}</span></div>', unsafe_allow_html=True)
+    st.markdown("</div></div>", unsafe_allow_html=True)
+
+# ----------------- RENDERING DELLE SCHEDE INTERNE -----------------
+if "🎯 Palinsesto" in opzione_tab:
+    if not df_palinsesto.empty:
+        for idx, row in df_palinsesto.iterrows():
+            st.markdown(f"""
+            <div class="match-card">
+                <div class="meta-label">🏆 {row.get('Campionato', '-')} | {row.get('Data_Ora_Match', '-')}</div>
+                <div class="team-text"> {row.get('3. Match', 'Match')}</div>
+                <div class="market-box">
+                    <div class="market-cell"><b>1X2</b><div class="market-val-row">{row.get('1X2', '-')}</div></div>
+                    <div class="market-cell"><b>Ris. Esatto</b><div class="market-val-row">{row.get('Risultato_Esatto', '-')}</div></div>
+                    <div class="market-cell"><b>Doppia Chance</b><div class="market-val-row">{row.get('Doppia_Chance', '-')}</div></div>
+                    <div class="market-cell"><b>Combo DC+U/O2.5</b><div class="market-val-row">{row.get('DC+U/O2.5', '-')}</div></div>
+                    <div class="market-cell"><b>U/O 1.5</b><div class="market-val-row">{row.get('U/O_1.5', '-')}</div></div>
+                    <div class="market-cell"><b>U/O 2.5</b><div class="market-val-row">{row.get('U/O_2.5', '-')}</div></div>
+                    <div class="market-cell"><b>U/O 3.5</b><div class="market-val-row">{row.get('U/O_3.5', '-')}</div></div>
+                    <div class="market-cell"><b>Goal/NoGoal</b><div class="market-val-row">{row.get('Goal_NoGoal', '-')}</div></div>
+                    <div class="market-cell"><b>MG Casa</b><div class="market-val-row">{row.get('Pronostico_MG_Casa', '-')}</div></div>
+                    <div class="market-cell"><b>MG Ospite</b><div class="market-val-row">{row.get('Pronostico_MG_Trasferta', '-')}</div></div>
+                    <div class="market-cell"><b>MG Casa+Ospite</b><div class="market-val-row">{row.get('Pronostico_MG_Totale', '-')}</div></div>
+                    <div class="market-cell"><b>Corner 1X2</b><div class="market-val-row">{row.get('Corner_1X2', '-')}</div></div>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+    else: st.info("Palinsesto vuoto.")
+
+elif "📊 Storico" in opzione_tab:
+    if not df_storico.empty:
+        for idx, row in df_storico.iterrows():
+            def badge_esito(col):
+                val = str(row.get(col, '-')).strip().upper()
+                if "VINCENTE" in val: return "<span class='win-badge'>VINC</span>"
+                if "PERDENTE" in val: return "<span class='lose-badge'>PERS</span>"
+                return "<span class='wait-badge'>ATT</span>"
+
+            st.markdown(f"""
+            <div class="match-card">
+                <div class="meta-label">🏆 {row.get('Campionato', '-')} | {row.get('Data_Ora_Match', '-')}</div>
+                <div class="team-text">{row.get('3. Match', 'Match')}</div>
+                <div class="score-badge">⚽ Finale Reale: {row.get('Risultato_Reale', 'IN ATTESA')}</div>
+                <div class="market-box">
+                    <div class="market-cell"><b>1X2</b><div class="market-val-row"><span>{row.get('1X2', '-')}</span>{badge_esito('Esito_1X2')}</div></div>
+                    <div class="market-cell"><b>Esatto</b><div class="market-val-row"><span>{row.get('Risultato_Esatto', '-')}</span>{badge_esito('Esito_Risultato_Esatto')}</div></div>
+                    <div class="market-cell"><b>Doppia</b><div class="market-val-row"><span>{row.get('Doppia_Chance', '-')}</span>{badge_esito('Esito_Doppia_Chance')}</div></div>
+                    <div class="market-cell"><b>Combo DC+U/O2.5</b><div class="market-val-row"><span>{row.get('DC+U/O2.5', '-')}</span>{badge_esito('Esito_DC+U/O2.5')}</div></div>
+                    <div class="market-cell"><b>U/O 1.5</b><div class="market-val-row"><span>{row.get('U/O_1.5', '-')}</span>{badge_esito('Esito_U/O_1.5')}</div></div>
+                    <div class="market-cell"><b>U/O 2.5</b><div class="market-val-row"><span>{row.get('U/O_2.5', '-')}</span>{badge_esito('Esito_U/O_2.5')}</div></div>
+                    <div class="market-cell"><b>U/O 3.5</b><div class="market-val-row"><span>{row.get('U/O_3.5', '-')}</span>{badge_esito('Esito_U/O_3.5')}</div></div>
+                    <div class="market-cell"><b>G/NG</b><div class="market-val-row"><span>{row.get('Goal_NoGoal', '-')}</span>{badge_esito('Esito_Goal_NoGoal')}</div></div>
+                    <div class="market-cell"><b>MG Casa</b><div class="market-val-row"><span>{row.get('Pronostico_MG_Casa', '-')}</span>{badge_esito('Esito_Media_Goal_Casa')}</div></div>
+                    <div class="market-cell"><b>MG Ospite</b><div class="market-val-row"><span>{row.get('Pronostico_MG_Trasferta', '-')}</span>{badge_esito('Esito_Media_Goal_Trasferta')}</div></div>
+                    <div class="market-cell"><b>MG C+O</b><div class="market-val-row"><span>{row.get('Pronostico_MG_Totale', '-')}</span>{badge_esito('Esito_Media_Goal_Totale')}</div></div>
+                    <div class="market-cell"><b>Corner 1X2</b><div class="market-val-row"><span>{row.get('Corner_1X2', '-')}</span>{badge_esito('Esito_Corner_1X2')}</div></div>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+    else: st.info("Storico recente vuoto.")
+
+elif "🗄️ Database" in opzione_tab:
+    if not df_database.empty:
+        for idx, row in df_database.iterrows():
+            st.markdown(f"""
+            <div class="match-card">
+                <div class="meta-label">🏆 {row.get('Campionato', '-')} | {row.get('Data_Ora_Match', '-')}</div>
+                <div class="team-text">{row.get('3. Match', 'Match')}</div>
+                <div class="score-badge">⚽ Risultato: {row.get('Risultato_Reale', '-')}</div>
+                <div class="market-box">
+                    <div class="sub-title">Dati Statistici Archiviati</div>
+                    <div class="market-cell"><b>Punti Casa</b><div class="market-val-row">{row.get('Punti_Casa', '-')}</div></div>
+                    <div class="market-cell"><b>Punti Ospite</b><div class="market-val-row">{row.get('Punti_Trasferta', '-')}</div></div>
+                    <div class="market-cell"><b>GF Casa</b><div class="market-val-row">{row.get('Media_Goal_Casa_Orig', row.get('Media_Goal_Casa', '-'))}</div></div>
+                    <div class="market-cell"><b>GF Ospite</b><div class="market-val-row">{row.get('Media_Goal_Trasferta_Orig', row.get('Media_Goal_Trasferta', '-'))}</div></div>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
