@@ -1,185 +1,143 @@
 import pandas as pd
-import os
-import math
 import numpy as np
+import os
+from scipy.stats import poisson
 
-print("🧠 --- MODULO 02: MOTORE DIXON-COLES & POISSON CON MULTIGOAL DINAMICO ---")
+def calcola_dixon_coles(lambda_casa, mu_ospite, rho=-0.05):
+    """
+    Applica il modello Dixon-Coles per calcolare la matrice delle probabilità dei punteggi (fino a 5-5).
+    Il parametro rho corregge la leggera distorsione statistica sui punteggi bassi (0-0, 1-0, 0-1, 1-1).
+    """
+    matrice_prob = np.zeros((6, 6))
+    for x in range(6):
+        for y in range(6):
+            prob_p_casa = poisson.pmf(x, lambda_casa)
+            prob_p_ospite = poisson.pmf(y, mu_ospite)
+            prob_base = prob_p_casa * prob_p_ospite
+            
+            # Correzione Dixon-Coles per i punteggi più frequenti
+            if x == 0 and y == 0:
+                fattore = 1 - (lambda_casa * mu_ospite * rho)
+            elif x == 1 and y == 0:
+                fattore = 1 + (mu_ospite * rho)
+            elif x == 0 and y == 1:
+                fattore = 1 + (lambda_casa * rho)
+            elif x == 1 and y == 1:
+                fattore = 1 - rho
+            else:
+                fattore = 1
+                
+            matrice_prob[x, y] = prob_base * fattore
+            
+    # Normalizzazione per sicurezza matematica
+    if matrice_prob.sum() > 0:
+        matrice_prob /= matrice_prob.sum()
+        
+    return matrice_prob
 
-DATABASE_FILE = "Database_App_Betting.xlsx"
-OUTPUT_FILE = "Pronostici_App_Betting.xlsx"
-
-def poisson(l, k):
-    if l <= 0: return 1 if k == 0 else 0
-    return (math.exp(-l) * pow(l, k)) / math.factorial(k)
-
-def dixon_coles_adj(i, j, xg_c, xg_t, rho=-0.09):
-    if i == 0 and j == 0: return 1 - (xg_c * xg_t * rho)
-    if i == 1 and j == 0: return 1 + (xg_t * rho)
-    if i == 0 and j == 1: return 1 + (xg_c * rho)
-    if i == 1 and j == 1: return 1 - rho
-    return 1.0
-
-def determina_miglior_multigoal(prob_vettore):
-    range_disponibili = {
-        "1-2 MG": sum(prob_vettore[1:3]),
-        "1-3 MG": sum(prob_vettore[1:4]),
-        "1-4 MG": sum(prob_vettore[1:5]),
-        "2-3 MG": sum(prob_vettore[2:4]),
-        "2-4 MG": sum(prob_vettore[2:5]),
-        "3+ MG": sum(prob_vettore[3:]),
-        "0-1 MG": sum(prob_vettore[0:2])
-    }
-    return max(range_disponibili, key=range_disponibili.get)
-
-if not os.path.exists(DATABASE_FILE):
-    print(f"❌ Errore critico: {DATABASE_FILE} non trovato.")
-    exit()
-
-df_ingresso = pd.read_excel(DATABASE_FILE)
-
-if df_ingresso.empty or "Nessun match" in str(df_ingresso.iloc[0].get('3. Match', '')):
-    print("⚠️ Database vuoto. Genero output pulito.")
-    df_ingresso.to_excel(OUTPUT_FILE, index=False)
-    exit()
-
-print(f"📊 Calcolo MultiGoal Dinamico su {len(df_ingresso)} match reali...")
-righe_pronosticate = []
-
-m_h = 1.20
-m_a = 1.10
-
-for idx, riga in df_ingresso.iterrows():
-    match_data = dict(riga)
-    match_str = match_data.get('3. Match', '')
-    nome_campionato = match_data.get('Campionato', 'FIFA World Cup')
+def esegui_calcolo_motore():
+    """Analizza il file generato dall'estrattore ed elabora le metriche probabilistiche"""
+    file_palinsesto = "Pronostici_App_Betting.xlsx"
     
+    if not os.path.exists(file_palinsesto):
+        return
+        
     try:
-        casa, trasf = match_str.split(" - ")
-    except:
-        continue
+        df = pd.read_excel(file_palinsesto)
+    except Exception:
+        return
+        
+    if df.empty:
+        return
 
-    media_gf_casa_real = float(match_data.get('Media_Goal_Casa', 1.20))
-    media_gf_trasf_real = float(match_data.get('Media_Goal_Trasferta', 1.10))
-    
-    if media_gf_casa_real == 0: media_gf_casa_real = 1.20
-    if media_gf_trasf_real == 0: media_gf_trasf_real = 1.10
-
-    sos_c = (media_gf_casa_real / m_h) * 1.05
-    sos_t = (media_gf_trasf_real / m_a) * 0.95
-
-    xg_c = ((media_gf_casa_real * 1.00) / m_h) * sos_c * 1.08
-    xg_t = ((media_gf_trasf_real * 1.00) / m_a) * sos_t
-
-    matrix = [[0.0 for _ in range(6)] for _ in range(6)]
-    for i in range(6):
-        for j in range(6):
-            p = poisson(xg_c, i) * poisson(xg_t, j)
-            adj = 1.12 if i == j else 1.0
-            matrix[i][j] = p * dixon_coles_adj(i, j, xg_c, xg_t) * adj
-
-    p1, px, p2, p_u15, p_u25, p_u35, p_goal = 0, 0, 0, 0, 0, 0, 0
-    total_p = sum(sum(row) for row in matrix)
-
-    prob_gol_casa = [0.0] * 6
-    prob_gol_trasf = [0.0] * 6
-
-    for i in range(6):
-        for j in range(6):
-            prob = matrix[i][j] / total_p
-            prob_gol_casa[i] += prob
-            prob_gol_trasf[j] += prob
+    for idx, row in df.iterrows():
+        # Calcolo degli Alpha e Beta di attacco/difesa simulati partendo dallo storico gol totali reali
+        part_casa = row.get("Giocate_Casa", 10)
+        part_ospite = row.get("Giocate_Ospite", 10)
+        
+        # Prevenzione divisione per zero
+        if part_casa == 0: part_casa = 1
+        if part_ospite == 0: part_ospite = 1
+        
+        # Calcolo dei tassi nominali di pericolosità offensiva e difensiva basati su dati storici reali
+        att_casa = (row.get("Media_Goal_Casa", 0) / part_casa)
+        dif_casa = (row.get("Goal_Subiti_Casa", 0) / part_casa)
+        att_ospite = (row.get("Media_Goal_Trasferta", 0) / part_ospite)
+        dif_ospite = (row.get("Goal_Subiti_Ospite", 0) / part_ospite)
+        
+        # Calcolo Lambda e Mu condizionati (forzando un minimo di 0.2 per evitare asfissia matematica)
+        lambda_casa = max(att_casa * dif_ospite, 0.2)
+        mu_ospite = max(att_ospite * dif_casa, 0.2)
+        
+        # Generazione della matrice probabilistica 6x6
+        matrice = calcola_dixon_coles(lambda_casa, mu_ospite)
+        
+        # 1. Mercato 1X2
+        p_1 = np.sum(np.tril(matrice, -1))
+        p_X = np.sum(np.diag(matrice))
+        p_2 = np.sum(np.triu(matrice, 1))
+        
+        esiti_1x2 = ["1", "X", "2"]
+        prob_1x2 = [p_1, p_X, p_2]
+        df.at[idx, "1X2"] = f"{esiti_1x2[np.argmax(prob_1x2)]} ({max(prob_1x2)*100:.0f}%)"
+        
+        # 2. Risultato Esatto
+        x_max, y_max = np.unravel_index(np.argmax(matrice), matrice.shape)
+        df.at[idx, "Risultato_Esatto"] = f"{x_max}-{y_max} ({matrice[x_max, y_max]*100:.0f}%)"
+        
+        # 3. Doppia Chance
+        if (p_1 + p_X) > (p_X + p_2) and (p_1 + p_X) > (p_1 + p_2):
+            df.at[idx, "Doppia_Chance"] = f"1X ({ (p_1+p_X)*100 :.0f}%)"
+        elif (p_X + p_2) > (p_1 + p_2):
+            df.at[idx, "Doppia_Chance"] = f"X2 ({ (p_X+p_2)*100 :.0f}%)"
+        else:
+            df.at[idx, "Doppia_Chance"] = f"12 ({ (p_1+p_2)*100 :.0f}%)"
             
-            if i > j: p1 += prob
-            elif i == j: px += prob
-            else: p2 += prob
-            s = i + j
-            if s < 1.5: p_u15 += prob
-            if s < 2.5: p_u25 += prob
-            if s < 3.5: p_u35 += prob
-            if i > 0 and j > 0: p_goal += prob
-
-    probs = {'1': p1, 'X': px, '2': p2}
-    prono_s = max(probs, key=probs.get)
-
-    over_leagues = ["Olanda_Eredivisie", "Germania_Bundesliga", "Inghilterra_Premier_League"]
-    u25_threshold = 0.47 if nome_campionato in over_leagues else 0.49
-    u25_label = "UNDER 2.5" if p_u25 > u25_threshold else "OVER 2.5"
-
-    dc_val = "1X" if (p1 + px) > (p2 + px) else "X2"
-    re_idx = np.unravel_index(np.argmax(matrix), (6,6))
-
-    # Valorizzazione mercati
-    match_data["1X2"] = prono_s
-    match_data["Risultato_Esatto"] = f"{re_idx[0]}-{re_idx[1]}"
-    match_data["Doppia_Chance"] = dc_val
-    match_data["U/O_1.5"] = "UNDER 1.5" if p_u15 > 0.52 else "OVER 1.5"
-    match_data["U/O_2.5"] = u25_label
-    match_data["U/O_3.5"] = "UNDER 3.5" if p_u35 > 0.52 else "OVER 3.5"
-    match_data["Goal_NoGoal"] = "GOAL" if p_goal > 0.52 else "NOGOAL"
-    match_data["DC+U/O2.5"] = f"{dc_val}+{u25_label.split(' ')[0]}"
-    match_data["Corner_1X2"] = "1" if xg_c > xg_t + 0.3 else ("2" if xg_t > xg_c + 0.3 else "X")
-    
-    # Assegnazione colonne MultiGoal separate
-    match_data["Pronostico_MG_Casa"] = determina_miglior_multigoal(prob_gol_casa)
-    match_data["Pronostico_MG_Trasferta"] = determina_miglior_multigoal(prob_gol_trasf)
-
-    righe_pronosticate.append(match_data)
-
-df_out = pd.DataFrame(righe_pronosticate)
-
-# 🗄️ --- CODA DI SICUREZZA: ARCHIVIAZIONE PRE-MATCH INTEGRALE DELLE API ---
-DATABASE_STORICO_GLOBALE = "Database_Storico_Completo.xlsx"
-
-def genera_chiave_univoca_local(row):
-    data = str(row.get('Data_Ora_Match', '')).strip()
-    match_str = str(row.get('3. Match', '')).strip()
-    return f"{data}_{match_str}".lower().replace(" ", "")
-
-if not df_out.empty:
-    print("⏳ Memorizzazione preventiva di tutte le colonne statistiche nel Database Storico...")
-    
-    df_da_appendere = df_out.copy()
-    df_da_appendere["Risultato_Reale"] = "NON ANCORA REALE/DA VALIDARE"
-    
-    if os.path.exists(DATABASE_STORICO_GLOBALE):
-        try:
-            df_storico_esistente = pd.read_excel(DATABASE_STORICO_GLOBALE)
-            
-            # Uniformiamo dinamicamente le colonne
-            for col in df_da_appendere.columns:
-                if col not in df_storico_esistente.columns:
-                    df_storico_esistente[col] = None
-            for col in df_storico_esistente.columns:
-                if col not in df_da_appendere.columns:
-                    df_da_appendere[col] = None
-            
-            # Controllo univoco chiavi uniforme
-            if not df_storico_esistente.empty:
-                chiavi_storico = set(df_storico_esistente.apply(genera_chiave_univoca_local, axis=1))
-            else:
-                chiavi_storico = set()
+        # Calcolo probabilistico combinato per Under/Over
+        p_under_15 = p_under_25 = p_under_35 = 0.0
+        p_goal = 0.0
+        
+        for x in range(6):
+            for y in range(6):
+                tot_g = x + y
+                if tot_g < 1.5: p_under_15 += matrice[x, y]
+                if tot_g < 2.5: p_under_25 += matrice[x, y]
+                if tot_g < 3.5: p_under_35 += matrice[x, y]
+                if x > 0 and y > 0: p_goal += matrice[x, y]
                 
-            nuova_lista_effettiva = []
-            for _, riga in df_da_appendere.iterrows():
-                if genera_chiave_univoca_local(riga) not in chiavi_storico:
-                    nuova_lista_effettiva.append(riga)
-            
-            if nuova_lista_effettiva:
-                df_nuove_inserite = pd.DataFrame(nuova_lista_effettiva)
-                df_storico_aggiornato = pd.concat([df_storico_esistente, df_nuove_inserite], ignore_index=True)
-                df_storico_aggiornato.to_excel(DATABASE_STORICO_GLOBALE, index=False)
-                print(f"✅ Storico aggiornato con successo: registrati {len(nuova_lista_effettiva)} match con intero patrimonio statistico.")
-            else:
-                print("📋 Nessun nuovo match inserito: i record correnti sono già blindati nell'archivio.")
-                
-        except Exception as e:
-            print(f"⚠️ Nota di avviso accodamento storico: {e}")
-    else:
-        try:
-            df_da_appendere.to_excel(DATABASE_STORICO_GLOBALE, index=False)
-            print("🆕 Archivio Database_Storico_Completo.xlsx non rilevato. Creato un nuovo tracciato globale.")
-        except Exception as e:
-            print(f"❌ Impossibile inizializzare il Database Storico: {e}")
+        # 4. Under/Over 1.5
+        df.at[idx, "U/O_1.5"] = f"OVER 1.5 ({(1-p_under_15)*100:.0f}%)" if p_under_15 < 0.5 else f"UNDER 1.5 ({p_under_15*100:.0f}%)"
+        # 5. Under/Over 2.5
+        df.at[idx, "U/O_2.5"] = f"OVER 2.5 ({(1-p_under_25)*100:.0f}%)" if p_under_25 < 0.5 else f"UNDER 2.5 ({p_under_25*100:.0f}%)"
+        # 6. Under/Over 3.5
+        df.at[idx, "U/O_3.5"] = f"OVER 3.5 ({(1-p_under_35)*100:.0f}%)" if p_under_35 < 0.5 else f"UNDER 3.5 ({p_under_35*100:.0f}%)"
+        # 7. Goal / NoGoal
+        df.at[idx, "Goal_NoGoal"] = f"GG ({p_goal*100:.0f}%)" if p_goal > 0.5 else f"NG ({(1-p_goal)*100:.0f}%)"
+        
+        # 8. Combo DC + U/O 2.5
+        dc_pref = "1X" if (p_1 + p_X) >= (p_X + p_2) else "X2"
+        uo_pref = "OV2.5" if p_under_25 < 0.5 else "UN2.5"
+        df.at[idx, "DC+U/O2.5"] = f"{dc_pref}+{uo_pref}"
+        
+        # 9. Media Goal Espressa (Pronostico Singolo)
+        df.at[idx, "Pronostico_MG_Casa"] = round(lambda_casa, 1)
+        df.at[idx, "Pronostico_MG_Trasferta"] = round(mu_ospite, 1)
+        
+        # 10. MG Casa+Ospite (Somma Totale Attesa)
+        df.at[idx, "Pronostico_MG_Totale"] = round(lambda_casa + mu_ospite, 1)
+        
+        # 11. Corner 1X2 (Modello statistico basato sulla spinta offensiva e punti reali)
+        punti_c = row.get("Punti_Casa", 0)
+        punti_o = row.get("Punti_Trasferta", 0)
+        if punti_c > punti_o + 5:
+            df.at[idx, "Corner_1X2"] = "1"
+        elif punti_o > punti_c + 5:
+            df.at[idx, "Corner_1X2"] = "2"
+        else:
+            df.at[idx, "Corner_1X2"] = "X"
 
-df_out.to_excel(OUTPUT_FILE, index=False)
-print(f"✅ Analisi completata. File {OUTPUT_FILE} generato correttamente.")
+    # Salva il file definitivo con tutti i mercati compilati dal modello Dixon-Coles
+    df.to_excel(file_palinsesto, index=False)
+
+if __name__ == "__main__":
+    esegui_calcolo_motore()
