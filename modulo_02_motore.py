@@ -51,7 +51,7 @@ def esegui_calcolo_motore():
     if df.empty:
         return
 
-    # FORZATURA TASSATIVA DEL DTYPE A STRINGA PER EVITARE ERRORE FLOAT64
+    # Forzatura del tipo di dato a stringa per evitare conflitti float64
     colonne_testo = ["1X2", "Risultato_Esatto", "Doppia_Chance", "DC+U/O2.5", "U/O_1.5", "U/O_2.5", "U/O_3.5", "Goal_NoGoal", "Corner_1X2"]
     for col in colonne_testo:
         if col in df.columns:
@@ -86,11 +86,11 @@ def esegui_calcolo_motore():
         df.at[idx, "Risultato_Esatto"] = f"{x_max}-{y_max} ({matrice[x_max, y_max]*100:.0f}%)"
         
         if (p_1 + p_X) > (p_X + p_2) and (p_1 + p_X) > (p_1 + p_2):
-            df.at[idx, "Doppia_Chance"] = f"1X ({ (p_1+p_X)*100 :.0f}%)"
+            df.at[idx, "Doppia_Chance"] = f"1X ({(p_1+p_X)*100:.0f}%)"
         elif (p_X + p_2) > (p_1 + p_2):
-            df.at[idx, "Doppia_Chance"] = f"X2 ({ (p_X+p_2)*100 :.0f}%)"
+            df.at[idx, "Doppia_Chance"] = f"X2 ({(p_X+p_2)*100:.0f}%)"
         else:
-            df.at[idx, "Doppia_Chance"] = f"12 ({ (p_1+p_2)*100 :.0f}%)"
+            df.at[idx, "Doppia_Chance"] = f"12 ({(p_1+p_2)*100:.0f}%)"
             
         p_under_15 = p_under_25 = p_under_35 = 0.0
         p_goal = 0.0
@@ -104,12 +104,12 @@ def esegui_calcolo_motore():
                 if x > 0 and y > 0: p_goal += matrice[x, y]
                 
         df.at[idx, "U/O_1.5"] = f"OVER 1.5 ({(1-p_under_15)*100:.0f}%)" if p_under_15 < 0.5 else f"UNDER 1.5 ({p_under_15*100:.0f}%)"
-        df.at[idx, "U/O_2.5"] = f"OVER 2.5 ({(1-p_under_25)*100:.0f}%)" if p_under_25 < 0.5 else f"UNDER 2.5 ({p_under_25*100:.0f}%)"
+        df.at[idx, "U/O_2.5"] = f"OVER 2.5 ({(1-1-p_under_25)*100:.0f}%)" if p_under_25 < 0.5 else f"UNDER 2.5 ({p_under_25*100:.0f}%)"
         df.at[idx, "U/O_3.5"] = f"OVER 3.5 ({(1-p_under_35)*100:.0f}%)" if p_under_35 < 0.5 else f"UNDER 3.5 ({p_under_35*100:.0f}%)"
         df.at[idx, "Goal_NoGoal"] = f"GG ({p_goal*100:.0f}%)" if p_goal > 0.5 else f"NG ({(1-p_goal)*100:.0f}%)"
         
         dc_pref = "1X" if (p_1 + p_X) >= (p_X + p_2) else "X2"
-        uo_pref = "OV2.5" if p_under_25 < 0.5 else "UN2.5"
+        uo_pref = "UN2.5" if p_under_25 >= 0.5 else "OV2.5"
         df.at[idx, "DC+U/O2.5"] = f"{dc_pref}+{uo_pref}"
         
         df.at[idx, "Pronostico_MG_Casa"] = round(lambda_casa, 1)
