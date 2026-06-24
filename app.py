@@ -5,19 +5,18 @@ import os
 # Configurazione geometrica blindata per iPhone X (5.8") e iPhone 13 (6.1")
 st.set_page_config(page_title="⚽ Betting Pro Mobile", page_icon="⚽", layout="centered")
 
-# --- RESTYLING GRAFICO PREMIUM AZZURRO SOFT (APPLE LIGHT STYLE) ---
+# --- RESTYLING GRAFICO EMENDATO (VERSIONE 4.3) ---
 st.markdown("""
     <style>
-    /* Sfondo globale dell'applicazione grigio chiarissimo iOS */
     .stApp { background-color: #f2f2f7; }
-    .block-container { padding-top: 0.5rem !important; padding-bottom: 1rem !important; padding-left: 0.6rem !important; padding-right: 0.6rem !important; }
+    .block-container { padding-top: 0.8rem !important; padding-bottom: 1rem !important; padding-left: 0.6rem !important; padding-right: 0.6rem !important; }
     
-    /* Intestazione principale e Versione Progetto visibile */
-    .main-title { font-size: 24px; font-weight: 800; color: #1c1c1e; text-align: center; margin-bottom: 2px; letter-spacing: -0.5px; }
-    .version-label { font-size: 11px; font-weight: 700; color: #007aff; text-align: center; margin-bottom: 14px; text-transform: uppercase; letter-spacing: 0.5px; }
-    .section-title { font-size: 14px; font-weight: 700; color: #8e8e93; text-transform: uppercase; margin-bottom: 8px; padding-left: 4px; }
+    /* Titolo e versione forzati visibili senza blocchi */
+    .brand-box { text-align: center; margin-bottom: 12px; padding: 4px; background: transparent; }
+    .main-title { font-size: 24px; font-weight: 800; color: #1c1c1e; margin: 0; }
+    .version-label { font-size: 11px; font-weight: 700; color: #007aff; margin-top: 2px; text-transform: uppercase; letter-spacing: 0.5px; }
 
-    /* Pulsanti d'Azione compatti iOS-like */
+    /* Pulsanti d'Azione iOS-like */
     div.stButton > button {
         border-radius: 12px !important;
         font-weight: 700 !important;
@@ -27,32 +26,30 @@ st.markdown("""
         transition: all 0.2s ease;
         box-shadow: 0 4px 10px rgba(0,0,0,0.04) !important;
     }
-    /* Sfumature di azzurro e blu professionali per i 3 bottoni */
-    div.stButton:nth-child(2) > button { background-color: #007aff !important; color: white !important; }
-    div.stButton:nth-child(3) > button { background-color: #34c759 !important; color: white !important; }
-    div.stButton:nth-child(4) > button { background-color: #5856d6 !important; color: white !important; }
+    div.stButton:nth-child(1) > button { background-color: #007aff !important; color: white !important; }
+    div.stButton:nth-child(2) > button { background-color: #34c759 !important; color: white !important; }
+    div.stButton:nth-child(3) > button { background-color: #5856d6 !important; color: white !important; }
     
-    /* Box Accuratezza Algoritmo in Azzurro Soft ad Alto Contrasto Leggibile */
-    .accuracy-container { background: #e1f5fe; padding: 14px; border-radius: 16px; margin-bottom: 16px; box-shadow: 0 4px 12px rgba(0,122,255,0.08); border: 1px solid #b3e5fc; }
+    /* Box Accuratezza Azzurro Soft */
+    .accuracy-container { background: #e1f5fe; padding: 14px; border-radius: 16px; margin-top: 14px; margin-bottom: 16px; box-shadow: 0 4px 12px rgba(0,122,255,0.08); border: 1px solid #b3e5fc; }
     .accuracy-title { font-size: 12px; font-weight: 800; color: #0288d1; text-transform: uppercase; margin-bottom: 10px; text-align: center; letter-spacing: 0.5px; }
     .accuracy-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
     .accuracy-item { background: #ffffff; padding: 8px 10px; border-radius: 10px; font-size: 12px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #e1f5fe; }
     .accuracy-item span { color: #48484a; font-weight: 600; }
-    .accuracy-val { color: #34c759; font-weight: 800; font-family: -apple-system, sans-serif; font-size: 13px; }
+    .accuracy-val { color: #34c759; font-weight: 800; font-size: 13px; }
     
-    /* Card dei Match Elegante */
+    /* Card dei Match */
     .match-card { background-color: #ffffff; padding: 14px; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.02); margin-bottom: 12px; border: 1px solid #e5e5ea; }
     .meta-label { color: #007aff; font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.3px; margin-bottom: 4px; }
     .team-text { font-size: 16px; font-weight: 700; color: #1c1c1e; margin: 2px 0 8px 0; letter-spacing: -0.3px; }
     .score-badge { background-color: #f2f2f7; color: #1c1c1e; font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 8px; display: inline-block; margin-bottom: 8px; border: 1px solid #e5e5ea; }
     
-    /* Griglia Mercati */
+    /* Griglia Mercati fissa a 2 Colonne */
     .market-box { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; border-top: 1px dashed #e5e5ea; padding-top: 8px; }
     .market-cell { background: #f8f9fa; padding: 8px; border-radius: 8px; font-size: 12px; display: flex; flex-direction: column; justify-content: center; border: 1px solid #f2f2f7; }
     .market-cell b { color: #8e8e93; font-size: 10px; text-transform: uppercase; margin-bottom: 2px; }
     .market-val-row { display: flex; justify-content: space-between; align-items: center; font-weight: 600; color: #1c1c1e; }
     
-    /* Badges Esiti */
     .win-badge { color: #34c759; font-weight: bold; font-size: 11px; background: #e8f9ee; padding: 2px 6px; border-radius: 4px; }
     .lose-badge { color: #ff3b30; font-weight: bold; font-size: 11px; background: #ffebeb; padding: 2px 6px; border-radius: 4px; }
     .wait-badge { color: #ff9500; font-weight: bold; font-size: 11px; background: #fff5e6; padding: 2px 6px; border-radius: 4px; }
@@ -89,7 +86,6 @@ def calcola_accuratezza_globale():
         "U/O 3.5": "Esito_U/O_3.5", "Goal/NoGoal": "Esito_Goal_NoGoal", "MG Casa": "Esito_Media_Goal_Casa",
         "MG Ospite": "Esito_Media_Goal_Trasferta"
     }
-    
     accuratezza = {}
     for nome_m, col in mappa_esiti.items():
         if col in df_totale.columns:
@@ -101,19 +97,21 @@ def calcola_accuratezza_globale():
         else: accuratezza[nome_m] = "N.D."
     return accuratezza
 
-# Titolo e Versione visibili sul display dell'iPhone
-st.markdown('<div class="main-title">⚽ Betting Pro Mobile</div>', unsafe_allow_html=True)
-st.markdown('<div class="version-label">Versione Progetto: 4.2</div>', unsafe_allow_html=True)
+# Intestazione Forzata a Schermo
+st.markdown("""
+<div class="brand-box">
+    <div class="main-title">⚽ Betting Pro Mobile</div>
+    <div class="version-label">Versione Progetto: 4.3</div>
+</div>
+""", unsafe_allow_html=True)
 
-# --- PANNELLO DI CONTROLLO A TRE FASI ---
-st.markdown('<div class="section-title">🎛️ Pannello Operativo</div>', unsafe_allow_html=True)
-
+# --- I 3 PULSANTI DIRETTI SENZA SCRITTE DI DIVISIONE ---
 if st.button("🚀 FASE 1: Estrattore Totale & Pronostici", use_container_width=True):
-    with st.spinner("⏳ Fase 1 in corso..."):
+    with st.spinner("⏳ Estrazione dei 12 Campionati in corso..."):
         try:
             import modulo_01_estrattore as m1
             import modulo_02_motore as m2
-            m1.esegui_estrazione()
+            m1.esegui_estrazione() # Estrae in blocco i 12 campionati senza menu a tendina
             m2.esegui_calcolo_motore()
             st.success("✅ Palinsesto Attivo pronto!")
             st.rerun()
@@ -139,14 +137,13 @@ if st.button("🗄️ FASE 3: Archiviazione Completa", use_container_width=True)
 
 st.markdown("<br>", unsafe_allow_html=True)
 
-# SELETTORE SCHERMATA COMPATTO
 opzione_tab = st.selectbox("📂 Visualizza File:", [
     f"🎯 Palinsesto Attivo ({len(df_palinsesto)})", 
     f"📊 Storico Convalidato ({len(df_storico)})", 
     f"🗄️ Database Totale ({len(df_database)})"
 ], label_visibility="collapsed")
 
-# BLOCCO ACCURATEZZA IN AZZURRO PREMIUM SOFT
+# BLOCCO ACCURATEZZA
 dict_acc = calcola_accuratezza_globale()
 if dict_acc:
     st.markdown("""
@@ -170,13 +167,14 @@ if "🎯 Palinsesto" in opzione_tab:
                     <div class="market-cell"><b>1X2</b><div class="market-val-row">{row.get('1X2', '-')}</div></div>
                     <div class="market-cell"><b>Ris. Esatto</b><div class="market-val-row">{row.get('Risultato_Esatto', '-')}</div></div>
                     <div class="market-cell"><b>Doppia Chance</b><div class="market-val-row">{row.get('Doppia_Chance', '-')}</div></div>
-                    <div class="market-cell"><b>Combo DC+U/O</b><div class="market-val-row">{row.get('DC+U/O2.5', '-')}</div></div>
+                    <div class="market-cell"><b>Combo DC+U/O2.5</b><div class="market-val-row">{row.get('DC+U/O2.5', '-')}</div></div>
                     <div class="market-cell"><b>U/O 1.5</b><div class="market-val-row">{row.get('U/O_1.5', '-')}</div></div>
                     <div class="market-cell"><b>U/O 2.5</b><div class="market-val-row">{row.get('U/O_2.5', '-')}</div></div>
                     <div class="market-cell"><b>U/O 3.5</b><div class="market-val-row">{row.get('U/O_3.5', '-')}</div></div>
                     <div class="market-cell"><b>Goal/NoGoal</b><div class="market-val-row">{row.get('Goal_NoGoal', '-')}</div></div>
                     <div class="market-cell"><b>MG Casa</b><div class="market-val-row">{row.get('Pronostico_MG_Casa', '-')}</div></div>
                     <div class="market-cell"><b>MG Ospite</b><div class="market-val-row">{row.get('Pronostico_MG_Trasferta', '-')}</div></div>
+                    <div class="market-cell"><b>MG Casa+Ospite</b><div class="market-val-row">{row.get('Pronostico_MG_Totale', '-')}</div></div>
                     <div class="market-cell"><b>Corner 1X2</b><div class="market-val-row">{row.get('Corner_1X2', '-')}</div></div>
                 </div>
             </div>
@@ -201,13 +199,15 @@ elif "📊 Storico" in opzione_tab:
                     <div class="market-cell"><b>1X2</b><div class="market-val-row"><span>{row.get('1X2', '-')}</span>{badge_esito('Esito_1X2')}</div></div>
                     <div class="market-cell"><b>Esatto</b><div class="market-val-row"><span>{row.get('Risultato_Esatto', '-')}</span>{badge_esito('Esito_Risultato_Esatto')}</div></div>
                     <div class="market-cell"><b>Doppia</b><div class="market-val-row"><span>{row.get('Doppia_Chance', '-')}</span>{badge_esito('Esito_Doppia_Chance')}</div></div>
-                    <div class="market-cell"><b>Combo</b><div class="market-val-row"><span>{row.get('DC+U/O2.5', '-')}</span>{badge_esito('Esito_DC+U/O2.5')}</div></div>
+                    <div class="market-cell"><b>Combo DC+U/O2.5</b><div class="market-val-row"><span>{row.get('DC+U/O2.5', '-')}</span>{badge_esito('Esito_DC+U/O2.5')}</div></div>
                     <div class="market-cell"><b>U/O 1.5</b><div class="market-val-row"><span>{row.get('U/O_1.5', '-')}</span>{badge_esito('Esito_U/O_1.5')}</div></div>
                     <div class="market-cell"><b>U/O 2.5</b><div class="market-val-row"><span>{row.get('U/O_2.5', '-')}</span>{badge_esito('Esito_U/O_2.5')}</div></div>
                     <div class="market-cell"><b>U/O 3.5</b><div class="market-val-row"><span>{row.get('U/O_3.5', '-')}</span>{badge_esito('Esito_U/O_3.5')}</div></div>
                     <div class="market-cell"><b>G/NG</b><div class="market-val-row"><span>{row.get('Goal_NoGoal', '-')}</span>{badge_esito('Esito_Goal_NoGoal')}</div></div>
                     <div class="market-cell"><b>MG Casa</b><div class="market-val-row"><span>{row.get('Pronostico_MG_Casa', '-')}</span>{badge_esito('Esito_Media_Goal_Casa')}</div></div>
                     <div class="market-cell"><b>MG Ospite</b><div class="market-val-row"><span>{row.get('Pronostico_MG_Trasferta', '-')}</span>{badge_esito('Esito_Media_Goal_Trasferta')}</div></div>
+                    <div class="market-cell"><b>MG C+O</b><div class="market-val-row"><span>{row.get('Pronostico_MG_Totale', '-')}</span>{badge_esito('Esito_Media_Goal_Totale')}</div></div>
+                    <div class="market-cell"><b>Corner 1X2</b><div class="market-val-row"><span>{row.get('Corner_1X2', '-')}</span>{badge_esito('Esito_Corner_1X2')}</div></div>
                 </div>
             </div>
             """, unsafe_allow_html=True)
