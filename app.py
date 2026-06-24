@@ -5,7 +5,7 @@ import os
 # Configurazione geometrica blindata per iPhone X (5.8") e iPhone 13 (6.1")
 st.set_page_config(page_title="⚽ Betting Pro Mobile", page_icon="⚽", layout="centered")
 
-# --- RESTYLING GRAFICO EMENDATO (VERSIONE 4.4) ---
+# --- RESTYLING GRAFICO EMENDATO (VERSIONE 5.5) ---
 st.markdown("""
     <style>
     .stApp { background-color: #f2f2f7; }
@@ -54,6 +54,12 @@ st.markdown("""
     .team-text { font-size: 15px; font-weight: 700; color: #1c1c1e; margin: 2px 0 6px 0; letter-spacing: -0.3px; }
     .score-badge { background-color: #f2f2f7; color: #1c1c1e; font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 6px; display: inline-block; margin-bottom: 6px; border: 1px solid #e5e5ea; }
     
+    /* Griglia Statistiche Reali inserita nel Palinsesto Attivo */
+    .real-stats-box { display: grid; grid-template-columns: repeat(2, 1fr); gap: 4px; background-color: #f8f9fa; padding: 6px; border-radius: 8px; margin-bottom: 8px; border: 1px solid #e5e5ea; }
+    .stat-header { font-size: 9px; font-weight: 800; color: #8e8e93; text-transform: uppercase; grid-column: span 2; margin-bottom: 2px; border-bottom: 1px solid #e5e5ea; padding-bottom: 2px;}
+    .stat-row { font-size: 10px; color: #1c1c1e; display: flex; justify-content: space-between; padding: 1px 2px; }
+    .stat-row b { color: #007aff; }
+
     /* Griglia Mercati fissa a 2 Colonne */
     .market-box { display: grid; grid-template-columns: repeat(2, 1fr); gap: 5px; border-top: 1px dashed #e5e5ea; padding-top: 6px; }
     .market-cell { background: #f8f9fa; padding: 6px; border-radius: 6px; font-size: 11px; display: flex; flex-direction: column; justify-content: center; border: 1px solid #f2f2f7; }
@@ -112,7 +118,7 @@ def calcola_accuratezza_globale():
 st.markdown("""
 <div class="brand-box">
     <div class="main-title">⚽ Betting Pro Mobile</div>
-    <div class="version-label">Versione Progetto: 4.4</div>
+    <div class="version-label">Versione Progetto: 5.5</div>
 </div>
 """, unsafe_allow_html=True)
 
@@ -174,7 +180,28 @@ if "🎯 Palinsesto" in opzione_tab:
             <div class="match-card">
                 <div class="meta-label">🏆 {row.get('Campionato', '-')} | {row.get('Data_Ora_Match', '-')}</div>
                 <div class="team-text"> {row.get('3. Match', 'Match')}</div>
+                
+                <div class="real-stats-box">
+                    <div class="stat-header">📊 Statistiche Casa ({row.get('Squadra_Casa', 'Casa')})</div>
+                    <div class="stat-header">📊 Statistiche Ospite ({row.get('Squadra_Ospite', 'Ospite')})</div>
+                    
+                    <div class="stat-cell">
+                        <div class="stat-row">Classifica: <b>#{row.get('PosClassifica_Casa', 0)}</b></div>
+                        <div class="stat-row">Punti: <b>{row.get('Punti_Casa', 0)}</b> (G:{row.get('Giocate_Casa', 0)})</div>
+                        <div class="stat-row">V/P/S: <b>{row.get('Vinte_Casa', 0)}/{row.get('Pareggi_Casa', 0)}/{row.get('Perse_Casa', 0)}</b></div>
+                        <div class="stat-row">Gol F/S: <b>{row.get('Media_Goal_Casa_Orig', 0)}/{row.get('Goal_Subiti_Casa', 0)}</b></div>
+                    </div>
+                    
+                    <div class="stat-cell">
+                        <div class="stat-row">Classifica: <b>#{row.get('PosClassifica_Ospite', 0)}</b></div>
+                        <div class="stat-row">Punti: <b>{row.get('Punti_Trasferta', 0)}</b> (G:{row.get('Giocate_Ospite', 0)})</div>
+                        <div class="stat-row">V/P/S: <b>{row.get('Vinte_Ospite', 0)}/{row.get('Pareggi_Ospite', 0)}/{row.get('Perse_Ospite', 0)}</b></div>
+                        <div class="stat-row">Gol F/S: <b>{row.get('Media_Goal_Trasferta_Orig', 0)}/{row.get('Goal_Subiti_Ospite', 0)}</b></div>
+                    </div>
+                </div>
+
                 <div class="market-box">
+                    <div class="sub-title">🔮 Algoritmo Dixon-Coles</div>
                     <div class="market-cell"><b>1X2</b><div class="market-val-row">{row.get('1X2', '-')}</div></div>
                     <div class="market-cell"><b>Ris. Esatto</b><div class="market-val-row">{row.get('Risultato_Esatto', '-')}</div></div>
                     <div class="market-cell"><b>Doppia Chance</b><div class="market-val-row">{row.get('Doppia_Chance', '-')}</div></div>
