@@ -3,12 +3,12 @@ import pandas as pd
 import os
 from datetime import datetime, timedelta
 
-# Configurazione API Key Football-Data.org
-API_KEY = "TU_API_KEY_QUI"  # Sostituisci con la tua chiave reale
+# Configurazione API Key Football-Data.org (Blindata e Attiva)
+API_KEY = "e0ca06c07c634d4fb0950365bd82ffd0"
 BASE_URL = "https://api.football-data.org/v4/"
 HEADERS = {"X-Auth-Token": API_KEY}
 
-# I 12 Campionati blindati dal Direttore
+# I 12 Campionati ufficiali del progetto Betting Pro Mobile
 CAMPIONATI = {
     "WC": "FIFA World Cup", "CL": "UEFA Champions League", "BL1": "Bundesliga",
     "DED": "Eredivisie", "FL1": "Ligue 1", "PD": "Primera Division",
@@ -17,7 +17,7 @@ CAMPIONATI = {
 }
 
 def ottieni_statistiche_squadre(id_campionato):
-    """Estrae la classifica completa con tutti i dati statistici disponibili in API"""
+    """Estrae la classifica completa con tutti i dati statistici fondamentali dal server di Football-Data"""
     url = f"{BASE_URL}competitions/{id_campionato}/standings"
     statistiche = {}
     try:
@@ -46,7 +46,7 @@ def ottieni_statistiche_squadre(id_campionato):
         return {}
 
 def esegui_estrazione():
-    """Scarica in blocco i 12 campionati da oggi a +4 giorni riempiendo tutti i metadati"""
+    """Scarica in un unico blocco massivo i 12 campionati da oggi a +4 giorni riempiendo tutti i metadati"""
     data_oggi = datetime.now()
     data_fine = data_oggi + timedelta(days=4)
     
@@ -55,12 +55,12 @@ def esegui_estrazione():
     
     lista_match_totale = []
     
-    # Ciclo di estrazione massivo sui 12 Campionati
+    # Ciclo di estrazione massivo senza menu a tendina per ottimizzazione iOS
     for cod_camp, nome_camp in CAMPIONATI.items():
-        # 1. Scarica le statistiche/classifica del campionato corrente
+        # 1. Scarica la classifica per calcolare lo stato di forma e i parametri storici dei gol
         stats_campionato = ottieni_statistiche_squadre(cod_camp)
         
-        # 2. Scarica i match nel range temporale stabilito
+        # 2. Scarica la lista dei match in programma
         url_matches = f"{BASE_URL}competitions/{cod_camp}/matches?dateFrom={date_from}&dateTo={date_to}"
         try:
             res = requests.get(url_matches, headers=HEADERS, timeout=12)
@@ -70,7 +70,7 @@ def esegui_estrazione():
                     id_casa = m["homeTeam"]["id"]
                     id_ospite = m["awayTeam"]["id"]
                     
-                    # Recupero dati statistici estratti in precedenza (con fallback a 0)
+                    # Recupero dati statistici con protezione fallback a zero
                     st_casa = stats_campionato.get(id_casa, {})
                     st_ospite = stats_campionato.get(id_ospite, {})
                     
@@ -83,7 +83,7 @@ def esegui_estrazione():
                         "Squadra_Casa": m['homeTeam']['name'],
                         "Squadra_Ospite": m['awayTeam']['name'],
                         
-                        # --- DATI STATISTICI INTEGRALI RICHIESTI DAL DIRETTORE ---
+                        # --- MATRICE STATISTICA RICHIESTA PER IL METODO DIXON-COLES ---
                         "Punti_Casa": st_casa.get("Punti_Totali", 0),
                         "Punti_Trasferta": st_ospite.get("Punti_Totali", 0),
                         "PosClassifica_Casa": st_casa.get("Posizione_Classifica", 0),
@@ -92,12 +92,12 @@ def esegui_estrazione():
                         "Giocate_Ospite": st_ospite.get("Partite_Giocate", 0),
                         "Vinte_Casa": st_casa.get("Vinte", 0),
                         "Vinte_Ospite": st_ospite.get("Vinte", 0),
-                        "Pareggi_Casa": st_casa.get("Pareggia", 0),
-                        "Pareggi_Ospite": st_ospite.get("Pareggi", 0),
+                        "Pareggi_Casa": st_casa.get("Pareggiate", 0),
+                        "Pareggi_Ospite": st_ospite.get("Pareggiate", 0),
                         "Perse_Casa": st_casa.get("Perse", 0),
                         "Perse_Ospite": st_ospite.get("Perse", 0),
                         
-                        # Dati Goal per calcoli Dixon-Coles nativi e backup _Orig
+                        # Dati di input del Modulo 02 e backup _Orig richiesto per l'Archivio
                         "Media_Goal_Casa": st_casa.get("Goal_Fatti_Tot", 0),
                         "Media_Goal_Trasferta": st_ospite.get("Goal_Fatti_Tot", 0),
                         "Media_Goal_Casa_Orig": st_casa.get("Goal_Fatti_Tot", 0),
@@ -107,7 +107,7 @@ def esegui_estrazione():
                         "Diff_Reti_Casa": st_casa.get("Differenza_Reti", 0),
                         "Diff_Reti_Ospite": st_ospite.get("Differenza_Reti", 0),
                         
-                        # Inizializzazione colonne Mercati vuote (saranno popolate dal Modulo 02)
+                        # Setup colonne mercati (struttura pronta per il calcolo probabilistico)
                         "1X2": None, "Risultato_Esatto": None, "Doppia_Chance": None, "DC+U/O2.5": None,
                         "U/O_1.5": None, "U/O_2.5": None, "U/O_3.5": None, "Goal_NoGoal": None,
                         "Pronostico_MG_Casa": None, "Pronostico_MG_Trasferta": None, "Pronostico_MG_Totale": None,
@@ -117,12 +117,11 @@ def esegui_estrazione():
         except Exception as e:
             print(f"Errore connessione match per {cod_camp}: {str(e)}")
             
-    # Scrittura strutturata nel file temporaneo Palinsesto Excel
+    # Scrittura e salvataggio sul foglio Excel del Palinsesto
     df_risultato = pd.DataFrame(lista_match_totale)
     if not df_risultato.empty:
         df_risultato.to_excel("Pronostici_App_Betting.xlsx", index=False)
     else:
-        # Genera un file vuoto strutturato per non mandare in crash Streamlit
         pd.DataFrame(columns=["Campionato", "3. Match"]).to_excel("Pronostici_App_Betting.xlsx", index=False)
 
 if __name__ == "__main__":
