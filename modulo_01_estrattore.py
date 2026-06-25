@@ -46,7 +46,7 @@ def ottieni_statistiche_squadre(id_campionato):
         return {}
 
 def esegui_estrazione():
-    """Scarica in un unico blocco massivo i 12 campionati da oggi a +4 giorni riempiendo tutti i metadati"""
+    """Scarica in un unico blocco massivo i 12 campionati riempiendo i metadati, applicando fuso Roma e filtrando match futuri"""
     data_oggi = datetime.now()
     data_fine = data_oggi + timedelta(days=4)
     
@@ -55,9 +55,8 @@ def esegui_estrazione():
     
     lista_match_totale = []
     
-    # Ciclo di estrazione massivo senza menu a tendina per ottimizzazione iOS
     for cod_camp, nome_camp in CAMPIONATI.items():
-        # 1. Scarica la classifica per calcolare lo stato di forma e i parametri storici dei gol
+        # 1. Scarica la classifica per calcolare i parametri storici dei gol
         stats_campionato = ottieni_statistiche_squadre(cod_camp)
         
         # 2. Scarica la lista dei match in programma
@@ -67,23 +66,37 @@ def esegui_estrazione():
             if res.status_code == 200:
                 matches_data = res.json().get("matches", [])
                 for m in matches_data:
+                    # TASSATIVO: Filtro anti-partite passate o in corso. Solo match da giocare.
+                    stato_match = m.get("status", "").upper()
+                    if stato_match not in ["TIMED", "SCHEDULED"]:
+                        continue
+                        
                     id_casa = m["homeTeam"]["id"]
                     id_ospite = m["awayTeam"]["id"]
                     
-                    # Recupero dati statistici con protezione fallback a zero
                     st_casa = stats_campionato.get(id_casa, {})
                     st_ospite = stats_campionato.get(id_ospite, {})
+                    
+                    # TASSATIVO: Conversione stringa oraria UTC a orario locale di Roma (+2 ore)
+                    stringa_utc = m.get("utcDate", "")
+                    data_ora_visualizzazione = "-"
+                    if stringa_utc:
+                        try:
+                            dt_utc = datetime.strptime(stringa_utc, "%Y-%m-%dT%H:%M:%SZ")
+                            dt_roma = dt_utc + timedelta(hours=2)
+                            data_ora_visualizzazione = dt_roma.strftime("%d/%m %H:%M")
+                        except Exception:
+                            data_ora_visualizzazione = stringa_utc
                     
                     match_dict = {
                         "Campionato": nome_camp,
                         "Cod_Campionato": cod_camp,
                         "Match_ID": m.get("id"),
-                        "Data_Ora_Match": m.get("utcDate"),
+                        "Data_Ora_Match": data_ora_visualizzazione,
                         "3. Match": f"{m['homeTeam']['name']} - {m['awayTeam']['name']}",
                         "Squadra_Casa": m['homeTeam']['name'],
                         "Squadra_Ospite": m['awayTeam']['name'],
                         
-                        # --- MATRICE STATISTICA RICHIESTA PER IL METODO DIXON-COLES ---
                         "Punti_Casa": st_casa.get("Punti_Totali", 0),
                         "Punti_Trasferta": st_ospite.get("Punti_Totali", 0),
                         "PosClassifica_Casa": st_casa.get("Posizione_Classifica", 0),
@@ -97,7 +110,6 @@ def esegui_estrazione():
                         "Perse_Casa": st_casa.get("Perse", 0),
                         "Perse_Ospite": st_ospite.get("Perse", 0),
                         
-                        # Dati di input del Modulo 02 e backup _Orig richiesto per l'Archivio
                         "Media_Goal_Casa": st_casa.get("Goal_Fatti_Tot", 0),
                         "Media_Goal_Trasferta": st_ospite.get("Goal_Fatti_Tot", 0),
                         "Media_Goal_Casa_Orig": st_casa.get("Goal_Fatti_Tot", 0),
@@ -107,7 +119,6 @@ def esegui_estrazione():
                         "Diff_Reti_Casa": st_casa.get("Differenza_Reti", 0),
                         "Diff_Reti_Ospite": st_ospite.get("Differenza_Reti", 0),
                         
-                        # Setup colonne mercati (struttura pronta per il calcolo probabilistico)
                         "1X2": None, "Risultato_Esatto": None, "Doppia_Chance": None, "DC+U/O2.5": None,
                         "U/O_1.5": None, "U/O_2.5": None, "U/O_3.5": None, "Goal_NoGoal": None,
                         "Pronostico_MG_Casa": None, "Pronostico_MG_Trasferta": None, "Pronostico_MG_Totale": None,
@@ -117,7 +128,6 @@ def esegui_estrazione():
         except Exception as e:
             print(f"Errore connessione match per {cod_camp}: {str(e)}")
             
-    # Scrittura e salvataggio sul foglio Excel del Palinsesto
     df_risultato = pd.DataFrame(lista_match_totale)
     if not df_risultato.empty:
         df_risultato.to_excel("Pronostici_App_Betting.xlsx", index=False)
