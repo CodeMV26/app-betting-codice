@@ -34,18 +34,18 @@ df_palinsesto = carica_dati(PALINSESTO_FILE)
 df_storico = carica_dati(STORICO_FILE)
 df_database = carica_dati(DB_FILE)
 
-# Definizione dei colori associati alle tab
+# Nuova associazione colori emendata dal Direttore
 if st.session_state.tab_selezionata == "PALINSESTO":
-    colore_tema = "#e6f0fa"      # Azzurro soft
-    colore_bordo = "#b3e5fc"
-elif st.session_state.tab_selezionata == "STORICO":
-    colore_tema = "#eaf7ed"      # Verde soft
+    colore_tema = "#eaf7ed"      # Bel Verde Soft
     colore_bordo = "#c8e6c9"
-else:
-    colore_tema = "#f0effa"      # Viola soft
+elif st.session_state.tab_selezionata == "STORICO":
+    colore_tema = "#f0effa"      # Bel Viola Soft
     colore_bordo = "#d1c4e9"
+else:
+    colore_tema = "#fff3e0"      # Bel Arancio Soft
+    colore_bordo = "#ffe0b2"
 
-# --- RESTYLING GRAFICO ULTRA-OTTIMIZZATO (VERSIONE 5.27) ---
+# --- RESTYLING GRAFICO ULTRA-OTTIMIZZATO (VERSIONE 5.28) ---
 st.markdown(f"""
     <style>
     .stApp {{ background-color: {colore_tema} !important; transition: background-color 0.2s ease; }}
@@ -74,20 +74,10 @@ st.markdown(f"""
         margin-bottom: -4px !important;
     }}
     
-    /* Gestione pulsanti verticali */
-    .element-container:nth-of-type(2) div.stButton > button {{ background-color: #007aff !important; color: white !important; }}
-    .element-container:nth-of-type(3) div.stButton > button {{ background-color: #34c759 !important; color: white !important; }}
-    .element-container:nth-of-type(4) div.stButton > button {{ background-color: #5856d6 !important; color: white !important; }}
-    
-    /* Contenitore Micro-Tab nativo orizzontale per iPhone X */
-    .nav-tabs-container {{
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        width: 100%;
-        margin: 10px 0;
-        gap: 4px;
-    }}
+    /* Configurazione Colori Pulsanti Principali */
+    .element-container:nth-of-type(2) div.stButton > button {{ background-color: #34c759 !important; color: white !important; }} /* Fase 1 Verde */
+    .element-container:nth-of-type(3) div.stButton > button {{ background-color: #5856d6 !important; color: white !important; }} /* Fase 2 Viola */
+    .element-container:nth-of-type(4) div.stButton > button {{ background-color: #ff9500 !important; color: white !important; }} /* Fase 3 Bel Arancio */
     
     /* Pulsanti invisibili sopra i micro-tab di Streamlit per catturare il click */
     .tab-click-col div.stButton > button {{
@@ -169,7 +159,7 @@ def calcola_accuratezza_globale():
 st.markdown("""
 <div class="brand-box">
     <div class="main-title">⚽ Betting Pro Mobile</div>
-    <div class="version-label">Versione Progetto: 5.27</div>
+    <div class="version-label">Versione Progetto: 5.28</div>
 </div>
 """, unsafe_allow_html=True)
 
@@ -211,7 +201,7 @@ if st.button(testo_p3, use_container_width=True):
 
 st.markdown("<div style='margin-bottom: 10px;'></div>", unsafe_allow_html=True)
 
-# --- MICRO-TAB ORIZZONTALI COMPATTI PER IPHONE X (LARGHEZZA BLINDATA) ---
+# --- MICRO-TAB ORIZZONTALI COMPATTI PER IPHONE X ---
 st.markdown("<div class='tab-click-col'>", unsafe_allow_html=True)
 col_t1, col_t2, col_t3 = st.columns(3)
 
@@ -243,12 +233,12 @@ with col_t3:
             st.rerun()
 st.markdown("</div>", unsafe_allow_html=True)
 
-# CSS per colorare i micro-tab in base allo stato attivo/disattivo in modo coerente
+# CSS dinamico per i micro-tab inferiori coordinati alle videate
 st.markdown(f"""
     <style>
-    #button-btn_pal {{ background-color: #007aff !important; color: white !important; font-weight: 800 !important; }}
-    #button-btn_sto {{ background-color: #34c759 !important; color: white !important; font-weight: 800 !important; }}
-    #button-btn_db {{ background-color: #5856d6 !important; color: white !important; font-weight: 800 !important; }}
+    #button-btn_pal {{ background-color: #34c759 !important; color: white !important; font-weight: 800 !important; }}
+    #button-btn_sto {{ background-color: #5856d6 !important; color: white !important; font-weight: 800 !important; }}
+    #button-btn_db {{ background-color: #ff9500 !important; color: white !important; font-weight: 800 !important; }}
     #button-btn_pal_off, #button-btn_sto_off, #button-btn_db_off {{ background-color: #ffffff !important; color: #1c1c1e !important; }}
     </style>
 """, unsafe_allow_html=True)
@@ -367,4 +357,4 @@ elif st.session_state.tab_selezionata == "DATABASE":
             """, unsafe_allow_html=True)
 
 # Log di debug in fondo
-st.markdown(f'<div class="debug-badge">iPhone X Geometry Lock | Tab Corrente: {st.session_state.tab_selezionata}</div>', unsafe_allow_html=True)
+st.markdown(f'<div class="debug-badge">iPhone X Color Scheme 5.28 | Active Tab: {st.session_state.tab_selezionata}</div>', unsafe_allow_html=True)
