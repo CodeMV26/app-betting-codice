@@ -48,7 +48,7 @@ elif "📊 Storico" in opzione_tab:
 elif "🗄️ Database" in opzione_tab:
     colore_sfondo = "#f0effa" # Viola soft coerente con Pulsante 3
 
-# --- RESTYLING GRAFICO EMENDATO DINAMICO (VERSIONE 5.24) ---
+# --- RESTYLING GRAFICO EMENDATO DINAMICO CORRETTO (VERSIONE 5.25) ---
 st.markdown(f"""
     <style>
     .stApp {{ background-color: {colore_sfondo} !important; transition: background-color 0.3s ease; }}
@@ -78,7 +78,7 @@ st.markdown(f"""
         transition: all 0.2s ease;
         box-shadow: 0 2px 5px rgba(0,0,0,0.03) !important;
         margin-bottom: -4px !important;
-    }
+    }}
     div.stButton:nth-child(1) > button {{ background-color: #007aff !important; color: white !important; }}
     div.stButton:nth-child(2) > button {{ background-color: #34c759 !important; color: white !important; }}
     div.stButton:nth-child(3) > button {{ background-color: #5856d6 !important; color: white !important; }}
@@ -146,7 +146,7 @@ def calcola_accuratezza_globale():
 st.markdown("""
 <div class="brand-box">
     <div class="main-title">⚽ Betting Pro Mobile</div>
-    <div class="version-label">Versione Progetto: 5.24</div>
+    <div class="version-label">Versione Progetto: 5.25</div>
 </div>
 """, unsafe_allow_html=True)
 
