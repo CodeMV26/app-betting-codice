@@ -46,7 +46,12 @@ def ottieni_statistiche_squadre(id_campionato):
         return {}
 
 def esegui_estrazione():
-    """Scarica in un unico blocco massivo i 12 campionati riempiendo i metadati, applicando fuso Roma e filtrando match futuri"""
+    """
+    Scarica su RICHIESTA MANUALE i 12 campionati riempiendo i metadati.
+    Genera un Palinsesto statico che non si aggiorna da solo al ricaricamento dell'app.
+    """
+    print("🔄 [FASE 1] Avvio Estrazione Manuale Richiesta dall'Utente...")
+    
     data_oggi = datetime.now()
     data_fine = data_oggi + timedelta(days=4)
     
@@ -56,17 +61,14 @@ def esegui_estrazione():
     lista_match_totale = []
     
     for cod_camp, nome_camp in CAMPIONATI.items():
-        # 1. Scarica la classifica per calcolare i parametri storici dei gol
         stats_campionato = ottieni_statistiche_squadre(cod_camp)
-        
-        # 2. Scarica la lista dei match in programma
         url_matches = f"{BASE_URL}competitions/{cod_camp}/matches?dateFrom={date_from}&dateTo={date_to}"
+        
         try:
             res = requests.get(url_matches, headers=HEADERS, timeout=12)
             if res.status_code == 200:
                 matches_data = res.json().get("matches", [])
                 for m in matches_data:
-                    # TASSATIVO: Filtro anti-partite passate o in corso. Solo match da giocare.
                     stato_match = m.get("status", "").upper()
                     if stato_match not in ["TIMED", "SCHEDULED"]:
                         continue
@@ -77,7 +79,6 @@ def esegui_estrazione():
                     st_casa = stats_campionato.get(id_casa, {})
                     st_ospite = stats_campionato.get(id_ospite, {})
                     
-                    # TASSATIVO: Conversione stringa oraria UTC a orario locale di Roma (+2 ore)
                     stringa_utc = m.get("utcDate", "")
                     data_ora_visualizzazione = "-"
                     if stringa_utc:
@@ -131,8 +132,11 @@ def esegui_estrazione():
     df_risultato = pd.DataFrame(lista_match_totale)
     if not df_risultato.empty:
         df_risultato.to_excel("Pronostici_App_Betting.xlsx", index=False)
+        print(f"✅ Palinsesto creato con successo! Salvati {len(df_risultato)} match correnti.")
     else:
-        pd.DataFrame(columns=["Campionato", "3. Match"]).to_excel("Pronostici_App_Betting.xlsx", index=False)
+        # Se la chiamata manuale fallisce, preserviamo la struttura vuota senza distruggere i file successivi
+        if not os.path.exists("Pronostici_App_Betting.xlsx"):
+            pd.DataFrame(columns=["Campionato", "3. Match"]).to_excel("Pronostici_App_Betting.xlsx", index=False)
 
 if __name__ == "__main__":
     esegui_estrazione()
