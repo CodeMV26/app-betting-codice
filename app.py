@@ -192,7 +192,7 @@ testo_p3 = f"🗄️ FASE 3: Archiviazione Totale ({st.session_state.log_fase3})
 if st.button(testo_p3, key="fase_3_btn", use_container_width=True):
     with st.spinner("⏳ In corso..."):
         try:
-            import modulo_04_allineatore as m4
+            import modulo_04_trasferitore as m4
             m4.esegui_allineamento()
             st.session_state.log_fase3 = datetime.datetime.now(FUSO_ROMA).strftime("%H:%M:%S")
             st.toast("🗄️ Database Sincronizzato!", icon="✅")
