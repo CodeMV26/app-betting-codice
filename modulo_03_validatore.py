@@ -10,100 +10,85 @@ HEADERS = {"X-Auth-Token": API_KEY}
 PALINSESTO_FILE = "Pronostici_App_Betting.xlsx"
 STORICO_FILE = "Storico_Validato_Betting.xlsx"
 
-MAPPA_CAMPIONATI = {
-    "PREMIER LEAGUE": "PL", "SERIE A": "SA", "BUNDESLIGA": "BL1", "LA LIGA": "PD",
-    "PRIMERA DIVISION": "PD", "LIGUE 1": "FL1", "EREDIVISIE": "DED", "CHAMPIONSHIP": "ELC",
-    "PRIMEIRA LIGA": "PPL", "CAMPEONATO BRASILEIRO SÉRIE A": "BSA", "UEFA CHAMPIONS LEAGUE": "CL"
-}
-
 def esegui_validazione():
     """
-    Modulo 03: Validatore Universale Garantito - Versione 5.46
-    Inclusione totale di tutti i match del Palinsesto per evitare sparizioni.
-    Aggiorna i risultati reali da API per i match conclusi.
+    Modulo 03: Validatore Real-Time ID Specifico - Versione 5.47
+    Elimina i match None-None all'origine.
+    Interroga l'API direttamente sull'ID del singolo match per forzare la validazione automatica.
     """
-    print("🏆 [FASE 2] Avvio Validatore ad Inclusione Totale...")
+    print("🏆 [FASE 2] Avvio Validatore Real-Time Automatico...")
     
     if not os.path.exists(PALINSESTO_FILE):
         print(f"⚠️ Errore critico: {PALINSESTO_FILE} non trovato.")
         return
     
     df_palinsesto = pd.read_excel(PALINSESTO_FILE)
-    print(f"📊 Righe totali rilevate nel Palinsesto: {len(df_palinsesto)}")
-    
     if df_palinsesto.empty:
         print("⚠️ Palinsesto vuoto. Nessun dato da elaborare.")
         return
 
-    # Identificazione dinamica delle colonne chiave per evitare KeyError
-    col_camp = next((c for c in df_palinsesto.columns if "CAMPIONATO" in c.upper()), None)
-    col_match = next((c for c in df_palinsesto.columns if "MATCH" in c.upper()), None)
-    col_id = next((c for c in df_palinsesto.columns if "ID" in c.upper()), None)
-
-    risultati_api = {}
-
-    # Chiamata API per raccogliere i match terminati
-    if col_camp:
-        campionati_presenti = df_palinsesto[col_camp].dropna().unique()
-        for camp in campionati_presenti:
-            cod = str(camp).strip().upper()
-            if cod in MAPPA_CAMPIONATI:
-                cod = MAPPA_CAMPIONATI[cod]
-            
-            url = f"{BASE_URL}competitions/{cod}/matches?status=FINISHED"
-            try:
-                res = requests.get(url, headers=HEADERS, timeout=12)
-                if res.status_code == 200:
-                    matches = res.json().get("matches", [])
-                    for m in matches:
-                        m_id = int(m.get("id"))
-                        score = m.get("score", {})
-                        full_time = score.get("fullTime", {})
-                        h_g = full_time.get("home")
-                        a_g = full_time.get("away")
-                        if h_g is not None and a_g is not None:
-                            risultati_api[m_id] = {"punteggio": f"{h_g}-{a_g}", "h": h_g, "a": a_g}
-            except Exception as e:
-                print(f"⚠️ Nota: Impossibile scaricare info via API per {cod} ({str(e)}). Procedo in modalità resiliente.")
+    # 1. ELIMINAZIONE TASSATIVA DEI RECORD CORROTTI "NONE VS NONE"
+    if '3. Match' in df_palinsesto.columns:
+        df_palinsesto = df_palinsesto[df_palinsesto['3. Match'].astype(str).str.upper() != 'NONE VS NONE']
+        df_palinsesto = df_palinsesto[df_palinsesto['3. Match'].astype(str).str.upper() != 'NAN']
+        df_palinsesto = df_palinsesto.dropna(subset=['3. Match'])
 
     record_finali = []
 
-    # Processamento di OGNI singola riga del Palinsesto (Nessuna riga viene scartata)
+    # 2. SCANSIONE DIRETTA MATCH PER MATCH SU API
     for idx, row in df_palinsesto.iterrows():
-        # Verifichiamo se la riga è un None vs None spurio
-        if col_match and str(row[col_match]).upper() == "NONE VS NONE":
-            continue
-            
         nuovo_record = row.copy()
         
-        # Recupero dell'ID per il match
-        m_id = None
-        if col_id:
-            try:
-                m_id = int(row[col_id])
-            except:
-                m_id = None
+        try:
+            m_id = int(row.get('Match_ID', 0))
+        except:
+            m_id = 0
 
-        # Controllo incrocio dati con i risultati reali dell'API
-        if m_id and m_id in risultati_api:
-            dati_veri = risultati_api[m_id]
-            nuovo_record['Risultato_Reale'] = dati_veri["punteggio"]
-            
-            segno_reale = "1" if dati_veri["h"] > dati_veri["a"] else ("X" if dati_veri["h"] == dati_veri["a"] else "2")
-            pronostico_1x2 = str(row.get('1X2', ''))
-            nuovo_record['Esito_1X2'] = "VINCENTE" if segno_reale in pronostico_1x2 else "PERDENTE"
-        else:
-            # Se l'API non ha ancora il risultato o il match è futuro, resta in attesa senza sparire
-            if pd.isna(row.get('Risultato_Reale')) or str(row.get('Risultato_Reale')).strip() == "" or "NON ANCORA" in str(row.get('Risultato_Reale')).upper():
-                nuovo_record['Risultato_Reale'] = "NON ANCORA REALE/DA VALIDARE"
-                nuovo_record['Esito_1X2'] = "IN ATTESA"
+        if m_id == 0:
+            continue
+
+        # Chiamata diretta per verificare lo stato di QUESTO specifico match sul server
+        url_singolo_match = f"{BASE_URL}matches/{m_id}"
+        try:
+            res = requests.get(url_singolo_match, headers=HEADERS, timeout=8)
+            if res.status_code == 200:
+                match_data = res.json()
+                stato_reale = str(match_data.get("status", "")).upper()
+                
+                if stato_reale == "FINISHED":
+                    score = match_data.get("score", {})
+                    full_time = score.get("fullTime", {})
+                    h_g = full_time.get("home")
+                    a_g = full_time.get("away")
+                    
+                    if h_g is not None and a_g is not None:
+                        nuovo_record['Risultato_Reale'] = f"{h_g}-{a_g}"
+                        
+                        # Calcolo esito 1X2 reale
+                        segno_reale = "1" if h_g > a_g else ("X" if h_g == a_g else "2")
+                        pronostico_1x2 = str(row.get('1X2', ''))
+                        nuovo_record['Esito_1X2'] = "VINCENTE" if segno_reale in pronostico_1x2 else "PERDENTE"
+                    else:
+                        nuovo_record['Risultato_Reale'] = "NON ANCORA REALE/DA VALIDARE"
+                        nuovo_record['Esito_1X2'] = "IN ATTESA"
+                else:
+                    # Match programmato o in corso
+                    nuovo_record['Risultato_Reale'] = "NON ANCORA REALE/DA VALIDARE"
+                    nuovo_record['Esito_1X2'] = "IN ATTESA"
+            else:
+                # Se l'API non risponde, preserviamo lo stato precedente senza perdere il match
+                if pd.isna(row.get('Risultato_Reale')) or "NON ANCORA" in str(row.get('Risultato_Reale')).upper():
+                    nuovo_record['Risultato_Reale'] = "NON ANCORA REALE/DA VALIDARE"
+                    nuovo_record['Esito_1X2'] = "IN ATTESA"
+        except Exception as e:
+            print(f"⚠️ Errore di rete su match {m_id}: {str(e)}")
 
         record_finali.append(nuovo_record)
 
-    # Salvataggio forzato dei dati
+    # 3. SCRITTURA FINALE DELLO STORICO VALIDATO COMPLETAMENTE AUTOMATIZZATO
     df_nuovo_storico = pd.DataFrame(record_finali)
     df_nuovo_storico.to_excel(STORICO_FILE, index=False)
-    print(f"✅ Archivio {STORICO_FILE} rigenerato correttamente. Righe scritte: {len(df_nuovo_storico)}")
+    print(f"✅ Archivio {STORICO_FILE} rigenerato. Righe pulite scritte: {len(df_nuovo_storico)}")
 
 if __name__ == "__main__":
     esegui_validazione()
