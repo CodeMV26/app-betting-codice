@@ -34,7 +34,7 @@ df_palinsesto = carica_dati(PALINSESTO_FILE)
 df_storico = carica_dati(STORICO_FILE)
 df_database = carica_dati(DB_FILE)
 
-# Determinazione della palette cromatica esatta secondo direttiva
+# Determinazione della palette cromatica esatta secondo direttiva del Direttore
 if st.session_state.tab_selezionata == "PALINSESTO":
     colore_tema = "#eefae1"      # Sfondo Verde Vivo Soft
     colore_bordo = "#a3e2ab"     # Bordo Verde Vivo
@@ -45,7 +45,7 @@ else:
     colore_tema = "#fffde6"      # Sfondo Giallo Canarino Soft
     colore_bordo = "#f6eb9d"     # Bordo Giallo Canarino
 
-# --- RESTYLING GRAFICO ULTRA-OTTIMIZZATO (VERSIONE 5.29) ---
+# --- RESTYLING GRAFICO ULTRA-OTTIMIZZATO (VERSIONE 5.30) ---
 st.markdown(f"""
     <style>
     .stApp {{ background-color: {colore_tema} !important; transition: background-color 0.2s ease; }}
@@ -61,7 +61,7 @@ st.markdown(f"""
     .main-title {{ font-size: 22px; font-weight: 800; color: #1c1c1e; margin: 0; }}
     .version-label {{ font-size: 10px; font-weight: 700; color: #007aff; margin-top: 1px; text-transform: uppercase; letter-spacing: 0.5px; }}
 
-    /* Pulsanti d'Azione Principali (Verticali) */
+    /* Pulsanti d'Azione Principali (Verticali) - Forzatura ID Streamlit per evitare inversioni */
     div.stButton > button {{
         border-radius: 8px !important;
         font-weight: 700 !important;
@@ -74,10 +74,10 @@ st.markdown(f"""
         margin-bottom: -4px !important;
     }}
     
-    /* Configurazione Colori Pulsanti Principali Sincronizzati */
-    .element-container:nth-of-type(2) div.stButton > button {{ background-color: #2cd158 !important; color: white !important; }} /* Bel Verde Vivo */
-    .element-container:nth-of-type(3) div.stButton > button {{ background-color: #6a5acd !important; color: white !important; }} /* Bel Viola Regale */
-    .element-container:nth-of-type(4) div.stButton > button {{ background-color: #ffd700 !important; color: #1c1c1e !important; }} /* Bel Giallo Canarino */
+    /* Aggancio diretto tramite ID univoco generato da Streamlit per i pulsanti verticali */
+    div.stButton > button[id*="fase_1"] {{ background-color: #2cd158 !important; color: white !important; }}
+    div.stButton > button[id*="fase_2"] {{ background-color: #6a5acd !important; color: white !important; }}
+    div.stButton > button[id*="fase_3"] {{ background-color: #ffd700 !important; color: #1c1c1e !important; }}
     
     /* Pulsanti dei micro-tab inferiori */
     .tab-click-col div.stButton > button {{
@@ -159,13 +159,13 @@ def calcola_accuratezza_globale():
 st.markdown("""
 <div class="brand-box">
     <div class="main-title">⚽ Betting Pro Mobile</div>
-    <div class="version-label">Versione Progetto: 5.29</div>
+    <div class="version-label">Versione Progetto: 5.30</div>
 </div>
 """, unsafe_allow_html=True)
 
-# --- I 3 PULSANTI VERTICALI DI AZIONE ---
+# --- I 3 PULSANTI VERTICALI DI AZIONE (CON KEY UNIVOCO E STRING-MATCHING) ---
 testo_p1 = f"🚀 FASE 1: Estrazione & Pronostici ({st.session_state.log_fase1})"
-if st.button(testo_p1, use_container_width=True):
+if st.button(testo_p1, key="fase_1_btn", use_container_width=True):
     with st.spinner("⏳ In corso..."):
         try:
             import modulo_01_estrattore as m1
@@ -178,7 +178,7 @@ if st.button(testo_p1, use_container_width=True):
         except Exception as e: st.error(f"Errore: {str(e)}")
 
 testo_p2 = f"🏆 FASE 2: Convalida Risultati ({st.session_state.log_fase2})"
-if st.button(testo_p2, use_container_width=True):
+if st.button(testo_p2, key="fase_2_btn", use_container_width=True):
     with st.spinner("⏳ In corso..."):
         try:
             import modulo_03_validatore as m3
@@ -189,7 +189,7 @@ if st.button(testo_p2, use_container_width=True):
         except Exception as e: st.error(f"Errore: {str(e)}")
 
 testo_p3 = f"🗄️ FASE 3: Archiviazione Totale ({st.session_state.log_fase3})"
-if st.button(testo_p3, use_container_width=True):
+if st.button(testo_p3, key="fase_3_btn", use_container_width=True):
     with st.spinner("⏳ In corso..."):
         try:
             import modulo_04_allineatore as m4
@@ -357,4 +357,4 @@ elif st.session_state.tab_selezionata == "DATABASE":
             """, unsafe_allow_html=True)
 
 # Log di debug in fondo
-st.markdown(f'<div class="debug-badge">iPhone X Colors Locked 5.29 | Active Tab: {st.session_state.tab_selezionata}</div>', unsafe_allow_html=True)
+st.markdown(f'<div class="debug-badge">iPhone X Colors Locked 5.30 | Active Tab: {st.session_state.tab_selezionata}</div>', unsafe_allow_html=True)
