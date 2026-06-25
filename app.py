@@ -1,11 +1,17 @@
+import streamlit as pd_st # Trick temporaneo per consistenza macro
 import streamlit as st
 import pandas as pd
 import os
+import datetime
 
 # Configurazione geometrica blindata per iPhone X (5.8") e iPhone 13 (6.1")
 st.set_page_config(page_title="⚽ Betting Pro Mobile", page_icon="⚽", layout="centered")
 
-# --- RESTYLING GRAFICO EMENDATO (VERSIONE 5.22) ---
+# Inizializzazione dello stato per la verifica del clic
+if "ultimo_aggiornamento_fase2" not in st.session_state:
+    st.session_state.ultimo_aggiornamento_fase2 = "Mai eseguito"
+
+# --- RESTYLING GRAFICO EMENDATO (VERSIONE 5.23) ---
 st.markdown("""
     <style>
     .stApp { background-color: #f2f2f7; }
@@ -72,6 +78,9 @@ st.markdown("""
     
     /* Spaziatore tra i blocchi dello stesso match */
     .match-separator { margin-bottom: 18px; border-bottom: 2px dotted #d1d1d6; height: 1px; width: 100%; }
+    
+    /* Log di verifica in fondo alla pagina */
+    .debug-badge { background: #3a3a3c; color: #ffffff; padding: 4px 8px; border-radius: 5px; font-family: monospace; font-size: 9px; display: block; text-align: center; margin-top: 10px; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -119,7 +128,7 @@ def calcola_accuratezza_globale():
 st.markdown("""
 <div class="brand-box">
     <div class="main-title">⚽ Betting Pro Mobile</div>
-    <div class="version-label">Versione Progetto: 5.22</div>
+    <div class="version-label">Versione Progetto: 5.23</div>
 </div>
 """, unsafe_allow_html=True)
 
@@ -131,16 +140,20 @@ if st.button("🚀 FASE 1: Estrazione & Pronostici", use_container_width=True):
             import modulo_02_motore as m2
             m1.esegui_estrazione()
             m2.esegui_calcolo_motore()
-            st.success("✅ Palinsesto Pronto!")
+            st.toast("🚀 Palinsesto Estratto con Successo!", icon="✅")
             st.rerun()
         except Exception as e: st.error(f"Errore: {str(e)}")
 
-if st.button("🏆 FASE 2: Convalida Risultati", use_container_width=True):
-    with st.spinner("⏳ Elaborazione..."):
+# Pulsante 2 con indicatore temporale dinamico di avvenuto clic
+testo_pulsante_2 = f"🏆 FASE 2: Convalida Risultati (Log: {st.session_state.ultimo_aggiornamento_fase2})"
+if st.button(testo_pulsante_2, use_container_width=True):
+    with st.spinner("⏳ Convalida in corso..."):
         try:
             import modulo_03_validatore as m3
             m3.esegui_validazione()
-            st.success("✅ Storico Aggiornato!")
+            # Registriamo l'ora esatta del successo prima del rerun
+            st.session_state.ultimo_aggiornamento_fase2 = datetime.datetime.now().strftime("%H:%M:%S")
+            st.toast("🏆 Storico Convalidato e Aggiornato!", icon="✅")
             st.rerun()
         except Exception as e: st.error(f"Errore: {str(e)}")
 
@@ -149,7 +162,7 @@ if st.button("🗄️ FASE 3: Archiviazione Totale", use_container_width=True):
         try:
             import modulo_04_allineatore as m4
             m4.esegui_allineamento()
-            st.success("✅ Database Consolidato!")
+            st.toast("🗄️ Database Sincronizzato!", icon="✅")
             st.rerun()
         except Exception as e: st.error(f"Errore: {str(e)}")
 
@@ -177,17 +190,14 @@ if dict_acc:
 if "🎯 Palinsesto" in opzione_tab:
     if not df_palinsesto.empty:
         for idx, row in df_palinsesto.iterrows():
-            
-            # Helper locale di sanificazione tipi numerici
             def clean(val):
                 if pd.isna(val) or val == "-": return "-"
                 try:
                     f_val = float(val)
                     return str(int(f_val)) if f_val.is_integer() else str(f_val)
-                except:
-                    return str(val)
+                except: return str(val)
 
-            # SCHEDA 1: IDENTIFICAZIONE MATCH & PRONOSTICI DIXON-COLES
+            # SCHEDA 1: PRONOSTICI
             st.markdown(f"""
             <div class="match-card">
                 <div class="meta-label">🏆 {row.get('Campionato', '-')} | {row.get('Data_Ora_Match', '-')}</div>
@@ -210,7 +220,7 @@ if "🎯 Palinsesto" in opzione_tab:
             </div>
             """, unsafe_allow_html=True)
 
-            # SCHEDA 2: SCHEDA AUTONOMA SPECULARE PER LE STATISTICHE REALI SQUADRE
+            # SCHEDA 2: STATISTICHE
             st.markdown(f"""
             <div class="match-card">
                 <div class="meta-label" style="color: #ff9500;">📊 STATISTICHE TEAM | LIVE DATA</div>
@@ -227,7 +237,6 @@ if "🎯 Palinsesto" in opzione_tab:
             </div>
             <div class="match-separator"></div>
             """, unsafe_allow_html=True)
-            
     else: st.info("Palinsesto vuoto.")
 
 elif "📊 Storico" in opzione_tab:
@@ -279,3 +288,6 @@ elif "🗄️ Database" in opzione_tab:
                 </div>
             </div>
             """, unsafe_allow_html=True)
+
+# Badge di debug visibile per conferma immediata
+st.markdown(f'<div class="debug-badge">Stato Sistema: Attivo | Verifica Clic Fase 2: {st.session_state.ultimo_aggiornamento_fase2}</div>', unsafe_allow_html=True)
