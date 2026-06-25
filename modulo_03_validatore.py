@@ -19,7 +19,7 @@ MAPPA_CAMPIONATI = {
 
 def esegui_validazione():
     """
-    Modulo 03: Convalida Risultati Reali (Fase 2) - Versione 5.41
+    Modulo 03: Convalida Risultati Reali (Fase 2) - Versione 5.42
     Scarica i risultati reali superando i limiti di stringa del campionato.
     Se un match è finito, trascina le statistiche e calcola l'esito reale.
     Se un match non è finito, lo mantiene nello storico in attesa senza inventare dati.
@@ -53,7 +53,6 @@ def esegui_validazione():
         campionati_presenti = df_palinsesto[col_camp].dropna().unique()
         for camp in campionati_presenti:
             cod = str(camp).strip().upper()
-            # Se è il nome lungo, lo convertiamo nel codice API corretto (es. Serie A -> SA)
             if cod in MAPPA_CAMPIONATI:
                 cod = MAPPA_CAMPIONATI[cod]
             
@@ -73,7 +72,7 @@ def esegui_validazione():
             except Exception as e:
                 print(f"⚠️ Impossibile scaricare storici per campionato {cod}: {str(e)}")
 
-     record_finali = []
+    record_finali = []
 
     # Sincronizzazione e processamento di OGNI partita del Palinsesto
     for idx, row in df_palinsesto.iterrows():
