@@ -2,50 +2,26 @@ import streamlit as st
 import pandas as pd
 import os
 
-# Importazione dei moduli core del progetto
-import modulo_01_estrattore as m1
-import modulo_03_validatore as m3
-import modulo_04_trasferitore as m4
-
-# Configurazione standard e pulita
+# Configurazione pulita e nativa adatta a display iPhone X / 13
 st.set_page_config(
-    page_title="App Betting Pro",
+    page_title="App Betting Pro - Emergenza",
     layout="centered"
 )
 
-st.title("🏆 SISTEMA BETTING")
-st.write("### VERSIONE PROGETTO: 5.52")
+st.title("🏆 SISTEMA BETTING (MODO EMERGENZA)")
+st.write("### VERSIONE PROGETTO: 5.53")
+st.write("⚙️ *Interfaccia isolata per bypassare blocchi dei moduli esterni.*")
 st.markdown("---")
 
-# --- PULSANTI OPERATIVI ---
+# --- PANNELLO OPERATIVO COMPATTO ---
+st.subheader("🎛️ Pannello di Controllo File Diretti")
 
-if st.button("🚀 FASE 1: Estrai e Calcola Palinsesto"):
-    try:
-        m1.esegui_estrazione()
-        st.success("Palinsesto aggiornato!")
-    except Exception as e:
-        st.error(f"Errore: {str(e)}")
+st.info("I pulsanti sottostanti leggono direttamente i file Excel nel Finder per verificare lo stato attuale dei dati senza rischiare blocchi software.")
 
-if st.button("🏆 FASE 2: Convalida Risultati Reali"):
-    try:
-        m3.esegui_validazione()
-        st.success("Risultati reali aggiornati!")
-    except Exception as e:
-        st.error(f"Errore: {str(e)}")
+# --- ISPEZIONE DI SICUREZZA ---
+st.subheader("📊 Ispezione Archivi Correnti")
 
-if st.button("💾 FASE 3: Sposta in Archivio Permanente"):
-    try:
-        m4.esegui_allineamento()
-        st.success("Database permanente allineato!")
-    except Exception as e:
-        st.error(f"Errore: {str(e)}")
-
-st.markdown("---")
-
-# --- ISPEZIONE VELOCE DEI DATI ---
-st.subheader("📊 Visualizzazione Tabelle")
-
-file_scelto = st.radio("Scegli file:", [
+file_scelto = st.selectbox("Seleziona il file da caricare a schermo:", [
     "Pronostici_App_Betting.xlsx",
     "Storico_Validato_Betting.xlsx",
     "Database_Storico_Completo.xlsx"
@@ -54,9 +30,17 @@ file_scelto = st.radio("Scegli file:", [
 if os.path.exists(file_scelto):
     try:
         df = pd.read_excel(file_scelto)
-        st.write(f"Righe totali: {len(df)}")
-        st.dataframe(df.head(30))
+        st.success(f"✅ File caricato con successo! Righe totali: {len(df)}")
+        
+        # Filtro colonne visualizzabili su mobile per evitare scroll laterali distruttivi
+        colonne_visibili = [c for c in ['Data_Ora_Match', '3. Match', '1X2', 'Risultato_Reale', 'Esito_1X2'] if c in df.columns]
+        
+        if colonne_visibili:
+            st.dataframe(df[colonne_visibili].head(50), use_container_width=True)
+        else:
+            st.dataframe(df.head(20), use_container_width=True)
+            
     except Exception as e:
-        st.warning("Se il file è aperto su Excel, chiudilo per vederlo qui.")
+        st.error(f"Impossibile leggere il file Excel: {str(e)}. Assicurati che non sia aperto in questo momento su Microsoft Excel.")
 else:
-    st.info("File non ancora generato.")
+    st.warning(f"⚠️ Il file '{file_scelto}' non esiste nella cartella corrente del progetto.")
