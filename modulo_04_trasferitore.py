@@ -1,75 +1,71 @@
 import pandas as pd
 import os
 
-print("🗄️ --- MODULO 04: AGGIORNATORE STORICO POST-MATCH (LOGICA AD ALTO ALLINEAMENTO) ---")
+STORICO_VALIDATO = "Storico_Validato_Betting.xlsx"
+DATABASE_PERMANENTE = "Database_Storico_Completo.xlsx"
 
-FILE_INPUT_VALIDATO = "Storico_Validato_Betting.xlsx"
-DATABASE_STORICO_GLOBALE = "Database_Storico_Completo.xlsx"
+def esegui_allineamento():
+    """
+    Modulo 04: Trasferitore Permanente (Fase 3) - Versione 5.38
+    Accoda i match convalidati nel Database Storico Completo eliminando i duplicati.
+    Funzione rinominata in 'esegui_allineamento' per compatibilità nativa con app.py.
+    """
+    print("💾 Avvio Modulo 04: Trasferimento nel Database Permanente (Scudo Anti-Doppione)...")
 
-def genera_chiave_univoca(row):
-    data = str(row.get('Data_Ora_Match', '')).strip()
-    match_str = str(row.get('3. Match', '')).strip()
-    return f"{data}_{match_str}".lower().replace(" ", "")
-
-def esegui_archiviazione():
-    if not os.path.exists(FILE_INPUT_VALIDATO):
-        print(f"⚠️ Nessun file {FILE_INPUT_VALIDATO} trovato. Fase 2 non necessaria.")
+    # 1. Verifica presenza dei dati convalidati dal Modulo 3
+    if not os.path.exists(STORICO_VALIDATO):
+        print(f"⚠️ Errore: {STORICO_VALIDATO} non trovato. Esegui prima la convalida (Fase 2).")
         return
 
-    if not os.path.exists(DATABASE_STORICO_GLOBALE):
-        print(f"❌ Errore Critico: Il file {DATABASE_STORICO_GLOBALE} non esiste. Impossibile aggiornare i risultati.")
+    df_validato = pd.read_excel(STORICO_VALIDATO)
+    if df_validato.empty:
+        print("⚠️ Nessun dato presente nello Storico Validato da trasferire.")
         return
 
-    df_nuovi = pd.read_excel(FILE_INPUT_VALIDATO)
-    if df_nuovi.empty:
-        print("⚠️ Il file dei match convalidati è vuoto.")
-        return
-
-    df_nuovi['Risultato_Reale'] = df_nuovi['Risultato_Reale'].astype(str).str.strip()
-
-    df_nuovi_validi = df_nuovi[df_nuovi['Risultato_Reale'] != 'NON ANCORA REALE/DA VALIDARE'].copy()
-    
-    if df_nuovi_validi.empty:
-        print("⏳ Nessun match completato e validato da incrociare in questo momento.")
-        return
-
-    df_storico = pd.read_excel(DATABASE_STORICO_GLOBALE)
-    print(f"📈 Database storico caricato. Record totali registrati: {len(df_storico)}")
-
-    df_storico['chiave_incrocio'] = df_storico.apply(genera_chiave_univoca, axis=1)
-    df_nuovi_validi['chiave_incrocio'] = df_nuovi_validi.apply(genera_chiave_univoca, axis=1)
-
-    colonne_da_aggiornare = [c for c in df_nuovi_validi.columns if str(c).startswith('Esito_') or c == 'Risultato_Reale']
-    
-    for col in colonne_da_aggiornare:
-        if col not in df_storico.columns:
-            df_storico[col] = None
-
-    diz_nuovi_dati = df_nuovi_validi.set_index('chiave_incrocio')[colonne_da_aggiornare].to_dict(orient='index')
-
-    match_aggiornati_conteggio = 0
-
-    for idx, row in df_storico.iterrows():
-        chiave = row['chiave_incrocio']
-        if chiave in diz_nuovi_dati:
-            for col in colonne_da_aggiornare:
-                df_storico.at[idx, col] = diz_nuovi_dati[chiave][col]
-            match_aggiornati_conteggio += 1
-
-    df_storico.drop(columns=['chiave_incrocio'], errors='ignore', inplace=True)
-
-    if match_aggiornati_conteggio > 0:
-        df_storico.to_excel(DATABASE_STORICO_GLOBALE, index=False)
-        print(f"✅ Successo! Aggiornati {match_aggiornati_conteggio} match nell'archivio storico con i risultati reali.")
-        
+    # 2. Caricamento del Database Permanente Esistente o creazione se rimosso
+    if os.path.exists(DATABASE_PERMANENTE):
         try:
-            df_nuovi_rimasti = df_nuovi[df_nuovi['Risultato_Reale'] == 'NON ANCORA REALE/DA VALIDARE']
-            df_nuovi_rimasti.to_excel(FILE_INPUT_VALIDATO, index=False)
-            print("🧹 Pulizia file temporaneo eseguita. Rimossi i match conclusi.")
-        except Exception as e:
-            print(f"⚠️ Nota pulizia file temporaneo: {e}")
+            df_permanente = pd.read_excel(DATABASE_PERMANENTE)
+        except:
+            df_permanente = pd.DataFrame()
     else:
-        print("📋 Nessun incrocio eseguito. I match validati non hanno trovato corrispondenza nello storico.")
+        df_permanente = pd.DataFrame()
+
+    # Creazione del set di chiavi univoche già storicizzate nel tempo (Data + Nome Match)
+    chiavi_permanenti = set()
+    if not df_permanente.empty and '3. Match' in df_permanente.columns and 'Data_Ora_Match' in df_permanente.columns:
+        for _, r in df_permanente.iterrows():
+            chiave = f"{str(r['Data_Ora_Match']).strip()}_{str(r['3. Match']).strip().upper()}"
+            chiavi_permanenti.add(chiave)
+
+    record_da_accodare = []
+
+    # 3. Filtraggio dei record per evitare tassativamente i doppioni storici
+    for idx, row in df_validato.iterrows():
+        match_nome = str(row.get('3. Match', '')).strip()
+        match_data = str(row.get('Data_Ora_Match', '')).strip()
+        chiave_corrente = f"{match_data}_{match_nome.upper()}"
+
+        # Scudo Anti-Doppione: Se la partita è già dentro l'archivio storico completo, non viene inserita di nuovo
+        if chiave_corrente in chiavi_permanenti:
+            continue
+
+        record_da_accodare.append(row)
+
+    if not record_da_accodare:
+        print("💾 Tutti i match convalidati sono già presenti nel Database Storico Completo. Zero righe aggiunte.")
+        return
+
+    df_nuovi_salvati = pd.DataFrame(record_da_accodare)
+
+    # 4. Scrittura finale in modalità APPEND (unione e riscrittura sicura)
+    if not df_permanente.empty:
+        df_database_aggiornato = pd.concat([df_permanente, df_nuovi_salvati], ignore_index=True)
+    else:
+        df_database_aggiornato = df_nuovi_salvati
+
+    df_database_aggiornato.to_excel(DATABASE_PERMANENTE, index=False)
+    print(f"✅ Database Storico Permanente aggiornato! Aggiunti {len(df_nuovi_salvati)} nuovi match. Totale record in archivio: {len(df_database_aggiornato)}")
 
 if __name__ == "__main__":
-    esegui_archiviazione()
+    esegui_allineamento()
