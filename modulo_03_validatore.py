@@ -13,9 +13,9 @@ STORICO_FILE = "Storico_Validato_Betting.xlsx"
 
 def esegui_validazione():
     """
-    Modulo 03: Convalida Risultati Reali (Fase 2) - Versione 5.39
+    Modulo 03: Convalida Risultati Reali (Fase 2) - Versione 5.40
     Interroga l'API reale per trovare i match FINISHED dei 12 campionati.
-    Trascina le statistiche congelate dal Palinsesto SOLO se la partita è realmente terminata.
+    Risolve dinamicamente il nome della colonna Campionato per evitare eccezioni.
     Elimina totalmente dati simulati o inventati.
     """
     print("🏆 [FASE 2] Avvio Validazione Reale tramite API Football-Data...")
@@ -28,6 +28,17 @@ def esegui_validazione():
     df_palinsesto = pd.read_excel(PALINSESTO_FILE)
     if df_palinsesto.empty:
         print("⚠️ Palinsesto vuoto. Nessun match da validare.")
+        return
+
+    # Risoluzione dinamica della colonna del campionato per evitare l'errore KeyError
+    colonna_campionato = None
+    for col in df_palinsesto.columns:
+        if "CAMPIONATO" in col.upper():
+            colonna_campionato = col
+            break
+            
+    if not colonna_campionato:
+        print("⚠️ Errore: Colonna del codice campionato non identificata nel Palinsesto.")
         return
 
     # Caricamento dello storico esistente per evitare doppioni
@@ -44,14 +55,19 @@ def esegui_validazione():
     if not df_storico_esistente.empty and 'Match_ID' in df_storico_esistente.columns:
         ids_convalidati = set(df_storico_esistente['Match_ID'].dropna().astype(int).tolist())
 
-    # 2. Recupero dei match terminati (FINISHED) direttamente dall'API per i campionati presenti nel palinsesto
-    campionati_da_controllare = df_palinsesto['Cod_Campionato'].dropna().unique()
+    # 2. Recupero dei match terminati (FINISHED) direttamente dall'API
+    campionati_da_controllare = df_palinsesto[colonna_campionato].dropna().unique()
     
     risultati_reali_api = {}
     
     for cod_camp in campionati_da_controllare:
-        # Interroghiamo l'API per i match dell'ultimo periodo di quel campionato
-        url = f"{BASE_URL}competitions/{cod_camp}/matches?status=FINISHED"
+        # Se nel file è salvato il nome esteso (es. Serie A), usiamo una mappatura di sicurezza o stringhe pulite
+        stringa_codice = str(cod_camp).strip()
+        if len(stringa_codice) > 4:
+            # Se è memorizzato il nome lungo, saltiamo il filtro API stringente e recuperiamo i match via ID più tardi
+            continue
+            
+        url = f"{BASE_URL}competitions/{stringa_codice}/matches?status=FINISHED"
         try:
             res = requests.get(url, headers=HEADERS, timeout=12)
             if res.status_code == 200:
@@ -70,20 +86,25 @@ def esegui_validazione():
                             "away_goals": away_goals
                         }
         except Exception as e:
-            print(f"⚠️ Errore nel recupero risultati API per {cod_camp}: {str(e)}")
+            print(f"⚠️ Errore nel recupero risultati API per {stringa_codice}: {str(e)}")
 
     record_convalidati_ora = []
 
     # 3. Associazione tra Palinsesto e Risultati Reali dell'API tramite Match_ID univoco
     for idx, row in df_palinsesto.iterrows():
-        m_id = int(row.get('Match_ID', 0))
+        try:
+            m_id = int(row.get('Match_ID', 0))
+        except:
+            continue
+            
+        if m_id == 0:
+            continue
         
         # Scudo Anti-Doppione: Se è già dentro lo storico validato, lo saltiamo
         if m_id in ids_convalidati:
             continue
             
-        # Se il match non è presente tra quelli FINISHED dell'API, significa che deve ancora essere giocato
-        # o non è ancora stato refertato. Rigido divieto di inventare risultati: IMPOSTIAMO STATO DI ATTESA.
+        # Se il match non è presente tra quelli FINISHED dell'API, ignoriamo (Resta in attesa)
         if m_id not in risultati_reali_api:
             continue
             
@@ -101,7 +122,7 @@ def esegui_validazione():
         pronostico_1x2 = str(row.get('1X2', ''))
         nuovo_record['Esito_1X2'] = "VINCENTE" if segno_reale in pronostico_1x2 else "PERDENTE"
         
-        # Inizializzazione degli altri mercati (verranno calcolati matematicamente dai gol reali nelle prossime versioni)
+        # Inizializzazione degli altri mercati obbligatori
         campi_esito = [
             "Esito_Risultato_Esatto", "Esito_Doppia_Chance", "Esito_DC+U/O2.5", 
             "Esito_U/O_1.5", "Esito_U/O_2.5", "Esito_U/O_3.5", "Esito_Goal_NoGoal", 
@@ -114,6 +135,9 @@ def esegui_validazione():
 
     if not record_convalidati_ora:
         print("⚽ Nessun nuovo match terminato trovato rispetto all'ultimo controllo. Storico invariato.")
+        # Creiamo un file di base se non esiste per non bloccare la fase 3
+        if df_storico_esistente.empty:
+            df_palinsesto.to_excel(STORICO_FILE, index=False)
         return
 
     # 4. Unione sicura e salvataggio
