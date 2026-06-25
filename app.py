@@ -34,18 +34,18 @@ df_palinsesto = carica_dati(PALINSESTO_FILE)
 df_storico = carica_dati(STORICO_FILE)
 df_database = carica_dati(DB_FILE)
 
-# Nuova associazione colori emendata dal Direttore
+# Determinazione della palette cromatica esatta secondo direttiva
 if st.session_state.tab_selezionata == "PALINSESTO":
-    colore_tema = "#eaf7ed"      # Bel Verde Soft
-    colore_bordo = "#c8e6c9"
+    colore_tema = "#eefae1"      # Sfondo Verde Vivo Soft
+    colore_bordo = "#a3e2ab"     # Bordo Verde Vivo
 elif st.session_state.tab_selezionata == "STORICO":
-    colore_tema = "#f0effa"      # Bel Viola Soft
-    colore_bordo = "#d1c4e9"
+    colore_tema = "#f1effa"      # Sfondo Viola Regale Soft
+    colore_bordo = "#c5bfe7"     # Bordo Viola Regale
 else:
-    colore_tema = "#fff3e0"      # Bel Arancio Soft
-    colore_bordo = "#ffe0b2"
+    colore_tema = "#fffde6"      # Sfondo Giallo Canarino Soft
+    colore_bordo = "#f6eb9d"     # Bordo Giallo Canarino
 
-# --- RESTYLING GRAFICO ULTRA-OTTIMIZZATO (VERSIONE 5.28) ---
+# --- RESTYLING GRAFICO ULTRA-OTTIMIZZATO (VERSIONE 5.29) ---
 st.markdown(f"""
     <style>
     .stApp {{ background-color: {colore_tema} !important; transition: background-color 0.2s ease; }}
@@ -74,12 +74,12 @@ st.markdown(f"""
         margin-bottom: -4px !important;
     }}
     
-    /* Configurazione Colori Pulsanti Principali */
-    .element-container:nth-of-type(2) div.stButton > button {{ background-color: #34c759 !important; color: white !important; }} /* Fase 1 Verde */
-    .element-container:nth-of-type(3) div.stButton > button {{ background-color: #5856d6 !important; color: white !important; }} /* Fase 2 Viola */
-    .element-container:nth-of-type(4) div.stButton > button {{ background-color: #ff9500 !important; color: white !important; }} /* Fase 3 Bel Arancio */
+    /* Configurazione Colori Pulsanti Principali Sincronizzati */
+    .element-container:nth-of-type(2) div.stButton > button {{ background-color: #2cd158 !important; color: white !important; }} /* Bel Verde Vivo */
+    .element-container:nth-of-type(3) div.stButton > button {{ background-color: #6a5acd !important; color: white !important; }} /* Bel Viola Regale */
+    .element-container:nth-of-type(4) div.stButton > button {{ background-color: #ffd700 !important; color: #1c1c1e !important; }} /* Bel Giallo Canarino */
     
-    /* Pulsanti invisibili sopra i micro-tab di Streamlit per catturare il click */
+    /* Pulsanti dei micro-tab inferiori */
     .tab-click-col div.stButton > button {{
         font-size: 10px !important;
         padding: 6px 2px !important;
@@ -89,7 +89,7 @@ st.markdown(f"""
         letter-spacing: -0.3px;
     }}
     
-    /* Card dei Match Uniformata al colore della videata attiva */
+    /* Card dei Match Uniformata al colore esatto della videata attiva */
     .match-card {{ 
         background-color: {colore_tema} !important; 
         padding: 12px; 
@@ -107,7 +107,7 @@ st.markdown(f"""
     .block-header.stats {{ color: #ff9500; }}
 
     .market-box {{ display: grid; grid-template-columns: repeat(2, 1fr); gap: 5px; }}
-    .market-cell {{ background: rgba(255, 255, 255, 0.6); padding: 6px; border-radius: 6px; font-size: 11px; display: flex; flex-direction: column; justify-content: center; border: 1px solid {colore_bordo}; }}
+    .market-cell {{ background: rgba(255, 255, 255, 0.7); padding: 6px; border-radius: 6px; font-size: 11px; display: flex; flex-direction: column; justify-content: center; border: 1px solid {colore_bordo}; }}
     .market-cell b {{ color: #8e8e93; font-size: 9px; text-transform: uppercase; margin-bottom: 1px; }}
     .market-val-row {{ display: flex; justify-content: space-between; align-items: center; font-weight: 600; color: #1c1c1e; }}
     
@@ -118,7 +118,7 @@ st.markdown(f"""
     .sub-title {{ font-size: 9px; font-weight: bold; color: #8e8e93; text-transform: uppercase; grid-column: span 2; margin-top: 4px; padding-top: 2px; border-top: 1px dashed {colore_bordo}; }}
     .match-separator {{ margin-bottom: 18px; border-bottom: 2px dotted {colore_bordo}; height: 1px; width: 100%; }}
     
-    /* Box Accuratezza Sempre Pulito e Bianco per Leggibilità */
+    /* Box Accuratezza sempre leggibile */
     .accuracy-container {{ background: #ffffff; padding: 12px; border-radius: 14px; margin-top: 12px; margin-bottom: 14px; box-shadow: 0 3px 10px rgba(0,0,0,0.03); border: 1px solid #d1d1d6; }}
     .accuracy-title {{ font-size: 11px; font-weight: 800; color: #1c1c1e; text-transform: uppercase; margin-bottom: 8px; text-align: center; letter-spacing: 0.5px; }}
     .accuracy-grid {{ display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; }}
@@ -159,7 +159,7 @@ def calcola_accuratezza_globale():
 st.markdown("""
 <div class="brand-box">
     <div class="main-title">⚽ Betting Pro Mobile</div>
-    <div class="version-label">Versione Progetto: 5.28</div>
+    <div class="version-label">Versione Progetto: 5.29</div>
 </div>
 """, unsafe_allow_html=True)
 
@@ -233,12 +233,12 @@ with col_t3:
             st.rerun()
 st.markdown("</div>", unsafe_allow_html=True)
 
-# CSS dinamico per i micro-tab inferiori coordinati alle videate
+# CSS dinamico per i micro-tab attivi sincronizzati
 st.markdown(f"""
     <style>
-    #button-btn_pal {{ background-color: #34c759 !important; color: white !important; font-weight: 800 !important; }}
-    #button-btn_sto {{ background-color: #5856d6 !important; color: white !important; font-weight: 800 !important; }}
-    #button-btn_db {{ background-color: #ff9500 !important; color: white !important; font-weight: 800 !important; }}
+    #button-btn_pal {{ background-color: #2cd158 !important; color: white !important; font-weight: 800 !important; }}
+    #button-btn_sto {{ background-color: #6a5acd !important; color: white !important; font-weight: 800 !important; }}
+    #button-btn_db {{ background-color: #ffd700 !important; color: #1c1c1e !important; font-weight: 800 !important; }}
     #button-btn_pal_off, #button-btn_sto_off, #button-btn_db_off {{ background-color: #ffffff !important; color: #1c1c1e !important; }}
     </style>
 """, unsafe_allow_html=True)
@@ -357,4 +357,4 @@ elif st.session_state.tab_selezionata == "DATABASE":
             """, unsafe_allow_html=True)
 
 # Log di debug in fondo
-st.markdown(f'<div class="debug-badge">iPhone X Color Scheme 5.28 | Active Tab: {st.session_state.tab_selezionata}</div>', unsafe_allow_html=True)
+st.markdown(f'<div class="debug-badge">iPhone X Colors Locked 5.29 | Active Tab: {st.session_state.tab_selezionata}</div>', unsafe_allow_html=True)
