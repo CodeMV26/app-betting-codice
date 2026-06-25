@@ -34,25 +34,27 @@ df_palinsesto = carica_dati(PALINSESTO_FILE)
 df_storico = carica_dati(STORICO_FILE)
 df_database = carica_dati(DB_FILE)
 
-# Determinazione del colore di sfondo dinamico basato sullo stato della tab attiva
-colore_sfondo = "#f2f2f7"
+# Definizione dei colori associati alle tab
 if st.session_state.tab_selezionata == "PALINSESTO":
-    colore_sfondo = "#e6f0fa" # Azzurro soft
+    colore_tema = "#e6f0fa"      # Azzurro soft
+    colore_bordo = "#b3e5fc"
 elif st.session_state.tab_selezionata == "STORICO":
-    colore_sfondo = "#eaf7ed" # Verde soft
-elif st.session_state.tab_selezionata == "DATABASE":
-    colore_sfondo = "#f0effa" # Viola soft
+    colore_tema = "#eaf7ed"      # Verde soft
+    colore_bordo = "#c8e6c9"
+else:
+    colore_tema = "#f0effa"      # Viola soft
+    colore_bordo = "#d1c4e9"
 
-# --- RESTYLING GRAFICO ULTRA-OTTIMIZZATO (VERSIONE 5.26) ---
+# --- RESTYLING GRAFICO ULTRA-OTTIMIZZATO (VERSIONE 5.27) ---
 st.markdown(f"""
     <style>
-    .stApp {{ background-color: {colore_sfondo} !important; transition: background-color 0.2s ease; }}
+    .stApp {{ background-color: {colore_tema} !important; transition: background-color 0.2s ease; }}
     
     .block-container {{ 
         padding-top: 3.5rem !important; 
         padding-bottom: 1rem !important; 
-        padding-left: 0.6rem !important; 
-        padding-right: 0.6rem !important; 
+        padding-left: 0.5rem !important; 
+        padding-right: 0.5rem !important; 
     }}
     
     .brand-box {{ text-align: center; margin-bottom: 12px; padding: 2px; }}
@@ -72,46 +74,50 @@ st.markdown(f"""
         margin-bottom: -4px !important;
     }}
     
-    /* Gestione dei primi 3 pulsanti verticali tramite selettore nativo di riga */
+    /* Gestione pulsanti verticali */
     .element-container:nth-of-type(2) div.stButton > button {{ background-color: #007aff !important; color: white !important; }}
     .element-container:nth-of-type(3) div.stButton > button {{ background-color: #34c759 !important; color: white !important; }}
     .element-container:nth-of-type(4) div.stButton > button {{ background-color: #5856d6 !important; color: white !important; }}
     
-    /* Stile specifico per i 3 pulsanti di Tab Affiancati */
-    .tab-col div.stButton > button {{
-        background-color: #ffffff !important;
-        color: #48484a !important;
+    /* Contenitore Micro-Tab nativo orizzontale per iPhone X */
+    .nav-tabs-container {{
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        width: 100%;
+        margin: 10px 0;
+        gap: 4px;
+    }}
+    
+    /* Pulsanti invisibili sopra i micro-tab di Streamlit per catturare il click */
+    .tab-click-col div.stButton > button {{
+        font-size: 10px !important;
+        padding: 6px 2px !important;
+        border-radius: 6px !important;
         border: 1px solid #d1d1d6 !important;
-        font-size: 9px !important;
-        padding: 5px 2px !important;
-        border-radius: 6px !important;
-    }}
-    .tab-col-attivo div.stButton > button {{
-        background-color: #1c1c1e !important;
-        color: #ffffff !important;
-        border: 1px solid #1c1c1e !important;
-        font-size: 9px !important;
-        padding: 5px 2px !important;
-        border-radius: 6px !important;
+        text-transform: uppercase;
+        letter-spacing: -0.3px;
     }}
     
-    .accuracy-container {{ background: #ffffff; padding: 12px; border-radius: 14px; margin-top: 12px; margin-bottom: 14px; box-shadow: 0 3px 10px rgba(0,122,255,0.04); border: 1px solid #b3e5fc; }}
-    .accuracy-title {{ font-size: 11px; font-weight: 800; color: #0288d1; text-transform: uppercase; margin-bottom: 8px; text-align: center; letter-spacing: 0.5px; }}
-    .accuracy-grid {{ display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; }}
-    .accuracy-item {{ background: #f8f9fa; padding: 6px 8px; border-radius: 8px; font-size: 11px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #e1f5fe; }}
-    .accuracy-item span {{ color: #48484a; font-weight: 600; }}
-    .accuracy-val {{ color: #34c759; font-weight: 800; font-size: 12px; }}
+    /* Card dei Match Uniformata al colore della videata attiva */
+    .match-card {{ 
+        background-color: {colore_tema} !important; 
+        padding: 12px; 
+        border-radius: 14px; 
+        box-shadow: 0 2px 8px rgba(0,0,0,0.04); 
+        margin-bottom: 10px; 
+        border: 1px solid {colore_bordo} !important; 
+    }}
     
-    .match-card {{ background-color: #ffffff; padding: 12px; border-radius: 14px; box-shadow: 0 3px 10px rgba(0,0,0,0.01); margin-bottom: 10px; border: 1px solid #e5e5ea; }}
     .meta-label {{ color: #007aff; font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.3px; margin-bottom: 2px; }}
     .team-text {{ font-size: 15px; font-weight: 700; color: #1c1c1e; margin: 2px 0 6px 0; letter-spacing: -0.3px; }}
-    .score-badge {{ background-color: #f2f2f7; color: #1c1c1e; font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 6px; display: inline-block; margin-bottom: 6px; border: 1px solid #e5e5ea; }}
+    .score-badge {{ background-color: rgba(255,255,255,0.7); color: #1c1c1e; font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 6px; display: inline-block; margin-bottom: 6px; border: 1px solid {colore_bordo}; }}
     
     .block-header {{ font-size: 10px; font-weight: 800; color: #007aff; text-transform: uppercase; margin: 2px 0 8px 0; letter-spacing: 0.4px; display: flex; align-items: center; }}
     .block-header.stats {{ color: #ff9500; }}
 
     .market-box {{ display: grid; grid-template-columns: repeat(2, 1fr); gap: 5px; }}
-    .market-cell {{ background: #f8f9fa; padding: 6px; border-radius: 6px; font-size: 11px; display: flex; flex-direction: column; justify-content: center; border: 1px solid #f2f2f7; }}
+    .market-cell {{ background: rgba(255, 255, 255, 0.6); padding: 6px; border-radius: 6px; font-size: 11px; display: flex; flex-direction: column; justify-content: center; border: 1px solid {colore_bordo}; }}
     .market-cell b {{ color: #8e8e93; font-size: 9px; text-transform: uppercase; margin-bottom: 1px; }}
     .market-val-row {{ display: flex; justify-content: space-between; align-items: center; font-weight: 600; color: #1c1c1e; }}
     
@@ -119,8 +125,17 @@ st.markdown(f"""
     .lose-badge {{ color: #ff3b30; font-weight: bold; font-size: 10px; background: #ffebeb; padding: 1px 4px; border-radius: 3px; }}
     .wait-badge {{ color: #ff9500; font-weight: bold; font-size: 10px; background: #fff5e6; padding: 1px 4px; border-radius: 3px; }}
     
-    .sub-title {{ font-size: 9px; font-weight: bold; color: #8e8e93; text-transform: uppercase; grid-column: span 2; margin-top: 4px; padding-top: 2px; border-top: 1px solid #f2f2f7; }}
-    .match-separator {{ margin-bottom: 18px; border-bottom: 2px dotted #d1d1d6; height: 1px; width: 100%; }}
+    .sub-title {{ font-size: 9px; font-weight: bold; color: #8e8e93; text-transform: uppercase; grid-column: span 2; margin-top: 4px; padding-top: 2px; border-top: 1px dashed {colore_bordo}; }}
+    .match-separator {{ margin-bottom: 18px; border-bottom: 2px dotted {colore_bordo}; height: 1px; width: 100%; }}
+    
+    /* Box Accuratezza Sempre Pulito e Bianco per Leggibilità */
+    .accuracy-container {{ background: #ffffff; padding: 12px; border-radius: 14px; margin-top: 12px; margin-bottom: 14px; box-shadow: 0 3px 10px rgba(0,0,0,0.03); border: 1px solid #d1d1d6; }}
+    .accuracy-title {{ font-size: 11px; font-weight: 800; color: #1c1c1e; text-transform: uppercase; margin-bottom: 8px; text-align: center; letter-spacing: 0.5px; }}
+    .accuracy-grid {{ display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; }}
+    .accuracy-item {{ background: #f8f9fa; padding: 6px 8px; border-radius: 8px; font-size: 11px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #e5e5ea; }}
+    .accuracy-item span {{ color: #48484a; font-weight: 600; }}
+    .accuracy-val {{ color: #34c759; font-weight: 800; font-size: 12px; }}
+    
     .debug-badge {{ background: #3a3a3c; color: #ffffff; padding: 4px 8px; border-radius: 5px; font-family: monospace; font-size: 9px; display: block; text-align: center; margin-top: 10px; }}
     </style>
 """, unsafe_allow_html=True)
@@ -150,11 +165,11 @@ def calcola_accuratezza_globale():
         else: accuratezza[nome_m] = "N.D."
     return accuratezza
 
-# Titolo in Cima (Posizione ripristinata e intatta)
+# Titolo Brand
 st.markdown("""
 <div class="brand-box">
     <div class="main-title">⚽ Betting Pro Mobile</div>
-    <div class="version-label">Versione Progetto: 5.26</div>
+    <div class="version-label">Versione Progetto: 5.27</div>
 </div>
 """, unsafe_allow_html=True)
 
@@ -168,7 +183,7 @@ if st.button(testo_p1, use_container_width=True):
             m1.esegui_estrazione()
             m2.esegui_calcolo_motore()
             st.session_state.log_fase1 = datetime.datetime.now(FUSO_ROMA).strftime("%H:%M:%S")
-            st.toast("🚀 Palinsesto Estratto con Successo!", icon="✅")
+            st.toast("🚀 Palinsesto Estratto!", icon="✅")
             st.rerun()
         except Exception as e: st.error(f"Errore: {str(e)}")
 
@@ -194,36 +209,51 @@ if st.button(testo_p3, use_container_width=True):
             st.rerun()
         except Exception as e: st.error(f"Errore: {str(e)}")
 
-st.markdown("<div style='margin-bottom: 12px;'></div>", unsafe_allow_html=True)
+st.markdown("<div style='margin-bottom: 10px;'></div>", unsafe_allow_html=True)
 
-# --- NUOVA SEZIONE: 3 PULSANTI AFFIANCATI SULLA STESSA RIGA (SOTTO IL PULSANTE 3) ---
+# --- MICRO-TAB ORIZZONTALI COMPATTI PER IPHONE X (LARGHEZZA BLINDATA) ---
+st.markdown("<div class='tab-click-col'>", unsafe_allow_html=True)
 col_t1, col_t2, col_t3 = st.columns(3)
 
 with col_t1:
-    classe_p1 = "tab-col-attivo" if st.session_state.tab_selezionata == "PALINSESTO" else "tab-col"
-    st.markdown(f"<div class='{classe_p1}'>", unsafe_allow_html=True)
-    if st.button(f"🎯 Palinsesto ({len(df_palinsesto)})", key="btn_tab_pal"):
-        st.session_state.tab_selezionata = "PALINSESTO"
-        st.rerun()
-    st.markdown("</div>", unsafe_allow_html=True)
+    label_p1 = f"🎯 Palinsesto ({len(df_palinsesto)})"
+    if st.session_state.tab_selezionata == "PALINSESTO":
+        st.button(label_p1, key="btn_pal", help="Attivo", use_container_width=True)
+    else:
+        if st.button(label_p1, key="btn_pal_off", use_container_width=True):
+            st.session_state.tab_selezionata = "PALINSESTO"
+            st.rerun()
 
 with col_t2:
-    classe_p2 = "tab-col-attivo" if st.session_state.tab_selezionata == "STORICO" else "tab-col"
-    st.markdown(f"<div class='{classe_p2}'>", unsafe_allow_html=True)
-    if st.button(f"📊 Storico ({len(df_storico)})", key="btn_tab_sto"):
-        st.session_state.tab_selezionata = "STORICO"
-        st.rerun()
-    st.markdown("</div>", unsafe_allow_html=True)
+    label_p2 = f"📊 Storico ({len(df_storico)})"
+    if st.session_state.tab_selezionata == "STORICO":
+        st.button(label_p2, key="btn_sto", help="Attivo", use_container_width=True)
+    else:
+        if st.button(label_p2, key="btn_sto_off", use_container_width=True):
+            st.session_state.tab_selezionata = "STORICO"
+            st.rerun()
 
 with col_t3:
-    classe_p3 = "tab-col-attivo" if st.session_state.tab_selezionata == "DATABASE" else "tab-col"
-    st.markdown(f"<div class='{classe_p3}'>", unsafe_allow_html=True)
-    if st.button(f"🗄️ Database ({len(df_database)})", key="btn_tab_db"):
-        st.session_state.tab_selezionata = "DATABASE"
-        st.rerun()
-    st.markdown("</div>", unsafe_allow_html=True)
+    label_p3 = f"🗄️ Database ({len(df_database)})"
+    if st.session_state.tab_selezionata == "DATABASE":
+        st.button(label_p3, key="btn_db", help="Attivo", use_container_width=True)
+    else:
+        if st.button(label_p3, key="btn_db_off", use_container_width=True):
+            st.session_state.tab_selezionata = "DATABASE"
+            st.rerun()
+st.markdown("</div>", unsafe_allow_html=True)
 
-# BOX ACCURATEZZA
+# CSS per colorare i micro-tab in base allo stato attivo/disattivo in modo coerente
+st.markdown(f"""
+    <style>
+    #button-btn_pal {{ background-color: #007aff !important; color: white !important; font-weight: 800 !important; }}
+    #button-btn_sto {{ background-color: #34c759 !important; color: white !important; font-weight: 800 !important; }}
+    #button-btn_db {{ background-color: #5856d6 !important; color: white !important; font-weight: 800 !important; }}
+    #button-btn_pal_off, #button-btn_sto_off, #button-btn_db_off {{ background-color: #ffffff !important; color: #1c1c1e !important; }}
+    </style>
+""", unsafe_allow_html=True)
+
+# BOX ACCURATEZZA DIXON-COLES
 dict_acc = calcola_accuratezza_globale()
 if dict_acc:
     st.markdown("""
@@ -300,7 +330,7 @@ elif st.session_state.tab_selezionata == "STORICO":
                 <div class="meta-label">🏆 {row.get('Campionato', '-')} | {row.get('Data_Ora_Match', '-')}</div>
                 <div class="team-text">{row.get('3. Match', 'Match')}</div>
                 <div class="score-badge">⚽ Finale Reale: {row.get('Risultato_Reale', 'IN ATTESA')}</div>
-                <div class="market-box" style="border-top: 1px dashed #e5e5ea; padding-top: 6px;">
+                <div class="market-box" style="border-top: 1px dashed {colore_bordo}; padding-top: 6px;">
                     <div class="market-cell"><b>1X2</b><div class="market-val-row"><span>{row.get('1X2', '-')}</span>{badge_esito('Esito_1X2')}</div></div>
                     <div class="market-cell"><b>Esatto</b><div class="market-val-row"><span>{row.get('Risultato_Esatto', '-')}</span>{badge_esito('Esito_Risultato_Esatto')}</div></div>
                     <div class="market-cell"><b>Doppia</b><div class="market-val-row"><span>{row.get('Doppia_Chance', '-')}</span>{badge_esito('Esito_Doppia_Chance')}</div></div>
@@ -336,5 +366,5 @@ elif st.session_state.tab_selezionata == "DATABASE":
             </div>
             """, unsafe_allow_html=True)
 
-# Log di debug unificato in fondo
-st.markdown(f'<div class="debug-badge">Interfaccia Mobile Allineata | Tab Corrente: {st.session_state.tab_selezionata}</div>', unsafe_allow_html=True)
+# Log di debug in fondo
+st.markdown(f'<div class="debug-badge">iPhone X Geometry Lock | Tab Corrente: {st.session_state.tab_selezionata}</div>', unsafe_allow_html=True)
