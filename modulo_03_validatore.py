@@ -1,7 +1,6 @@
 import requests
 import pandas as pd
 import os
-from datetime import datetime
 
 # Configurazione API Key Football-Data.org
 API_KEY = "e0ca06c07c634d4fb0950365bd82ffd0"
@@ -11,86 +10,72 @@ HEADERS = {"X-Auth-Token": API_KEY}
 PALINSESTO_FILE = "Pronostici_App_Betting.xlsx"
 STORICO_FILE = "Storico_Validato_Betting.xlsx"
 
+# Mappatura globale di sicurezza per forzare i codici API se nel palinsesto ci sono i nomi estesi
+MAPPA_CAMPIONATI = {
+    "PREMIER LEAGUE": "PL", "SERIE A": "SA", "BUNDESLIGA": "BL1", "LA LIGA": "PD",
+    "PRIMERA DIVISION": "PD", "LIGUE 1": "FL1", "EREDIVISIE": "DED", "CHAMPIONSHIP": "ELC",
+    "PRIMEIRA LIGA": "PPL", "CAMPEONATO BRASILEIRO SÉRIE A": "BSA", "UEFA CHAMPIONS LEAGUE": "CL"
+}
+
 def esegui_validazione():
     """
-    Modulo 03: Convalida Risultati Reali (Fase 2) - Versione 5.40
-    Interroga l'API reale per trovare i match FINISHED dei 12 campionati.
-    Risolve dinamicamente il nome della colonna Campionato per evitare eccezioni.
-    Elimina totalmente dati simulati o inventati.
+    Modulo 03: Convalida Risultati Reali (Fase 2) - Versione 5.41
+    Scarica i risultati reali superando i limiti di stringa del campionato.
+    Se un match è finito, trascina le statistiche e calcola l'esito reale.
+    Se un match non è finito, lo mantiene nello storico in attesa senza inventare dati.
     """
-    print("🏆 [FASE 2] Avvio Validazione Reale tramite API Football-Data...")
+    print("🏆 [FASE 2] Avvio Validazione Reale e Sincronizzazione Totale...")
     
-    # 1. Caricamento del Palinsesto
     if not os.path.exists(PALINSESTO_FILE):
-        print(f"⚠️ Errore: {PALINSESTO_FILE} non trovato. Impossibile validare.")
+        print(f"⚠️ Errore: {PALINSESTO_FILE} non trovato.")
         return
     
     df_palinsesto = pd.read_excel(PALINSESTO_FILE)
     if df_palinsesto.empty:
-        print("⚠️ Palinsesto vuoto. Nessun match da validare.")
+        print("⚠️ Palinsesto vuoto.")
         return
 
-    # Risoluzione dinamica della colonna del campionato per evitare l'errore KeyError
-    colonna_campionato = None
-    for col in df_palinsesto.columns:
-        if "CAMPIONATO" in col.upper():
-            colonna_campionato = col
+    # Pulizia preventiva del Palinsesto da righe corrotte o None vs None
+    if '3. Match' in df_palinsesto.columns:
+        df_palinsesto = df_palinsesto[df_palinsesto['3. Match'].astype(str).str.upper() != 'NONE VS NONE']
+        df_palinsesto = df_palinsesto.dropna(subset=['3. Match'])
+
+    # Identificazione colonna campionato
+    col_camp = None
+    for c in df_palinsesto.columns:
+        if "CAMPIONATO" in c.upper():
+            col_camp = c
             break
+
+    # Recupero risultati FINISHED da tutte le competizioni attive nel palinsesto
+    risultati_api = {}
+    if col_camp:
+        campionati_presenti = df_palinsesto[col_camp].dropna().unique()
+        for camp in campionati_presenti:
+            cod = str(camp).strip().upper()
+            # Se è il nome lungo, lo convertiamo nel codice API corretto (es. Serie A -> SA)
+            if cod in MAPPA_CAMPIONATI:
+                cod = MAPPA_CAMPIONATI[cod]
             
-    if not colonna_campionato:
-        print("⚠️ Errore: Colonna del codice campionato non identificata nel Palinsesto.")
-        return
+            url = f"{BASE_URL}competitions/{cod}/matches?status=FINISHED"
+            try:
+                res = requests.get(url, headers=HEADERS, timeout=12)
+                if res.status_code == 200:
+                    matches = res.json().get("matches", [])
+                    for m in matches:
+                        m_id = int(m.get("id"))
+                        score = m.get("score", {})
+                        full_time = score.get("fullTime", {})
+                        h_g = full_time.get("home")
+                        a_g = full_time.get("away")
+                        if h_g is not None and a_g is not None:
+                            risultati_api[m_id] = {"punteggio": f"{h_g}-{a_g}", "h": h_g, "a": a_g}
+            except Exception as e:
+                print(f"⚠️ Impossibile scaricare storici per campionato {cod}: {str(e)}")
 
-    # Caricamento dello storico esistente per evitare doppioni
-    if os.path.exists(STORICO_FILE):
-        try:
-            df_storico_esistente = pd.read_excel(STORICO_FILE)
-        except:
-            df_storico_esistente = pd.DataFrame()
-    else:
-        df_storico_esistente = pd.DataFrame()
+     record_finali = []
 
-    # Creazione set di ID match già validati per scudo anti-doppione nativo
-    ids_convalidati = set()
-    if not df_storico_esistente.empty and 'Match_ID' in df_storico_esistente.columns:
-        ids_convalidati = set(df_storico_esistente['Match_ID'].dropna().astype(int).tolist())
-
-    # 2. Recupero dei match terminati (FINISHED) direttamente dall'API
-    campionati_da_controllare = df_palinsesto[colonna_campionato].dropna().unique()
-    
-    risultati_reali_api = {}
-    
-    for cod_camp in campionati_da_controllare:
-        # Se nel file è salvato il nome esteso (es. Serie A), usiamo una mappatura di sicurezza o stringhe pulite
-        stringa_codice = str(cod_camp).strip()
-        if len(stringa_codice) > 4:
-            # Se è memorizzato il nome lungo, saltiamo il filtro API stringente e recuperiamo i match via ID più tardi
-            continue
-            
-        url = f"{BASE_URL}competitions/{stringa_codice}/matches?status=FINISHED"
-        try:
-            res = requests.get(url, headers=HEADERS, timeout=12)
-            if res.status_code == 200:
-                matches = res.json().get("matches", [])
-                for m in matches:
-                    m_id = int(m.get("id"))
-                    score = m.get("score", {})
-                    full_time = score.get("fullTime", {})
-                    home_goals = full_time.get("home")
-                    away_goals = full_time.get("away")
-                    
-                    if home_goals is not None and away_goals is not None:
-                        risultati_reali_api[m_id] = {
-                            "punteggio": f"{home_goals}-{away_goals}",
-                            "home_goals": home_goals,
-                            "away_goals": away_goals
-                        }
-        except Exception as e:
-            print(f"⚠️ Errore nel recupero risultati API per {stringa_codice}: {str(e)}")
-
-    record_convalidati_ora = []
-
-    # 3. Associazione tra Palinsesto e Risultati Reali dell'API tramite Match_ID univoco
+    # Sincronizzazione e processamento di OGNI partita del Palinsesto
     for idx, row in df_palinsesto.iterrows():
         try:
             m_id = int(row.get('Match_ID', 0))
@@ -99,56 +84,31 @@ def esegui_validazione():
             
         if m_id == 0:
             continue
-        
-        # Scudo Anti-Doppione: Se è già dentro lo storico validato, lo saltiamo
-        if m_id in ids_convalidati:
-            continue
             
-        # Se il match non è presente tra quelli FINISHED dell'API, ignoriamo (Resta in attesa)
-        if m_id not in risultati_reali_api:
-            continue
-            
-        # Il match è FINISHED sul server: estraiamo i dati veri
-        dati_veri = risultati_reali_api[m_id]
-        
         nuovo_record = row.copy()
-        nuovo_record['Risultato_Reale'] = dati_veri["punteggio"]
         
-        # Calcolo dell'esito 1X2 reale basato sui gol veri dell'API
-        h_g = dati_veri["home_goals"]
-        a_g = dati_veri["away_goals"]
-        segno_reale = "1" if h_g > a_g else ("X" if h_g == a_g else "2")
-        
-        pronostico_1x2 = str(row.get('1X2', ''))
-        nuovo_record['Esito_1X2'] = "VINCENTE" if segno_reale in pronostico_1x2 else "PERDENTE"
-        
-        # Inizializzazione degli altri mercati obbligatori
-        campi_esito = [
-            "Esito_Risultato_Esatto", "Esito_Doppia_Chance", "Esito_DC+U/O2.5", 
-            "Esito_U/O_1.5", "Esito_U/O_2.5", "Esito_U/O_3.5", "Esito_Goal_NoGoal", 
-            "Esito_Media_Goal_Casa", "Esito_Media_Goal_Trasferta", "Esito_Media_Goal_Totale", "Esito_Corner_1X2"
-        ]
-        for col_esito in campi_esito:
-            nuovo_record[col_esito] = "DA_CALCOLARE"
+        # Se il match è stato trovato tra quelli FINISHED delle API, aggiorniamo il dato reale
+        if m_id in risultati_api:
+            dati_veri = risultati_api[m_id]
+            nuovo_record['Risultato_Reale'] = dati_veri["punteggio"]
             
-        record_convalidati_ora.append(nuovo_record)
+            # Calcolo esito 1X2 onesto
+            segno_reale = "1" if dati_veri["h"] > dati_veri["a"] else ("X" if dati_veri["h"] == dati_veri["a"] else "2")
+            pronostico_1x2 = str(row.get('1X2', ''))
+            nuovo_record['Esito_1X2'] = "VINCENTE" if segno_reale in pronostico_1x2 else "PERDENTE"
+        else:
+            # Se non è ancora finito o non refertato, resta nel database in attesa (Nessun dato inventato)
+            nuovo_record['Risultato_Reale'] = "NON ANCORA REALE/DA VALIDARE"
+            nuovo_record['Esito_1X2'] = "IN ATTESA"
 
-    if not record_convalidati_ora:
-        print("⚽ Nessun nuovo match terminato trovato rispetto all'ultimo controllo. Storico invariato.")
-        # Creiamo un file di base se non esiste per non bloccare la fase 3
-        if df_storico_esistente.empty:
-            df_palinsesto.to_excel(STORICO_FILE, index=False)
-        return
+        record_finali.append(nuovo_record)
 
-    # 4. Unione sicura e salvataggio
-    df_nuovi_validati = pd.DataFrame(record_convalidati_ora)
-    if not df_storico_esistente.empty:
-        df_finale = pd.concat([df_storico_esistente, df_nuovi_validati], ignore_index=True)
+    if record_finali:
+        df_nuovo_storico = pd.DataFrame(record_finali)
+        df_nuovo_storico.to_excel(STORICO_FILE, index=False)
+        print(f"✅ File {STORICO_FILE} salvato con successo. Righe totali: {len(df_nuovo_storico)}")
     else:
-        df_finale = df_nuovi_validati
-
-    df_finale.to_excel(STORICO_FILE, index=False)
-    print(f"✅ Storico Validato aggiornato con successo! Aggiunti {len(df_nuovi_validati)} match realmente TERMINATI.")
+        print("⚠️ Nessun record elaborato.")
 
 if __name__ == "__main__":
     esegui_validazione()
