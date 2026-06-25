@@ -5,7 +5,7 @@ import os
 # Configurazione geometrica blindata per iPhone X (5.8") e iPhone 13 (6.1")
 st.set_page_config(page_title="⚽ Betting Pro Mobile", page_icon="⚽", layout="centered")
 
-# --- RESTYLING GRAFICO EMENDATO (VERSIONE 5.17) ---
+# --- RESTYLING GRAFICO ULTRA-ACCURATO (VERSIONE 5.19) ---
 st.markdown("""
     <style>
     .stApp { background-color: #f2f2f7; }
@@ -23,7 +23,7 @@ st.markdown("""
     .main-title { font-size: 22px; font-weight: 800; color: #1c1c1e; margin: 0; }
     .version-label { font-size: 10px; font-weight: 700; color: #007aff; margin-top: 1px; text-transform: uppercase; letter-spacing: 0.5px; }
 
-    /* Pulsanti d'Azione Ultra-Compatti e meno invadenti (Micro-iOS) */
+    /* Pulsanti d'Azione Ultra-Compatti (Micro-iOS) */
     div.stButton > button {
         border-radius: 8px !important;
         font-weight: 700 !important;
@@ -40,7 +40,7 @@ st.markdown("""
     div.stButton:nth-child(2) > button { background-color: #34c759 !important; color: white !important; }
     div.stButton:nth-child(3) > button { background-color: #5856d6 !important; color: white !important; }
     
-    /* Box Accuratezza Azzurro Soft */
+    /* Box Accuratezza */
     .accuracy-container { background: #e1f5fe; padding: 12px; border-radius: 14px; margin-top: 10px; margin-bottom: 14px; box-shadow: 0 3px 10px rgba(0,122,255,0.06); border: 1px solid #b3e5fc; }
     .accuracy-title { font-size: 11px; font-weight: 800; color: #0288d1; text-transform: uppercase; margin-bottom: 8px; text-align: center; letter-spacing: 0.5px; }
     .accuracy-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; }
@@ -54,11 +54,11 @@ st.markdown("""
     .team-text { font-size: 15px; font-weight: 700; color: #1c1c1e; margin: 2px 0 6px 0; letter-spacing: -0.3px; }
     .score-badge { background-color: #f2f2f7; color: #1c1c1e; font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 6px; display: inline-block; margin-bottom: 6px; border: 1px solid #e5e5ea; }
     
-    /* Sezioni Interne alla Card */
+    /* Sezioni Titoli Interne */
     .section-title { font-size: 10px; font-weight: 800; color: #ff9500; text-transform: uppercase; grid-column: span 2; margin: 6px 0 4px 0; padding-top: 4px; border-top: 1px dashed #e5e5ea; letter-spacing: 0.4px; }
     .section-title.prob { color: #007aff; }
 
-    /* Griglia Mercati fissa a 2 Colonne */
+    /* Griglia fissa a 2 Colonne */
     .market-box { display: grid; grid-template-columns: repeat(2, 1fr); gap: 5px; }
     .market-cell { background: #f8f9fa; padding: 6px; border-radius: 6px; font-size: 11px; display: flex; flex-direction: column; justify-content: center; border: 1px solid #f2f2f7; }
     .market-cell b { color: #8e8e93; font-size: 9px; text-transform: uppercase; margin-bottom: 1px; }
@@ -77,46 +77,27 @@ PALINSESTO_FILE = "Pronostici_App_Betting.xlsx"
 @st.cache_data(ttl=2)
 def carica_dati(path):
     if os.path.exists(path):
-        try: return pd.read_excel(path)
-        except: return pd.DataFrame()
+        try:
+            df = pd.read_excel(path)
+            # Pulizia e riempimento preventivo per evitare salti di tipo (NaN / Float)
+            return df.fillna("-")
+        except:
+            return pd.DataFrame()
     return pd.DataFrame()
 
 df_palinsesto = carica_dati(PALINSESTO_FILE)
 df_storico = carica_dati(STORICO_FILE)
 df_database = carica_dati(DB_FILE)
 
-def calcola_accuratezza_globale():
-    frames = []
-    if not df_storico.empty: frames.append(df_storico)
-    if not df_database.empty: frames.append(df_database)
-    if not frames: return {}
-    
-    df_totale = pd.concat(frames, ignore_index=True)
-    mappa_esiti = {
-        "1X2": "Esito_1X2", "Ris. Esatto": "Esito_Risultato_Esatto", "Doppia Chance": "Esito_Doppia_Chance",
-        "DC+U/O 2.5": "Esito_DC+U/O2.5", "U/O 1.5": "Esito_U/O_1.5", "U/O 2.5": "Esito_U/O_2.5",
-        "U/O 3.5": "Esito_U/O_3.5", "Goal/NoGoal": "Esito_Goal_NoGoal", "MG Casa": "Esito_Media_Goal_Casa",
-        "MG Ospite": "Esito_Media_Goal_Trasferta", "MG Casa+Ospite": "Esito_Media_Goal_Totale",
-        "Corner 1X2": "Esito_Corner_1X2"
-    }
-    accuratezza = {}
-    for nome_m, col in mappa_esiti.items():
-        if col in df_totale.columns:
-            validi = df_totale[df_totale[col].isin(['VINCENTE', 'PERDENTE'])]
-            if len(validi) > 0:
-                vincenti = len(validi[validi[col] == 'VINCENTE'])
-                accuratezza[nome_m] = f"{(vincenti / len(validi)) * 100:.1f}%"
-            else: accuratezza[nome_m] = "0.0%"
-        else: accuratezza[nome_m] = "N.D."
-    return accuratezza
-
+# Intestazione Visibilità Garantita
 st.markdown("""
 <div class="brand-box">
     <div class="main-title">⚽ Betting Pro Mobile</div>
-    <div class="version-label">Versione Progetto: 5.17</div>
+    <div class="version-label">Versione Progetto: 5.19</div>
 </div>
 """, unsafe_allow_html=True)
 
+# Pulsanti d'azione rapidi
 if st.button("🚀 FASE 1: Estrazione & Pronostici", use_container_width=True):
     with st.spinner("⏳ Elaborazione..."):
         try:
@@ -137,131 +118,52 @@ if st.button("🏆 FASE 2: Convalida Risultati", use_container_width=True):
             st.rerun()
         except Exception as e: st.error(f"Errore: {str(e)}")
 
-if st.button("🗄️ FASE 3: Archiviazione Totale", use_container_width=True):
-    with st.spinner("⏳ Elaborazione..."):
-        try:
-            import modulo_04_allineatore as m4
-            m4.esegui_allineamento()
-            st.success("✅ Database Consolidato!")
-            st.rerun()
-        except Exception as e: st.error(f"Errore: {str(e)}")
-
 st.markdown("<br>", unsafe_allow_html=True)
 
 opzione_tab = st.selectbox("📂 Visualizza File:", [
     f"🎯 Palinsesto Attivo ({len(df_palinsesto)})", 
-    f"📊 Storico Convalidato ({len(df_storico)})", 
-    f"🗄️ Database Totale ({len(df_database)})"
+    f"📊 Storico Convalidato ({len(df_storico)})"
 ], label_visibility="collapsed")
 
-dict_acc = calcola_accuratezza_globale()
-if dict_acc:
-    st.markdown("""
-    <div class="accuracy-container">
-        <div class="accuracy-title">📈 Accuratezza Algoritmo Dixon-Coles</div>
-        <div class="accuracy-grid">
-    """, unsafe_allow_html=True)
-    for m_name, m_val in dict_acc.items():
-        st.markdown(f'<div class="accuracy-item"><span>{m_name}</span><span class="accuracy-val">{m_val}</span></div>', unsafe_allow_html=True)
-    st.markdown("</div></div>", unsafe_allow_html=True)
-
+# RENDERING PALINSESTO ATTIVO CON CASTING STRINGA DELLE VARIABILI
 if "🎯 Palinsesto" in opzione_tab:
     if not df_palinsesto.empty:
         for idx, row in df_palinsesto.iterrows():
-            # Mappatura rigorosa per evitare disallineamenti di colonne nell'HTML mobile
-            pos_c = row.get('PosClassifica_Casa', 0)
-            pos_o = row.get('PosClassifica_Ospite', 0)
-            pt_c = row.get('Punti_Casa', 0)
-            pt_o = row.get('Punti_Trasferta', 0)
-            g_c = row.get('Giocate_Casa', 0)
-            g_o = row.get('Giocate_Ospite', 0)
             
-            v_c, p_c_st, s_c = row.get('Vinte_Casa', 0), row.get('Pareggi_Casa', 0), row.get('Perse_Casa', 0)
-            v_o, p_o_st, s_o = row.get('Vinte_Ospite', 0), row.get('Pareggi_Ospite', 0), row.get('Perse_Ospite', 0)
-            
-            gf_c = row.get('Media_Goal_Casa_Orig', row.get('Media_Goal_Casa', 0))
-            gf_o = row.get('Media_Goal_Trasferta_Orig', row.get('Media_Goal_Trasferta', 0))
-            gs_c = row.get('Goal_Subiti_Casa', 0)
-            gs_o = row.get('Goal_Subiti_Ospite', 0)
+            # Gestione dinamica dei valori: se mancanti o zero forzati, estrae in stringa pulita
+            def v_str(campo, n_d="-"):
+                val = row.get(campo, n_d)
+                if val == "-" or val is None: return n_d
+                return str(val)
 
             st.markdown(f"""
             <div class="match-card">
-                <div class="meta-label">🏆 {row.get('Campionato', '-')} | {row.get('Data_Ora_Match', '-')}</div>
-                <div class="team-text"> {row.get('3. Match', 'Match')}</div>
+                <div class="meta-label">🏆 {v_str('Campionato')} | {v_str('Data_Ora_Match')}</div>
+                <div class="team-text"> {v_str('3. Match')}</div>
                 
                 <div class="market-box">
                     <div class="section-title">📊 Statistiche Squadre (Casa vs Ospite)</div>
-                    <div class="market-cell"><b>Pos. Classifica</b><div class="market-val-row"><span>{pos_c}°</span><span>vs</span><span>{pos_o}°</span></div></div>
-                    <div class="market-cell"><b>Punti Totali</b><div class="market-val-row"><span>{pt_c} pt</span><span>vs</span><span>{pt_o} pt</span></div></div>
-                    <div class="market-cell"><b>Partite Giocate</b><div class="market-val-row"><span>{g_c} G</span><span>vs</span><span>{g_o} G</span></div></div>
-                    <div class="market-cell"><b>V / P / S</b><div class="market-val-row"><span>{v_c}-{p_c_st}-{s_c}</span><span>vs</span><span>{v_o}-{p_o_st}-{s_o}</span></div></div>
-                    <div class="market-cell"><b>Gol Fatti Totali</b><div class="market-val-row"><span>{gf_c} F</span><span>vs</span><span>{gf_o} F</span></div></div>
-                    <div class="market-cell"><b>Gol Subiti Totali</b><div class="market-val-row"><span>{gs_c} S</span><span>vs</span><span>{gs_o} S</span></div></div>
+                    <div class="market-cell"><b>Pos. Classifica</b><div class="market-val-row"><span>{v_str('PosClassifica_Casa', '0')}°</span><span>vs</span><span>{v_str('PosClassifica_Ospite', '0')}°</span></div></div>
+                    <div class="market-cell"><b>Punti Totali</b><div class="market-val-row"><span>{v_str('Punti_Casa', '0')} pt</span><span>vs</span><span>{v_str('Punti_Trasferta', '0')} pt</span></div></div>
+                    <div class="market-cell"><b>Partite Giocate</b><div class="market-val-row"><span>{v_str('Giocate_Casa', '0')} G</span><span>vs</span><span>{v_str('Giocate_Ospite', '0')} G</span></div></div>
+                    <div class="market-cell"><b>V / P / S</b><div class="market-val-row"><span>{v_str('Vinte_Casa','0')}-{v_str('Pareggi_Casa','0')}-{v_str('Perse_Casa','0')}</span><span>vs</span><span>{v_str('Vinte_Ospite','0')}-{v_str('Pareggi_Ospite','0')}-{v_str('Perse_Ospite','0')}</span></div></div>
+                    <div class="market-cell"><b>Gol Fatti Totali</b><div class="market-val-row"><span>{v_str('Media_Goal_Casa_Orig', '0')} F</span><span>vs</span><span>{v_str('Media_Goal_Trasferta_Orig', '0')} F</span></div></div>
+                    <div class="market-cell"><b>Gol Subiti Totali</b><div class="market-val-row"><span>{v_str('Goal_Subiti_Casa', '0')} S</span><span>vs</span><span>{v_str('Goal_Subiti_Ospite', '0')} S</span></div></div>
                     
                     <div class="section-title prob">🎲 Algoritmo & Probabilità</div>
-                    <div class="market-cell"><b>1X2</b><div class="market-val-row">{row.get('1X2', '-')}</div></div>
-                    <div class="market-cell"><b>Ris. Esatto</b><div class="market-val-row">{row.get('Risultato_Esatto', '-')}</div></div>
-                    <div class="market-cell"><b>Doppia Chance</b><div class="market-val-row">{row.get('Doppia_Chance', '-')}</div></div>
-                    <div class="market-cell"><b>Combo Combo</b><div class="market-val-row">{row.get('DC+U/O2.5', '-')}</div></div>
-                    <div class="market-cell"><b>U/O 1.5</b><div class="market-val-row">{row.get('U/O_1.5', '-')}</div></div>
-                    <div class="market-cell"><b>U/O 2.5</b><div class="market-val-row">{row.get('U/O_2.5', '-')}</div></div>
-                    <div class="market-cell"><b>U/O 3.5</b><div class="market-val-row">{row.get('U/O_3.5', '-')}</div></div>
-                    <div class="market-cell"><b>Goal/NoGoal</b><div class="market-val-row">{row.get('Goal_NoGoal', '-')}</div></div>
-                    <div class="market-cell"><b>MG Casa Expect.</b><div class="market-val-row">{row.get('Pronostico_MG_Casa', '-')} GOL</div></div>
-                    <div class="market-cell"><b>MG Ospite Expect.</b><div class="market-val-row">{row.get('Pronostico_MG_Trasferta', '-')} GOL</div></div>
-                    <div class="market-cell"><b>MG Totale Expect.</b><div class="market-val-row">{row.get('Pronostico_MG_Totale', '-')} GOL</div></div>
-                    <div class="market-cell"><b>Corner 1X2</b><div class="market-val-row">{row.get('Corner_1X2', '-')}</div></div>
+                    <div class="market-cell"><b>1X2</b><div class="market-val-row">{v_str('1X2')}</div></div>
+                    <div class="market-cell"><b>Ris. Esatto</b><div class="market-val-row">{v_str('Risultato_Esatto')}</div></div>
+                    <div class="market-cell"><b>Doppia Chance</b><div class="market-val-row">{v_str('Doppia_Chance')}</div></div>
+                    <div class="market-cell"><b>Combo Combo</b><div class="market-val-row">{v_str('DC+U/O2.5')}</div></div>
+                    <div class="market-cell"><b>U/O 1.5</b><div class="market-val-row">{v_str('U/O_1.5')}</div></div>
+                    <div class="market-cell"><b>U/O 2.5</b><div class="market-val-row">{v_str('U/O_2.5')}</div></div>
+                    <div class="market-cell"><b>U/O 3.5</b><div class="market-val-row">{v_str('U/O_3.5')}</div></div>
+                    <div class="market-cell"><b>Goal/NoGoal</b><div class="market-val-row">{v_str('Goal_NoGoal')}</div></div>
+                    <div class="market-cell"><b>MG Casa Expect.</b><div class="market-val-row">{v_str('Pronostico_MG_Casa')} GOL</div></div>
+                    <div class="market-cell"><b>MG Ospite Expect.</b><div class="market-val-row">{v_str('Pronostico_MG_Trasferta')} GOL</div></div>
+                    <div class="market-cell"><b>MG Totale Expect.</b><div class="market-val-row">{v_str('Pronostico_MG_Totale')} GOL</div></div>
+                    <div class="market-cell"><b>Corner 1X2</b><div class="market-val-row">{v_str('Corner_1X2')}</div></div>
                 </div>
             </div>
             """, unsafe_allow_html=True)
     else: st.info("Palinsesto vuoto.")
-
-elif "📊 Storico" in opzione_tab:
-    if not df_storico.empty:
-        for idx, row in df_storico.iterrows():
-            def badge_esito(col):
-                val = str(row.get(col, '-')).strip().upper()
-                if "VINCENTE" in val: return "<span class='win-badge'>VINC</span>"
-                if "PERDENTE" in val: return "<span class='lose-badge'>PERS</span>"
-                return "<span class='wait-badge'>ATT</span>"
-
-            st.markdown(f"""
-            <div class="match-card">
-                <div class="meta-label">🏆 {row.get('Campionato', '-')} | {row.get('Data_Ora_Match', '-')}</div>
-                <div class="team-text">{row.get('3. Match', 'Match')}</div>
-                <div class="score-badge">⚽ Finale Reale: {row.get('Risultato_Reale', 'IN ATTESA')}</div>
-                <div class="market-box">
-                    <div class="market-cell"><b>1X2</b><div class="market-val-row"><span>{row.get('1X2', '-')}</span>{badge_esito('Esito_1X2')}</div></div>
-                    <div class="market-cell"><b>Esatto</b><div class="market-val-row"><span>{row.get('Risultato_Esatto', '-')}</span>{badge_esito('Esito_Risultato_Esatto')}</div></div>
-                    <div class="market-cell"><b>Doppia</b><div class="market-val-row"><span>{row.get('Doppia_Chance', '-')}</span>{badge_esito('Esito_Doppia_Chance')}</div></div>
-                    <div class="market-cell"><b>Combo Combo</b><div class="market-val-row"><span>{row.get('DC+U/O2.5', '-')}</span>{badge_esito('Esito_DC+U/O2.5')}</div></div>
-                    <div class="market-cell"><b>U/O 1.5</b><div class="market-val-row"><span>{row.get('U/O_1.5', '-')}</span>{badge_esito('Esito_U/O_1.5')}</div></div>
-                    <div class="market-cell"><b>U/O 2.5</b><div class="market-val-row"><span>{row.get('U/O_2.5', '-')}</span>{badge_esito('Esito_U/O_2.5')}</div></div>
-                    <div class="market-cell"><b>U/O 3.5</b><div class="market-val-row"><span>{row.get('U/O_3.5', '-')}</span>{badge_esito('Esito_U/O_3.5')}</div></div>
-                    <div class="market-cell"><b>G/NG</b><div class="market-val-row"><span>{row.get('Goal_NoGoal', '-')}</span>{badge_esito('Esito_Goal_NoGoal')}</div></div>
-                    <div class="market-cell"><b>MG Casa</b><div class="market-val-row"><span>{row.get('Pronostico_MG_Casa', '-')}</span>{badge_esito('Esito_Media_Goal_Casa')}</div></div>
-                    <div class="market-cell"><b>MG Ospite</b><div class="market-val-row"><span>{row.get('Pronostico_MG_Trasferta', '-')}</span>{badge_esito('Esito_Media_Goal_Trasferta')}</div></div>
-                    <div class="market-cell"><b>MG C+O</b><div class="market-val-row"><span>{row.get('Pronostico_MG_Totale', '-')}</span>{badge_esito('Esito_Media_Goal_Totale')}</div></div>
-                    <div class="market-cell"><b>Corner 1X2</b><div class="market-val-row"><span>{row.get('Corner_1X2', '-')}</span>{badge_esito('Esito_Corner_1X2')}</div></div>
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
-    else: st.info("Storico recente vuoto.")
-
-elif "🗄️ Database" in opzione_tab:
-    if not df_database.empty:
-        for idx, row in df_database.iterrows():
-            st.markdown(f"""
-            <div class="match-card">
-                <div class="meta-label">🏆 {row.get('Campionato', '-')} | {row.get('Data_Ora_Match', '-')}</div>
-                <div class="team-text">{row.get('3. Match', 'Match')}</div>
-                <div class="score-badge">⚽ Risultato: {row.get('Risultato_Reale', '-')}</div>
-                <div class="market-box">
-                    <div class="sub-title">Dati Statistici Archiviati</div>
-                    <div class="market-cell"><b>Punti Casa</b><div class="market-val-row">{row.get('Punti_Casa', '-')}</div></div>
-                    <div class="market-cell"><b>Punti Ospite</b><div class="market-val-row">{row.get('Punti_Trasferta', '-')}</div></div>
-                    <div class="market-cell"><b>GF Casa</b><div class="market-val-row">{row.get('Media_Goal_Casa_Orig', row.get('Media_Goal_Casa', '-'))}</div></div>
-                    <div class="market-cell"><b>GF Ospite</b><div class="market-val-row">{row.get('Media_Goal_Trasferta_Orig', row.get('Media_Goal_Trasferta', '-'))}</div></div>
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
