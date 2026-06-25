@@ -7,10 +7,10 @@ import modulo_01_estrattore as m1
 import modulo_03_validatore as m3
 import modulo_04_trasferitore as m4
 
-# Configurazione Geometrica Rigida per Target Mobile (iPhone X / iPhone 13)
+# Configurazione Geometrica Rigida per Target Mobile (Layout Corretto)
 st.set_page_config(
     page_title="App Betting Pro",
-    layout="vertical",
+    layout="centered",
     initial_sidebar_state="collapsed"
 )
 
@@ -26,7 +26,7 @@ st.markdown("""
 
 # Intestazione Fissa di Controllo
 st.title("🏆 SISTEMA BETTING AUTOMATIZZATO")
-st.write("<p style='text-align:center; color:grey;'><b>VERSIONE PROGETTO: 5.50</b></p>", unsafe_allow_html=True)
+st.write("<p style='text-align:center; color:grey;'><b>VERSIONE PROGETTO: 5.51</b></p>", unsafe_allow_html=True)
 st.write(f"<p style='text-align:center; font-size:0.8rem;'>Data Sistema: 26/06/2026</p>", unsafe_allow_html=True)
 st.markdown("---")
 
@@ -39,7 +39,7 @@ st.subheader("🎛️ Pannello di Controllo Fasi")
 if st.button("🚀 FASE 1: Estrai e Calcola Palinsesto"):
     with st.spinner("Estrazione dati e calcolo pronostici in corso..."):
         try:
-            m1.esegui_estrazione() # Questo attiva anche il motore interno
+            m1.esegui_estrazione()
             st.success("✅ Palinsesto congelato creato con successo!")
         except Exception as e:
             st.error(f"Errore Fase 1: {str(e)}")
@@ -85,7 +85,6 @@ if os.path.exists(file_selezionato):
     try:
         df_view = pd.read_excel(file_selezionato)
         st.write(f"Righe presenti: **{len(df_view)}**")
-        # Mostra colonne essenziali per display mobile senza scroll orizzontale distruttivo
         colonne_visibili = [c for c in ['Data_Ora_Match', '3. Match', '1X2', 'Risultato_Reale', 'Esito_1X2'] if c in df_view.columns]
         if colonne_visibili:
             st.dataframe(df_view[colonne_visibili].head(20), use_container_width=True)
