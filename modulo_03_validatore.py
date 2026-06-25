@@ -12,11 +12,11 @@ STORICO_FILE = "Storico_Validato_Betting.xlsx"
 
 def esegui_validazione():
     """
-    Modulo 03: Validatore Real-Time ID Specifico - Versione 5.47
-    Elimina i match None-None all'origine.
-    Interroga l'API direttamente sull'ID del singolo match per forzare la validazione automatica.
+    Modulo 03: Validatore Resiliente Totale - Versione 5.48
+    Garantisce che il file non sia mai vuoto. Copia tutto il palinsesto pulito.
+    Interroga in tempo reale solo i match con ID valido.
     """
-    print("🏆 [FASE 2] Avvio Validatore Real-Time Automatico...")
+    print("🏆 [FASE 2] Avvio Validazione di Sicurezza...")
     
     if not os.path.exists(PALINSESTO_FILE):
         print(f"⚠️ Errore critico: {PALINSESTO_FILE} non trovato.")
@@ -24,30 +24,36 @@ def esegui_validazione():
     
     df_palinsesto = pd.read_excel(PALINSESTO_FILE)
     if df_palinsesto.empty:
-        print("⚠️ Palinsesto vuoto. Nessun dato da elaborare.")
+        print("⚠️ Palinsesto vuoto originariamente. Nessun dato.")
         return
 
-    # 1. ELIMINAZIONE TASSATIVA DEI RECORD CORROTTI "NONE VS NONE"
+    # 1. PURIFAZIONE IMMEDIATA MA INCLUSIVA (Tagliamo solo i None vs None veri)
     if '3. Match' in df_palinsesto.columns:
         df_palinsesto = df_palinsesto[df_palinsesto['3. Match'].astype(str).str.upper() != 'NONE VS NONE']
         df_palinsesto = df_palinsesto[df_palinsesto['3. Match'].astype(str).str.upper() != 'NAN']
-        df_palinsesto = df_palinsesto.dropna(subset=['3. Match'])
 
     record_finali = []
 
-    # 2. SCANSIONE DIRETTA MATCH PER MATCH SU API
+    # 2. SCANSIONE PROTETTA
     for idx, row in df_palinsesto.iterrows():
         nuovo_record = row.copy()
         
+        # Estrazione sicura dell'ID
+        m_id_raw = row.get('Match_ID')
         try:
-            m_id = int(row.get('Match_ID', 0))
+            m_id = int(float(m_id_raw)) if pd.notna(m_id_raw) else 0
         except:
             m_id = 0
 
+        # Se non c'è ID valido, manteniamo la riga nello storico senza distruggerla
         if m_id == 0:
+            if pd.isna(nuovo_record.get('Risultato_Reale')) or str(nuovo_record.get('Risultato_Reale')).strip() == "":
+                nuovo_record['Risultato_Reale'] = "NON ANCORA REALE/DA VALIDARE"
+                nuovo_record['Esito_1X2'] = "IN ATTESA"
+            record_finali.append(nuovo_record)
             continue
 
-        # Chiamata diretta per verificare lo stato di QUESTO specifico match sul server
+        # Chiamata API mirata ad automazione totale
         url_singolo_match = f"{BASE_URL}matches/{m_id}"
         try:
             res = requests.get(url_singolo_match, headers=HEADERS, timeout=8)
@@ -63,8 +69,6 @@ def esegui_validazione():
                     
                     if h_g is not None and a_g is not None:
                         nuovo_record['Risultato_Reale'] = f"{h_g}-{a_g}"
-                        
-                        # Calcolo esito 1X2 reale
                         segno_reale = "1" if h_g > a_g else ("X" if h_g == a_g else "2")
                         pronostico_1x2 = str(row.get('1X2', ''))
                         nuovo_record['Esito_1X2'] = "VINCENTE" if segno_reale in pronostico_1x2 else "PERDENTE"
@@ -72,23 +76,24 @@ def esegui_validazione():
                         nuovo_record['Risultato_Reale'] = "NON ANCORA REALE/DA VALIDARE"
                         nuovo_record['Esito_1X2'] = "IN ATTESA"
                 else:
-                    # Match programmato o in corso
                     nuovo_record['Risultato_Reale'] = "NON ANCORA REALE/DA VALIDARE"
                     nuovo_record['Esito_1X2'] = "IN ATTESA"
             else:
-                # Se l'API non risponde, preserviamo lo stato precedente senza perdere il match
-                if pd.isna(row.get('Risultato_Reale')) or "NON ANCORA" in str(row.get('Risultato_Reale')).upper():
+                # Caso di fallback se l'API non risponde (mantiene il dato corrente)
+                if pd.isna(nuovo_record.get('Risultato_Reale')) or "NON ANCORA" in str(nuovo_record.get('Risultato_Reale')).upper():
                     nuovo_record['Risultato_Reale'] = "NON ANCORA REALE/DA VALIDARE"
                     nuovo_record['Esito_1X2'] = "IN ATTESA"
-        except Exception as e:
-            print(f"⚠️ Errore di rete su match {m_id}: {str(e)}")
+        except Exception:
+            if pd.isna(nuovo_record.get('Risultato_Reale')) or "NON ANCORA" in str(nuovo_record.get('Risultato_Reale')).upper():
+                nuovo_record['Risultato_Reale'] = "NON ANCORA REALE/DA VALIDARE"
+                nuovo_record['Esito_1X2'] = "IN ATTESA"
 
         record_finali.append(nuovo_record)
 
-    # 3. SCRITTURA FINALE DELLO STORICO VALIDATO COMPLETAMENTE AUTOMATIZZATO
+    # 3. SCRITTURA DI SICUREZZA INCONDIZIONATA
     df_nuovo_storico = pd.DataFrame(record_finali)
     df_nuovo_storico.to_excel(STORICO_FILE, index=False)
-    print(f"✅ Archivio {STORICO_FILE} rigenerato. Righe pulite scritte: {len(df_nuovo_storico)}")
+    print(f"✅ Archivio {STORICO_FILE} salvato con {len(df_nuovo_storico)} righe presenti.")
 
 if __name__ == "__main__":
     esegui_validazione()
