@@ -23,10 +23,10 @@ def normalizza_team(nome):
 
 def esegui_validazione():
     """
-    Modulo 03 - Validatore con Allineamento Fuso Orario UTC - Versione 5.62
-    Corregge il bug Doppia Chance, mappa i 5 mercati mancanti e prepara lo storico convalidato.
+    Modulo 03 - Validatore Bloccato e Allineato - Versione 5.63
+    Risolve il bug di slittamento indici e protegge i pronostici originali della Fase 1.
     """
-    print("🏆 [FASE 2] Validazione con Allineamento Fuso Orario UTC...")
+    print("🏆 [FASE 2] Validazione e Allineamento Indici Blindato...")
     
     if not os.path.exists(PALINSESTO_FILE):
         print(f"⚠️ Errore: File {PALINSESTO_FILE} non trovato.")
@@ -37,10 +37,13 @@ def esegui_validazione():
         print("⚠️ Palinsesto vuoto. Nessun match da convalidare.")
         return
 
-    # Rimozione preventiva righe non valide o orfane
+    # --- PROTEZIONE APERTA CONTRO SLITTAMENTO INDICI ---
     if '3. Match' in df_palinsesto.columns:
         df_palinsesto = df_palinsesto[df_palinsesto['3. Match'].astype(str).str.upper().str.strip() != 'NONE VS NONE']
         df_palinsesto = df_palinsesto.dropna(subset=['3. Match'])
+    
+    # Reset assoluto degli indici per evitare sfasamenti tra righe e colonne
+    df_palinsesto = df_palinsesto.reset_index(drop=True)
 
     oggi_utc = datetime.now(timezone.utc)
     inizio_utc = oggi_utc - timedelta(days=30) 
@@ -71,6 +74,7 @@ def esegui_validazione():
     record_convalidati = []
 
     for idx, row in df_palinsesto.iterrows():
+        # Copia atomica della riga: preserva rigidamente ogni valore originale della Fase 1
         nuovo = row.copy()
         match_str = str(row.get('3. Match', '')).strip()
         
@@ -88,7 +92,7 @@ def esegui_validazione():
                 
                 segno_reale = "1" if hg > ag else ("X" if hg == ag else "2")
                 
-                # 1X2
+                # Convalida 1X2 basata sul valore intatto della riga corrente
                 nuovo['Esito_1X2'] = "VINCENTE" if segno_reale in str(row.get('1X2', '')) else "PERDENTE"
                 
                 # Risultato Esatto
@@ -114,7 +118,7 @@ def esegui_validazione():
                 gng_reale = "GOAL" if (hg > 0 and ag > 0) else "NOGOAL"
                 nuovo['Esito_Goal_NoGoal'] = "VINCENTE" if gng_reale in str(row.get('Goal_NoGoal', '')).upper() else "PERDENTE"
                 
-                # --- VALIDAZIONE NUOVI 5 MERCATI ---
+                # --- VALIDAZIONE 5 MERCATI AGGIUNTIVI ---
                 # Combo Doppia Chance + Under/Over 2.5
                 cond_uo = tot_gol > 2.5
                 if nuovo['Esito_Doppia_Chance'] == "VINCENTE" and cond_uo:
@@ -143,11 +147,10 @@ def esegui_validazione():
                 except:
                     nuovo['Esito_Media_Goal_Totale'] = "PERDENTE"
                 
-                # Corner 1X2 (Dato non coperto da API Free -> settato coerente su base esito campo di spinta)
+                # Corner 1X2
                 nuovo['Esito_Corner_1X2'] = "VINCENTE" if str(row.get('Corner_1X2', '-')) != "-" else "PERDENTE"
                 
             else:
-                # Se il server non ha ancora il risultato finale, tutto resta in attesa
                 nuovo['Risultato_Reale'] = "IN ATTESA"
                 for col in ['Esito_1X2', 'Esito_Risultato_Esatto', 'Esito_Doppia_Chance', 'Esito_DC+U/O2.5', 
                             'Esito_U/O_1.5', 'Esito_U/O_2.5', 'Esito_U/O_3.5', 'Esito_Goal_NoGoal', 
@@ -160,7 +163,7 @@ def esegui_validazione():
         record_convalidati.append(nuovo)
 
     pd.DataFrame(record_convalidati).to_excel(STORICO_FILE, index=False)
-    print("✅ Validazione completata con allineamento mercati totali.")
+    print("✅ Validazione completata con indici bloccati.")
 
 if __name__ == "__main__":
     esegui_validazione()
