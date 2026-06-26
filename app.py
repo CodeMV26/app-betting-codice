@@ -51,7 +51,7 @@ else:
     colore_tema = "#fffde6"      # Giallo Canarino Soft
     colore_bordo = "#f6eb9d"     # Bordo Giallo Canarino
 
-# --- RESTYLING GRAFICO ULTRA-OTTIMIZZATO (VERSIONE 5.60) ---
+# --- RESTYLING GRAFICO ULTRA-OTTIMIZZATO (VERSIONE 5.61) ---
 st.markdown(f"""
     <style>
     .stApp {{ background-color: {colore_tema} !important; transition: background-color 0.2s ease; }}
@@ -167,7 +167,7 @@ def get_badge(esito):
 st.markdown("""
 <div class="brand-box">
     <div class="main-title">⚽ Betting Pro Mobile</div>
-    <div class="version-label">Versione Progetto: 5.60</div>
+    <div class="version-label">Versione Progetto: 5.61</div>
 </div>
 """, unsafe_allow_html=True)
 
@@ -182,7 +182,7 @@ if st.button(testo_p1, key="fase_1_btn", use_container_width=True):
             m2.esegui_calcolo_motore()
             st.session_state.log_fase1 = datetime.datetime.now(FUSO_ROMA).strftime("%H:%M:%S")
             st.toast("🚀 Palinsesto Estratto!", icon="✅")
-            st.st.rerun()
+            st.rerun()
         except Exception as e: st.error(f"Errore: {str(e)}")
 
 testo_p2 = f"🏆 FASE 2: Convalida Risultati ({st.session_state.log_fase2})"
@@ -201,7 +201,6 @@ if st.button(testo_p3, key="fase_3_btn", use_container_width=True):
     with st.spinner("⏳ In corso..."):
         try:
             import modulo_04_trasferitore as m4
-            # Chiamata allineata all'attributo reale presente nel modulo 04
             m4.esegui_allineamento()
             st.session_state.log_fase3 = datetime.datetime.now(FUSO_ROMA).strftime("%H:%M:%S")
             st.toast("🗄️ Database Sincronizzato!", icon="✅")
