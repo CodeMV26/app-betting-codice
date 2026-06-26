@@ -26,7 +26,13 @@ PALINSESTO_FILE = "Pronostici_App_Betting.xlsx"
 @st.cache_data(ttl=2)
 def carica_dati(path):
     if os.path.exists(path):
-        try: return pd.read_excel(path)
+        try:
+            df = pd.read_excel(path)
+            # Pulizia preventiva stringhe orfane non valide
+            if not df.empty and '3. Match' in df.columns:
+                df = df[df['3. Match'].astype(str).str.upper().str.strip() != 'NONE VS NONE']
+                df = df.dropna(subset=['3. Match'])
+            return df
         except: return pd.DataFrame()
     return pd.DataFrame()
 
@@ -34,18 +40,18 @@ df_palinsesto = carica_dati(PALINSESTO_FILE)
 df_storico = carica_dati(STORICO_FILE)
 df_database = carica_dati(DB_FILE)
 
-# Determinazione della palette cromatica esatta secondo direttiva del Direttore
+# Determinazione della palette cromatica esatta
 if st.session_state.tab_selezionata == "PALINSESTO":
-    colore_tema = "#eefae1"      # Sfondo Verde Vivo Soft
+    colore_tema = "#eefae1"      # Verde Vivo Soft
     colore_bordo = "#a3e2ab"     # Bordo Verde Vivo
 elif st.session_state.tab_selezionata == "STORICO":
-    colore_tema = "#f1effa"      # Sfondo Viola Regale Soft
+    colore_tema = "#f1effa"      # Viola Regale Soft
     colore_bordo = "#c5bfe7"     # Bordo Viola Regale
 else:
-    colore_tema = "#fffde6"      # Sfondo Giallo Canarino Soft
+    colore_tema = "#fffde6"      # Giallo Canarino Soft
     colore_bordo = "#f6eb9d"     # Bordo Giallo Canarino
 
-# --- RESTYLING GRAFICO ULTRA-OTTIMIZZATO (VERSIONE 5.59) ---
+# --- RESTYLING GRAFICO ULTRA-OTTIMIZZATO (VERSIONE 5.60) ---
 st.markdown(f"""
     <style>
     .stApp {{ background-color: {colore_tema} !important; transition: background-color 0.2s ease; }}
@@ -85,7 +91,6 @@ st.markdown(f"""
         border-radius: 6px !important;
         border: 1px solid #d1d1d6 !important;
         text-transform: uppercase;
-        letter-spacing: -0.3px;
     }}
     
     /* Card dei Match */
@@ -133,8 +138,13 @@ def calcola_accuratezza_globale():
     
     df_totale = pd.concat(frames, ignore_index=True)
     mappa_esiti = {
-        "1X2": "Esito_1X2", "Ris. Esatto": "Esito_Risultato_Esatto", "Doppia Chance": "Esito_Doppia_Chance",
-        "U/O 1.5": "Esito_U/O_1.5", "U/O 2.5": "Esito_U/O_2.5", "U/O 3.5": "Esito_U/O_3.5", "Goal/NoGoal": "Esito_Goal_NoGoal"
+        "1X2": "Esito_1X2", 
+        "Ris. Esatto": "Esito_Risultato_Esatto", 
+        "Doppia Chance": "Esito_Doppia_Chance",
+        "U/O 1.5": "Esito_U/O_1.5", 
+        "U/O 2.5": "Esito_U/O_2.5", 
+        "U/O 3.5": "Esito_U/O_3.5", 
+        "Goal/NoGoal": "Esito_Goal_NoGoal"
     }
     accuratezza = {}
     for nome_m, col in mappa_esiti.items():
@@ -157,7 +167,7 @@ def get_badge(esito):
 st.markdown("""
 <div class="brand-box">
     <div class="main-title">⚽ Betting Pro Mobile</div>
-    <div class="version-label">Versione Progetto: 5.59</div>
+    <div class="version-label">Versione Progetto: 5.60</div>
 </div>
 """, unsafe_allow_html=True)
 
@@ -172,7 +182,7 @@ if st.button(testo_p1, key="fase_1_btn", use_container_width=True):
             m2.esegui_calcolo_motore()
             st.session_state.log_fase1 = datetime.datetime.now(FUSO_ROMA).strftime("%H:%M:%S")
             st.toast("🚀 Palinsesto Estratto!", icon="✅")
-            st.rerun()
+            st.st.rerun()
         except Exception as e: st.error(f"Errore: {str(e)}")
 
 testo_p2 = f"🏆 FASE 2: Convalida Risultati ({st.session_state.log_fase2})"
@@ -191,7 +201,8 @@ if st.button(testo_p3, key="fase_3_btn", use_container_width=True):
     with st.spinner("⏳ In corso..."):
         try:
             import modulo_04_trasferitore as m4
-            m4.esegui_archiviazione()
+            # Chiamata allineata all'attributo reale presente nel modulo 04
+            m4.esegui_allineamento()
             st.session_state.log_fase3 = datetime.datetime.now(FUSO_ROMA).strftime("%H:%M:%S")
             st.toast("🗄️ Database Sincronizzato!", icon="✅")
             st.rerun()
@@ -199,7 +210,7 @@ if st.button(testo_p3, key="fase_3_btn", use_container_width=True):
 
 st.markdown("<div style='margin-bottom: 10px;'></div>", unsafe_allow_html=True)
 
-# --- MICRO-TAB ORIZZONTALI COMPATTI PER IPHONE ---
+# --- MICRO-TAB ORIZZONTALIZZATI COMPATTI PER IPHONE ---
 st.markdown("<div class='tab-click-col'>", unsafe_allow_html=True)
 col_t1, col_t2, col_t3 = st.columns(3)
 
@@ -263,6 +274,8 @@ def clean(val):
 if st.session_state.tab_selezionata == "PALINSESTO":
     if not df_palinsesto.empty:
         for idx, row in df_palinsesto.iterrows():
+            if str(row.get('3. Match', '')).upper().strip() == 'NONE VS NONE':
+                continue
             st.markdown(f"""
             <div class="match-card">
                 <div class="meta-label">🏆 {row.get('Campionato', '-')} | {row.get('Data_Ora_Match', '-')}</div>
@@ -304,9 +317,11 @@ if st.session_state.tab_selezionata == "PALINSESTO":
 elif st.session_state.tab_selezionata == "STORICO":
     if not df_storico.empty:
         for idx, row in df_storico.iterrows():
+            if str(row.get('3. Match', '')).upper().strip() == 'NONE VS NONE':
+                continue
             st.markdown(f"""
             <div class="match-card">
-                <div class="meta-label">🏆 {row.get('Campionato', '-')}</div>
+                <div class="meta-label">🏆 {row.get('Campionato', '-')} | {row.get('Data_Ora_Match', '-')}</div>
                 <div class="team-text">{row.get('3. Match', 'Match')}</div>
                 <div class="score-badge">⚽ Risultato Finale: {row.get('Risultato_Reale', 'IN ATTESA')}</div>
                 <div class="block-header">🎯 Esiti Pronostici Validati</div>
@@ -328,9 +343,11 @@ elif st.session_state.tab_selezionata == "DATABASE":
     if not df_database.empty:
         st.markdown('<div class="block-header">🗄️ Archivio Generale Partite</div>', unsafe_allow_html=True)
         for idx, row in df_database.iterrows():
+            if str(row.get('3. Match', '')).upper().strip() == 'NONE VS NONE':
+                continue
             st.markdown(f"""
             <div class="match-card">
-                <div class="meta-label">📦 ID Match: {row.get('Match_ID', '-')} | {row.get('Campionato', '-')}</div>
+                <div class="meta-label">📦 ID Match: {row.get('Match_ID', '-')} | {row.get('Campionato', '-')} | {row.get('Data_Ora_Match', '-')}</div>
                 <div class="team-text" style="font-size:13px;">{row.get('3. Match', 'Match')}</div>
                 <div class="market-box" style="grid-template-columns: 1fr 1fr;">
                     <div class="market-cell"><b>Risultato</b><div style="font-weight:700;">{row.get('Risultato_Reale', '-')}</div></div>
