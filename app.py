@@ -50,7 +50,7 @@ else:
     colore_tema = "#fffde6"      
     colore_bordo = "#f6eb9d"     
 
-# --- RESTYLING GRAFICO ULTRA-OTTIMIZZATO (VERSIONE 5.64) ---
+# --- RESTYLING GRAFICO ULTRA-OTTIMIZZATO (VERSIONE 5.65) ---
 st.markdown(f"""
     <style>
     .stApp {{ background-color: {colore_tema} !important; transition: background-color 0.2s ease; }}
@@ -127,7 +127,6 @@ st.markdown(f"""
 """, unsafe_allow_html=True)
 
 def calcola_accuratezza_globale():
-    """Calcola l'accuratezza matematica reale escludendo i match in attesa dal denominatore"""
     frames = []
     if not df_storico.empty: frames.append(df_storico)
     if not df_database.empty: frames.append(df_database)
@@ -135,7 +134,6 @@ def calcola_accuratezza_globale():
     
     df_totale = pd.concat(frames, ignore_index=True)
     
-    # Mappatura totale di tutti i 12 mercati richiesti
     mappa_esiti = {
         "1X2": "Esito_1X2", 
         "Ris. Esatto": "Esito_Risultato_Esatto", 
@@ -154,7 +152,6 @@ def calcola_accuratezza_globale():
     accuratezza = {}
     for nome_m, col in mappa_esiti.items():
         if col in df_totale.columns:
-            # Formula Matematica Rigida: solo VINCENTE e PERDENTE contano nel calcolo
             validi = df_totale[df_totale[col].isin(['VINCENTE', 'PERDENTE'])]
             if len(validi) > 0:
                 vincenti = len(validi[validi[col] == 'VINCENTE'])
@@ -169,11 +166,20 @@ def get_badge(esito):
     if "PERDENTE" in val: return '<span class="lose-badge">PERDENTE</span>'
     return '<span class="wait-badge">IN ATTESA</span>'
 
+def safe_get(row, keys_list):
+    """Cerca in modo sicuro la colonna provando sia con indice numerico sia liscia"""
+    for k in keys_list:
+        if k in row: return row[k]
+        # Prova varianti comuni con prefissi numerici
+        for prefix in ["1. ", "2. ", "3. ", "4. ", "5. ", "6. ", "7. ", "8. "]:
+            if f"{prefix}{k}" in row: return row[f"{prefix}{k}"]
+    return "-"
+
 # Titolo Brand
 st.markdown("""
 <div class="brand-box">
     <div class="main-title">⚽ Betting Pro Mobile</div>
-    <div class="version-label">Versione Progetto: 5.64</div>
+    <div class="version-label">Versione Progetto: 5.65</div>
 </div>
 """, unsafe_allow_html=True)
 
@@ -281,36 +287,36 @@ if st.session_state.tab_selezionata == "PALINSESTO":
         for idx, row in df_palinsesto.iterrows():
             st.markdown(f"""
             <div class="match-card">
-                <div class="meta-label">🏆 {row.get('Campionato', '-')} | {row.get('Data_Ora_Match', '-')}</div>
-                <div class="team-text"> {row.get('3. Match', 'Match')}</div>
+                <div class="meta-label">🏆 {safe_get(row, ['Campionato'])} | {safe_get(row, ['Data_Ora_Match', 'Data'])}</div>
+                <div class="team-text"> {safe_get(row, ['3. Match', 'Match'])}</div>
                 <div class="block-header">🎲 Algoritmo & Probabilità</div>
                 <div class="market-box">
-                    <div class="market-cell"><b>1X2</b><div class="market-val-row">{row.get('1X2', '-')}</div></div>
-                    <div class="market-cell"><b>Ris. Esatto</b><div class="market-val-row">{row.get('Risultato_Esatto', '-')}</div></div>
-                    <div class="market-cell"><b>Doppia Chance</b><div class="market-val-row">{row.get('Doppia_Chance', '-')}</div></div>
-                    <div class="market-cell"><b>Combo DC+U/O2.5</b><div class="market-val-row">{row.get('DC+U/O2.5', '-')}</div></div>
-                    <div class="market-cell"><b>U/O 1.5</b><div class="market-val-row">{row.get('U/O_1.5', '-')}</div></div>
-                    <div class="market-cell"><b>U/O 2.5</b><div class="market-val-row">{row.get('U/O_2.5', '-')}</div></div>
-                    <div class="market-cell"><b>U/O 3.5</b><div class="market-val-row">{row.get('U/O_3.5', '-')}</div></div>
-                    <div class="market-cell"><b>Goal/NoGoal</b><div class="market-val-row">{row.get('Goal_NoGoal', '-')}</div></div>
-                    <div class="market-cell"><b>MG Casa Expect.</b><div class="market-val-row">{row.get('Pronostico_MG_Casa', '-')}</div></div>
-                    <div class="market-cell"><b>MG Ospite Expect.</b><div class="market-val-row">{row.get('Pronostico_MG_Trasferta', '-')}</div></div>
-                    <div class="market-cell"><b>MG Totale Expect.</b><div class="market-val-row">{row.get('Pronostico_MG_Totale', '-')}</div></div>
-                    <div class="market-cell"><b>Corner 1X2</b><div class="market-val-row">{row.get('Corner_1X2', '-')}</div></div>
+                    <div class="market-cell"><b>1X2</b><div class="market-val-row">{safe_get(row, ['1X2'])}</div></div>
+                    <div class="market-cell"><b>Ris. Esatto</b><div class="market-val-row">{safe_get(row, ['Risultato_Esatto'])}</div></div>
+                    <div class="market-cell"><b>Doppia Chance</b><div class="market-val-row">{safe_get(row, ['Doppia_Chance'])}</div></div>
+                    <div class="market-cell"><b>Combo DC+U/O2.5</b><div class="market-val-row">{safe_get(row, ['DC+U/O2.5', 'DC+U/O_2.5'])}</div></div>
+                    <div class="market-cell"><b>U/O 1.5</b><div class="market-val-row">{safe_get(row, ['U/O_1.5'])}</div></div>
+                    <div class="market-cell"><b>U/O 2.5</b><div class="market-val-row">{safe_get(row, ['U/O_2.5'])}</div></div>
+                    <div class="market-cell"><b>U/O 3.5</b><div class="market-val-row">{safe_get(row, ['U/O_3.5'])}</div></div>
+                    <div class="market-cell"><b>Goal/NoGoal</b><div class="market-val-row">{safe_get(row, ['Goal_NoGoal'])}</div></div>
+                    <div class="market-cell"><b>MG Casa Expect.</b><div class="market-val-row">{safe_get(row, ['Pronostico_MG_Casa', 'MG_Casa'])}</div></div>
+                    <div class="market-cell"><b>MG Ospite Expect.</b><div class="market-val-row">{safe_get(row, ['Pronostico_MG_Trasferta', 'MG_Ospite'])}</div></div>
+                    <div class="market-cell"><b>MG Totale Expect.</b><div class="market-val-row">{safe_get(row, ['Pronostico_MG_Totale', 'MG_Totale'])}</div></div>
+                    <div class="market-cell"><b>Corner 1X2</b><div class="market-val-row">{safe_get(row, ['Corner_1X2'])}</div></div>
                 </div>
             </div>
             
             <div class="match-card">
                 <div class="meta-label" style="color: #ff9500;">📊 STATISTICHE TEAM | LIVE DATA</div>
-                <div class="team-text" style="font-size: 13px; color: #48484a;">{row.get('3. Match', 'Match')}</div>
+                <div class="team-text" style="font-size: 13px; color: #48484a;">{safe_get(row, ['3. Match', 'Match'])}</div>
                 <div class="block-header stats">📊 Storico Stagionale</div>
                 <div class="market-box">
-                    <div class="market-cell"><b>Pos. Classifica</b><div class="market-val-row"><span>{clean(row.get('PosClassifica_Casa'))}°</span><span>vs</span><span>{clean(row.get('PosClassifica_Ospite'))}°</span></div></div>
-                    <div class="market-cell"><b>Punti Totali</b><div class="market-val-row"><span>{clean(row.get('Punti_Casa'))} pt</span><span>vs</span><span>{clean(row.get('Punti_Trasferta'))} pt</span></div></div>
-                    <div class="market-cell"><b>Partite Giocate</b><div class="market-val-row"><span>{clean(row.get('Giocate_Casa'))} G</span><span>vs</span><span>{clean(row.get('Giocate_Ospite'))} G</span></div></div>
-                    <div class="market-cell"><b>V / P / S</b><div class="market-val-row"><span>{clean(row.get('Vinte_Casa'))}-{clean(row.get('Pareggi_Casa'))}-{clean(row.get('Perse_Casa'))}</span><span>vs</span><span>{clean(row.get('Vinte_Ospite'))}-{clean(row.get('Pareggi_Ospite'))}-{clean(row.get('Perse_Ospite'))}</span></div></div>
-                    <div class="market-cell"><b>Gol Fatti Totali</b><div class="market-val-row"><span>{clean(row.get('Media_Goal_Casa_Orig'))} F</span><span>vs</span><span>{clean(row.get('Media_Goal_Trasferta_Orig'))} F</span></div></div>
-                    <div class="market-cell"><b>Gol Subiti Totali</b><div class="market-val-row"><span>{clean(row.get('Goal_Subiti_Casa'))} S</span><span>vs</span><span>{clean(row.get('Goal_Subiti_Ospite'))} S</span></div></div>
+                    <div class="market-cell"><b>Pos. Classifica</b><div class="market-val-row"><span>{clean(safe_get(row, ['PosClassifica_Casa']))}°</span><span>vs</span><span>{clean(safe_get(row, ['PosClassifica_Ospite']))}°</span></div></div>
+                    <div class="market-cell"><b>Punti Totali</b><div class="market-val-row"><span>{clean(safe_get(row, ['Punti_Casa']))} pt</span><span>vs</span><span>{clean(safe_get(row, ['Punti_Trasferta']))} pt</span></div></div>
+                    <div class="market-cell"><b>Partite Giocate</b><div class="market-val-row"><span>{clean(safe_get(row, ['Giocate_Casa']))} G</span><span>vs</span><span>{clean(safe_get(row, ['Giocate_Ospite']))} G</span></div></div>
+                    <div class="market-cell"><b>V / P / S</b><div class="market-val-row"><span>{clean(safe_get(row, ['Vinte_Casa']))}-{clean(safe_get(row, ['Pareggi_Casa']))}-{clean(safe_get(row, ['Perse_Casa']))}</span><span>vs</span><span>{clean(safe_get(row, ['Vinte_Ospite']))}-{clean(safe_get(row, ['Pareggi_Ospite']))}-{clean(safe_get(row, ['Perse_Ospite']))}</span></div></div>
+                    <div class="market-cell"><b>Gol Fatti Totali</b><div class="market-val-row"><span>{clean(safe_get(row, ['Media_Goal_Casa_Orig', 'Gol_Fatti_Casa']))} F</span><span>vs</span><span>{clean(safe_get(row, ['Media_Goal_Trasferta_Orig', 'Gol_Fatti_Ospite']))} F</span></div></div>
+                    <div class="market-cell"><b>Gol Subiti Totali</b><div class="market-val-row"><span>{clean(safe_get(row, ['Goal_Subiti_Casa']))} S</span><span>vs</span><span>{clean(safe_get(row, ['Goal_Subiti_Ospite']))} S</span></div></div>
                 </div>
             </div>
             <div class="match-separator"></div>
@@ -322,23 +328,23 @@ elif st.session_state.tab_selezionata == "STORICO":
         for idx, row in df_storico.iterrows():
             st.markdown(f"""
             <div class="match-card">
-                <div class="meta-label">🏆 {row.get('Campionato', '-')} | {row.get('Data_Ora_Match', '-')}</div>
-                <div class="team-text">{row.get('3. Match', 'Match')}</div>
-                <div class="score-badge">⚽ Risultato Finale: {row.get('Risultato_Reale', 'IN ATTESA')}</div>
+                <div class="meta-label">🏆 {safe_get(row, ['Campionato'])} | {safe_get(row, ['Data_Ora_Match', 'Data'])}</div>
+                <div class="team-text">{safe_get(row, ['3. Match', 'Match'])}</div>
+                <div class="score-badge">⚽ Risultato Finale: {safe_get(row, ['Risultato_Reale'])}</div>
                 <div class="block-header">🎯 Esiti Pronostici Validati (12 Mercati)</div>
                 <div class="market-box">
-                    <div class="market-cell"><b>1X2 ({row.get('1X2', '-')})</b><div class="market-val-row">{get_badge(row.get('Esito_1X2'))}</div></div>
-                    <div class="market-cell"><b>Ris. Esatto ({row.get('Risultato_Esatto', '-')})</b><div class="market-val-row">{get_badge(row.get('Esito_Risultato_Esatto'))}</div></div>
-                    <div class="market-cell"><b>Doppia Ch. ({row.get('Doppia_Chance', '-')})</b><div class="market-val-row">{get_badge(row.get('Esito_Doppia_Chance'))}</div></div>
-                    <div class="market-cell"><b>Combo DC+U/O ({row.get('DC+U/O2.5', '-')})</b><div class="market-val-row">{get_badge(row.get('Esito_DC+U/O2.5'))}</div></div>
-                    <div class="market-cell"><b>U/O 1.5 ({row.get('U/O_1.5', '-')})</b><div class="market-val-row">{get_badge(row.get('Esito_U/O_1.5'))}</div></div>
-                    <div class="market-cell"><b>U/O 2.5 ({row.get('U/O_2.5', '-')})</b><div class="market-val-row">{get_badge(row.get('Esito_U/O_2.5'))}</div></div>
-                    <div class="market-cell"><b>U/O 3.5 ({row.get('U/O_3.5', '-')})</b><div class="market-val-row">{get_badge(row.get('Esito_U/O_3.5'))}</div></div>
-                    <div class="market-cell"><b>Goal/NG ({row.get('Goal_NoGoal', '-')})</b><div class="market-val-row">{get_badge(row.get('Esito_Goal_NoGoal'))}</div></div>
-                    <div class="market-cell"><b>MG Casa ({row.get('Pronostico_MG_Casa', '-')})</b><div class="market-val-row">{get_badge(row.get('Esito_Media_Goal_Casa'))}</div></div>
-                    <div class="market-cell"><b>MG Ospite ({row.get('Pronostico_MG_Trasferta', '-')})</b><div class="market-val-row">{get_badge(row.get('Esito_Media_Goal_Trasferta'))}</div></div>
-                    <div class="market-cell"><b>MG Totale ({row.get('Pronostico_MG_Totale', '-')})</b><div class="market-val-row">{get_badge(row.get('Esito_Media_Goal_Totale'))}</div></div>
-                    <div class="market-cell"><b>Corner 1X2 ({row.get('Corner_1X2', '-')})</b><div class="market-val-row">{get_badge(row.get('Esito_Corner_1X2'))}</div></div>
+                    <div class="market-cell"><b>1X2 ({safe_get(row, ['1X2'])})</b><div class="market-val-row">{get_badge(safe_get(row, ['Esito_1X2']))}</div></div>
+                    <div class="market-cell"><b>Ris. Esatto ({safe_get(row, ['Risultato_Esatto'])})</b><div class="market-val-row">{get_badge(safe_get(row, ['Esito_Risultato_Esatto']))}</div></div>
+                    <div class="market-cell"><b>Doppia Ch. ({safe_get(row, ['Doppia_Chance'])})</b><div class="market-val-row">{get_badge(safe_get(row, ['Esito_Doppia_Chance']))}</div></div>
+                    <div class="market-cell"><b>Combo DC+U/O ({safe_get(row, ['DC+U/O2.5', 'DC+U/O_2.5'])})</b><div class="market-val-row">{get_badge(safe_get(row, ['Esito_DC+U/O2.5']))}</div></div>
+                    <div class="market-cell"><b>U/O 1.5 ({safe_get(row, ['U/O_1.5'])})</b><div class="market-val-row">{get_badge(safe_get(row, ['Esito_U/O_1.5']))}</div></div>
+                    <div class="market-cell"><b>U/O 2.5 ({safe_get(row, ['U/O_2.5'])})</b><div class="market-val-row">{get_badge(safe_get(row, ['Esito_U/O_2.5']))}</div></div>
+                    <div class="market-cell"><b>U/O 3.5 ({safe_get(row, ['U/O_3.5'])})</b><div class="market-val-row">{get_badge(safe_get(row, ['Esito_U/O_3.5']))}</div></div>
+                    <div class="market-cell"><b>Goal/NG ({safe_get(row, ['Goal_NoGoal'])})</b><div class="market-val-row">{get_badge(safe_get(row, ['Esito_Goal_NoGoal']))}</div></div>
+                    <div class="market-cell"><b>MG Casa ({safe_get(row, ['Pronostico_MG_Casa', 'MG_Casa'])})</b><div class="market-val-row">{get_badge(safe_get(row, ['Esito_Media_Goal_Casa']))}</div></div>
+                    <div class="market-cell"><b>MG Ospite ({safe_get(row, ['Pronostico_MG_Trasferta', 'MG_Ospite'])})</b><div class="market-val-row">{get_badge(safe_get(row, ['Esito_Media_Goal_Trasferta']))}</div></div>
+                    <div class="market-cell"><b>MG Totale ({safe_get(row, ['Pronostico_MG_Totale', 'MG_Totale'])})</b><div class="market-val-row">{get_badge(safe_get(row, ['Esito_Media_Goal_Totale']))}</div></div>
+                    <div class="market-cell"><b>Corner 1X2 ({safe_get(row, ['Corner_1X2'])})</b><div class="market-val-row">{get_badge(safe_get(row, ['Esito_Corner_1X2']))}</div></div>
                 </div>
             </div>
             <div class="match-separator"></div>
@@ -351,11 +357,11 @@ elif st.session_state.tab_selezionata == "DATABASE":
         for idx, row in df_database.iterrows():
             st.markdown(f"""
             <div class="match-card">
-                <div class="meta-label">📦 ID Match: {row.get('Match_ID', '-')} | {row.get('Campionato', '-')} | {row.get('Data_Ora_Match', '-')}</div>
-                <div class="team-text" style="font-size:13px;">{row.get('3. Match', 'Match')}</div>
+                <div class="meta-label">📦 ID Match: {safe_get(row, ['Match_ID'])} | {safe_get(row, ['Campionato'])} | {safe_get(row, ['Data_Ora_Match', 'Data'])}</div>
+                <div class="team-text" style="font-size:13px;">{safe_get(row, ['3. Match', 'Match'])}</div>
                 <div class="market-box" style="grid-template-columns: 1fr 1fr;">
-                    <div class="market-cell"><b>Risultato</b><div style="font-weight:700;">{row.get('Risultato_Reale', '-')}</div></div>
-                    <div class="market-cell"><b>Esito 1X2</b><div style="font-weight:700;">{row.get('Esito_1X2', '-')}</div></div>
+                    <div class="market-cell"><b>Risultato</b><div style="font-weight:700;">{safe_get(row, ['Risultato_Reale'])}</div></div>
+                    <div class="market-cell"><b>Esito 1X2</b><div style="font-weight:700;">{safe_get(row, ['Esito_1X2'])}</div></div>
                 </div>
             </div>
             """, unsafe_allow_html=True)
