@@ -4,8 +4,8 @@ import os
 import datetime
 from zoneinfo import ZoneInfo
 
-# PROGRESSIVO CHAT: #109 | Data: 28 Giugno 2026 | Ora: 20:07:34
-# Versione Progetto: 6.09 (Versione Integrale Ripristinata con Fix Dinamico Statistiche)
+# PROGRESSIVO CHAT: #119 | Data: 28 Giugno 2026 | Ora: 21:24:12
+# Versione Progetto: 6.13 (Integrazione Integrale Tab Simulatore iOS 4 Colonne)
 
 st.set_page_config(page_title="⚽ Betting Pro Mobile", page_icon="⚽", layout="centered")
 
@@ -50,7 +50,7 @@ st.markdown("""
     div.stButton > button[id*="fase_1"] { background-color: #2cd158 !important; color: white !important; }
     div.stButton > button[id*="fase_2"] { background-color: #6a5acd !important; color: white !important; }
     div.stButton > button[id*="fase_3"] { background-color: #ffd700 !important; color: #1c1c1e !important; }
-    .tab-click-col div.stButton > button { font-size: 10px !important; padding: 6px 2px !important; border-radius: 6px !important; border: 1px solid #d1d1d6 !important; text-transform: uppercase; }
+    .tab-click-col div.stButton > button { font-size: 9px !important; padding: 6px 1px !important; border-radius: 6px !important; border: 1px solid #d1d1d6 !important; text-transform: uppercase; }
     .match-card { background-color: #ffffff !important; padding: 12px; border-radius: 14px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); margin-bottom: 10px; border: 1px solid #e5e5ea !important; }
     .meta-label { color: #007aff; font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.3px; margin-bottom: 2px; }
     .team-text { font-size: 15px; font-weight: 700; color: #1c1c1e; margin: 2px 0 6px 0; letter-spacing: -0.3px; }
@@ -71,6 +71,10 @@ st.markdown("""
     .accuracy-item { background: #f8f9fa; padding: 6px 8px; border-radius: 8px; font-size: 11px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #e5e5ea; }
     .accuracy-item span { color: #48484a; font-weight: 600; }
     .accuracy-val { color: #007aff; font-weight: 800; font-size: 11px; }
+    
+    /* Nuovi Stili per la sezione Backtest */
+    .delta-win { color: #2cd158; font-weight: 800; font-size: 10px; background: #e8f9ee; padding: 1px 4px; border-radius: 3px; }
+    .delta-lose { color: #ff3b30; font-weight: 800; font-size: 10px; background: #ffebeb; padding: 1px 4px; border-radius: 3px; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -121,7 +125,7 @@ def clean(val):
 st.markdown("""
 <div class="brand-box">
     <div class="main-title">⚽ Betting Pro Mobile</div>
-    <div class="version-label">Versione Progetto: 6.09</div>
+    <div class="version-label">Versione Progetto: 6.13</div>
 </div>
 """, unsafe_allow_html=True)
 
@@ -161,13 +165,14 @@ if st.button(f"🗄️ FASE 3: Archiviazione Totale ({st.session_state.log_fase3
 
 st.markdown("<div style='margin-bottom: 10px;'></div>", unsafe_allow_html=True)
 
-# --- TAB NAVIGAZIONE IOS BLINDATA CON DICHIARAZIONE LABEL RIGIDA ---
+# --- TAB NAVIGAZIONE IOS BLINDATA A 4 COLONNE ---
 st.markdown("<div class='tab-click-col'>", unsafe_allow_html=True)
-col_t1, col_t2, col_t3 = st.columns(3)
+col_t1, col_t2, col_t3, col_t4 = st.columns(4)
 
-label_p1 = f"🎯 Palinsesto ({len_pal})"
-label_p2 = f"📊 Storico ({len_sto})"
-label_p3 = f"🗄️ Database ({len_db})"
+label_p1 = f"🎯 Palin ({len_pal})"
+label_p2 = f"📊 Stor ({len_sto})"
+label_p3 = f"🗄️ DB ({len_db})"
+label_p4 = f"🧪 Sim ({len_db})"
 
 with col_t1:
     if st.session_state.tab_selezionata == "PALINSESTO": st.button(label_p1, key="btn_pal", use_container_width=True)
@@ -183,10 +188,15 @@ with col_t3:
     if st.session_state.tab_selezionata == "DATABASE": st.button(label_p3, key="btn_db", use_container_width=True)
     else:
         if st.button(label_p3, key="btn_db_off", use_container_width=True): st.session_state.tab_selezionata = "DATABASE"; st.rerun()
+
+with col_t4:
+    if st.session_state.tab_selezionata == "SIMULATORE": st.button(label_p4, key="btn_sim", use_container_width=True)
+    else:
+        if st.button(label_p4, key="btn_sim_off", use_container_width=True): st.session_state.tab_selezionata = "SIMULATORE"; st.rerun()
 st.markdown("</div>", unsafe_allow_html=True)
 
 dict_acc = calcola_accuratezza_globale()
-if dict_acc:
+if dict_acc and st.session_state.tab_selezionata != "SIMULATORE":
     st.markdown('<div class="accuracy-container"><div class="accuracy-title">📈 Performance Reale Dixon-Cole (12 Mercati)</div><div class="accuracy-grid">', unsafe_allow_html=True)
     for m_name, m_val in dict_acc.items(): st.markdown(f'<div class="accuracy-item"><span>{m_name}</span><span class="accuracy-val">{m_val}</span></div>', unsafe_allow_html=True)
     st.markdown("</div></div>", unsafe_allow_html=True)
@@ -281,9 +291,169 @@ elif st.session_state.tab_selezionata == "DATABASE":
                     <div class="market-cell"><b>Partite Giocate</b><div class="market-val-row"><span>{clean(safe_get(row, ['Giocate_Casa']))} G</span><span>vs</span><span>{clean(safe_get(row, ['Giocate_Ospite']))} G</span></div></div>
                     <div class="market-cell"><b>V / P / S</b><div class="market-val-row"><span>{clean(safe_get(row, ['Vinte_Casa']))}-{clean(safe_get(row, ['Pareggi_Casa']))}-{clean(safe_get(row, ['Perse_Casa']))}</span><span>vs</span><span>{clean(safe_get(row, ['Vinte_Ospite']))}-{clean(safe_get(row, ['Pareggi_Ospite']))}-{clean(safe_get(row, ['Perse_Ospite']))}</span></div></div>
                     <div class="market-cell"><b>Gol Fatti Totali</b><div class="market-val-row"><span>{clean(safe_get(row, ['Media_Goal_Casa_Orig', 'Gol_Fatti_Casa', 'GolFatti_Casa']))} F</span><span>vs</span><span>{clean(safe_get(row, ['Media_Goal_Trasferta_Orig', 'Gol_Fatti_Ospite', 'GolFatti_Ospite']))} F</span></div></div>
-                    <div class="market-cell"><b>Gol Subiti Totali</b><div class="market-val-row"><span>{clean(safe_get(row, ['Goal_Subiti_Casa', 'GolSubiti_Casa']))} S</span><span>vs</span><span>{clean(safe_get(row, ['Goal_Subiti_Ospite', 'GolSubiti_Ospite']))} S</span></div></div>
+                    <div class="market-cell"><b>Gol Subiti Totali</b><div class="market-val-row"><span>{clean(safe_get(row, ['Goal_Subiti_Casa', 'GoalSubiti_Casa']))} S</span><span>vs</span><span>{clean(safe_get(row, ['Goal_Subiti_Ospite', 'GoalSubiti_Ospite']))} S</span></div></div>
                 </div>
             </div>
             <div class="match-separator"></div>
             """, unsafe_allow_html=True)
     else: st.info("Database di archiviazione vuoto.")
+
+# =========================================================================
+# 🧪 RIGA 290+: SEZIONE DIRETTA INTERFACCIA MODULO 05 (SIMULATORE)
+# =========================================================================
+elif st.session_state.tab_selezionata == "SIMULATORE":
+    st.markdown('<div class="block-header" style="color:#6a5acd; font-size:12px; margin-bottom:12px;">🧪 SIMULATORE DI STRATEGIE & BACKTESTING</div>', unsafe_allow_html=True)
+    
+    if df_database.empty:
+        st.warning("⚠️ L'archivio del Database è vuoto. Archivia le partite con la Fase 3 per abilitare il simulatore.")
+    else:
+        # 1. Configurazione Parametri Editabili (Stile Impostazioni iOS)
+        with st.expander("⚙️ PARAMETRI DI CALIBRAZIONE ALGORITMO", expanded=True):
+            st.markdown("<p style='font-size:11px; color:#8e8e93; margin-top:-5px;'>Modifica le soglie matematiche per ricalcolare all'istante le accuratezze dello storico.</p>", unsafe_allow_html=True)
+            
+            s_uo15 = st.slider("Soglia Probabilità Under/Over 1.5", 0.30, 0.80, 0.52, 0.01)
+            s_uo25 = st.slider("Soglia Probabilità Under/Over 2.5", 0.30, 0.80, 0.49, 0.01)
+            s_uo35 = st.slider("Soglia Probabilità Under/Over 3.5", 0.30, 0.80, 0.52, 0.01)
+            s_gng  = st.slider("Soglia Probabilità Goal/NoGoal", 0.30, 0.80, 0.52, 0.01)
+            
+            col_w1, col_w2 = st.columns(2)
+            with col_w1: p_casa = st.slider("Peso Medie Casa", 0.70, 1.30, 1.05, 0.05)
+            with col_w2: p_trasf = st.slider("Peso Medie Trasferta", 0.70, 1.30, 0.95, 0.05)
+
+        # 2. Pulsante di Attivazione Backtest Touch Native
+        if st.button("🧪 AVVIA BACKTEST SU ARCHIVIO GENERALE", key="run_backtest_btn", use_container_width=True):
+            with st.spinner("⏳ Ricalcolo matrici Dixon-Cole in corso..."):
+                try:
+                    import numpy as np
+                    import math
+                    
+                    # Funzioni matematiche locali per isolamento totale delle variabili
+                    def poisson_local(l, k):
+                        if l <= 0: return 1 if k == 0 else 0
+                        return (math.exp(-l) * pow(l, k)) / math.factorial(k)
+
+                    def dc_adj_local(i, j, xg_c, xg_t):
+                        rho = -0.09
+                        if i == 0 and j == 0: return 1 - (xg_c * xg_t * rho)
+                        if i == 1 and j == 0: return 1 + (xg_t * rho)
+                        if i == 0 and j == 1: return 1 + (xg_c * rho)
+                        if i == 1 and j == 1: return 1 - rho
+                        return 1.0
+
+                    def get_mg_local(prob_v):
+                        r = {
+                            "1-2 MG": sum(prob_v[1:3]), "1-3 MG": sum(prob_v[1:4]), "1-4 MG": sum(prob_v[1:5]),
+                            "2-3 MG": sum(prob_v[2:4]), "2-4 MG": sum(prob_v[2:5]), "3+ MG": sum(prob_v[3:]), "0-1 MG": sum(prob_v[0:2])
+                        }
+                        return max(r, key=r.get)
+
+                    df_valid = df_database[df_database['Risultato_Reale'].astype(str).str.contains("-")].copy()
+                    df_valid = df_valid[~df_valid['Risultato_Reale'].astype(str).str.contains("NON ANCORA")]
+                    
+                    sim_vinti = {
+                        "1X2": 0, "Ris. Esatto": 0, "Doppia Chance": 0, "Combo DC + U/O": 0,
+                        "U/O 1.5": 0, "U/O 2.5": 0, "U/O 3.5": 0, "Goal/NoGoal": 0,
+                        "MG Casa": 0, "MG Ospite": 0, "Corner 1X2": 0
+                    }
+                    
+                    tot_sim_matches = len(df_valid)
+                    
+                    if tot_sim_matches > 0:
+                        for _, row_s in df_valid.iterrows():
+                            res_s = str(row_s.get('Risultato_Reale', '-')).strip()
+                            g_c_s, g_t_s = map(int, res_s.split("-"))
+                            tot_g_s = g_c_s + g_t_s
+                            segno_s = '1' if g_c_s > g_t_s else ('2' if g_t_s > g_c_s else 'X')
+                            
+                            m_gf_c = float(row_s.get('Media_Goal_Casa_Orig', row_s.get('Media_Goal_Casa', 1.20)))
+                            m_gf_t = float(row_s.get('Media_Goal_Trasferta_Orig', row_s.get('Media_Goal_Trasferta', 1.10)))
+                            if math.isnan(m_gf_c): m_gf_c = 1.20
+                            if math.isnan(m_gf_t): m_gf_t = 1.10
+                            
+                            m_h, m_a = 1.20, 1.10
+                            sos_c = (m_gf_c / m_h) * p_casa
+                            sos_t = (m_gf_t / m_a) * p_trasf
+                            
+                            xg_c = ((m_gf_c * 1.00) / m_h) * sos_c * 1.08
+                            xg_t = ((m_gf_t * 1.00) / m_a) * sos_t
+                            
+                            matrix = [[0.0 for _ in range(6)] for _ in range(6)]
+                            for i in range(6):
+                                for j in range(6):
+                                    matrix[i][j] = poisson_local(xg_c, i) * poisson_local(xg_t, j) * dc_adj_local(i, j, xg_c, xg_t) * (1.12 if i == j else 1.0)
+                                    
+                            p1, px, p2, pu15, pu25, pu35, pgoal = 0, 0, 0, 0, 0, 0, 0
+                            tot_p = sum(sum(r) for r in matrix) if sum(sum(r) for r in matrix) > 0 else 1.0
+                            prob_c, prob_t = [0.0] * 6, [0.0] * 6
+                            
+                            for i in range(6):
+                                for j in range(6):
+                                    p_cell = matrix[i][j] / tot_p
+                                    prob_c[i] += p_cell
+                                    prob_t[j] += p_cell
+                                    if i > j: p1 += p_cell
+                                    elif i == j: px += p_cell
+                                    else: p2 += p_cell
+                                    if (i+j) < 1.5: pu15 += p_cell
+                                    if (i+j) < 2.5: pu25 += p_cell
+                                    if (i+j) < 3.5: pu35 += p_cell
+                                    if i > 0 and j > 0: pgoal += p_cell
+                                    
+                            s_1x2 = max({'1': p1, 'X': px, '2': p2}, key={'1': p1, 'X': px, '2': p2}.get)
+                            s_ex = f"{np.unravel_index(np.argmax(matrix), (6,6))[0]}-{np.unravel_index(np.argmax(matrix), (6,6))[1]}"
+                            s_dc = "1X" if (p1 + px) > (p2 + px) else "X2"
+                            s_uo15 = "UNDER 1.5" if pu15 > s_uo15 else "OVER 1.5"
+                            s_uo25 = "UNDER 2.5" if pu25 > s_uo25 else "OVER 2.5"
+                            s_uo35 = "UNDER 3.5" if pu35 > s_uo35 else "OVER 3.5"
+                            s_gng = "GOAL" if pgoal > s_gng else "NOGOAL"
+                            s_combo = f"{s_dc}+{s_uo25.split(' ')[0]}"
+                            
+                            if s_1x2 == segno_s: sim_vinti["1X2"] += 1
+                            if s_ex == res_s: sim_vinti["Ris. Esatto"] += 1
+                            if (s_dc == "1X" and segno_s in ['1','X']) or (s_dc == "X2" and segno_s in ['X','2']): sim_vinti["Doppia Chance"] += 1
+                            if (s_uo15 == "OVER 1.5" and tot_g_s > 1.5) or (s_uo15 == "UNDER 1.5" and tot_g_s <= 1.5): sim_vinti["U/O 1.5"] += 1
+                            if (s_uo25 == "OVER 2.5" and tot_g_s > 2.5) or (s_uo25 == "UNDER 2.5" and tot_g_s <= 2.5): sim_vinti["U/O 2.5"] += 1
+                            if (s_uo35 == "OVER 3.5" and tot_g_s > 3.5) or (s_uo35 == "UNDER 3.5" and tot_g_s <= 3.5): sim_vinti["U/O 3.5"] += 1
+                            if (s_gng == "GOAL" and g_c_s > 0 and g_t_s > 0) or (s_gng == "NOGOAL" and (g_c_s == 0 or g_t_s == 0)): sim_vinti["Goal/NoGoal"] += 1
+                            
+                            def chk_mg_l(p_str, gol):
+                                p = p_str.replace("MG","").strip()
+                                if "-" in p:
+                                    g_min, g_max = map(int, p.split("-"))
+                                    return g_min <= gol <= g_max
+                                return gol >= 3 if "3+" in p else False
+                                
+                            if chk_mg_l(get_mg_local(prob_c), g_c_s): sim_vinti["MG Casa"] += 1
+                            if chk_mg_l(get_mg_local(prob_t), g_t_s): sim_vinti["MG Ospite"] += 1
+                            if s_combo == row_s.get('DC+U/O2.5') and row_s.get('Esito_DC+U/O2.5') == 'VINCENTE': sim_vinti["Combo DC + U/O"] += 1
+                            if ("1" in row_s.get('Esito_Corner_1X2', 'X') and xg_c > xg_t + 0.3) or ("2" in row_s.get('Esito_Corner_1X2', 'X') and xg_t > xg_c + 0.3): sim_vinti["Corner 1X2"] += 1
+                        
+                        st.session_state.backtest_results = {m: f"{(sim_vinti[m]/tot_sim_matches)*100:.1f}% ({sim_vinti[m]}/{tot_sim_matches})" for m in sim_vinti}
+                        st.toast("🧪 Backtest Completato!", icon="✅")
+                    else:
+                        st.error("Nessun match terminato utilizzabile trovato nell'archivio storico.")
+                except Exception as e:
+                    st.error(f"Errore Backtest: {str(e)}")
+
+        # 3. Render Comparativo Scostamento Performance Reale vs Simulata
+        if "backtest_results" in st.session_state:
+            st.markdown('<div class="accuracy-container"><div class="accuracy-title">📈 SCOSTAMENTO PERFORMANCE (REALE VS SIMULATO)</div><div class="accuracy-grid">', unsafe_allow_html=True)
+            for m_name, r_val in dict_acc.items():
+                s_val = st.session_state.backtest_results.get(m_name, "0.0% (0)")
+                try:
+                    r_num = float(r_val.split("%")[0])
+                    s_num = float(s_val.split("%")[0])
+                    delta = s_num - r_num
+                    badge_delta = f'<span class="delta-win">▲ +{delta:.1f}%</span>' if delta > 0 else (f'<span class="delta-lose">▼ {delta:.1f}%</span>' if delta < 0 else '<span style="font-size:9px; color:#8e8e93;">=</span>')
+                except:
+                    badge_delta = ""
+                
+                st.markdown(f"""
+                <div class="accuracy-item" style="flex-direction:column; align-items:flex-start; gap:2px; height:auto; padding:8px;">
+                    <div style="font-weight:800; color:#1c1c1e; font-size:11px; margin-bottom:2px;">{m_name}</div>
+                    <div style="display:flex; justify-content:space-between; width:100%; font-size:10px; color:#48484a;"><span>Reale:</span><b>{r_val}</b></div>
+                    <div style="display:flex; justify-content:space-between; width:100%; font-size:10px; color:#6a5acd;"><span>Simulato:</span><b>{s_val}</b></div>
+                    <div style="width:100%; text-align:right; margin-top:2px;">{badge_delta}</div>
+                </div>
+                """, unsafe_allow_html=True)
+            st.markdown("</div></div>", unsafe_allow_html=True)
