@@ -184,7 +184,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 st.errors(f"📍 ATTENZIONE DIRETTORE - L'APP STA GIRANDO QUI: {os.path.dirname(os.path.abspath(__file__))}")
 # --- I 3 PULSANTI VERTICALI DI AZIONE ---
-testo_p1 = f"🚀 FASE 1: Estrazione & Pronostici ({st.session_state.log_fase1})"
+
 if st.button(testo_p1, key="fase_1_btn", use_container_width=True):
     with st.spinner("⏳ In corso..."):
         try:
