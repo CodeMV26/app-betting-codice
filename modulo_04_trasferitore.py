@@ -6,11 +6,11 @@ DATABASE_PERMANENTE = "Database_Storico_Completo.xlsx"
 
 def esegui_allineamento():
     """
-    Modulo 04: Trasferitore Permanente (Fase 3) - Versione 5.66
+    Modulo 04: Archiviatore Permanente (Fase 3) - Versione 5.66
     Accoda i match convalidati nel Database Storico Completo eliminando i duplicati.
     Garantisce il trasferimento di tutte le colonne, mercati ed esiti senza perdite.
     """
-    print("💾 Avvio Modulo 04: Trasferimento nel Database Permanente (Scudo Anti-Doppione Integrale)...")
+    print("💾 Avvio Modulo 04: Archiviazione nel Database Permanente (Scudo Anti-Doppione Integrale)...")
 
     # 1. Verifica presenza dei dati convalidati dal Modulo 3
     if not os.path.exists(STORICO_VALIDATO):
@@ -19,7 +19,7 @@ def esegui_allineamento():
 
     df_validato = pd.read_excel(STORICO_VALIDATO)
     if df_validato.empty:
-        print("⚠️ Nessun dato presente nello Storico Validato da trasferire.")
+        print("⚠️ Nessun dato presente nello Storico Validato da archiviare.")
         return
 
     # 2. Caricamento del Database Permanente Esistente o creazione se rimosso
