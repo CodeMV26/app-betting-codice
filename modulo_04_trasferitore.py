@@ -2,39 +2,80 @@ import sys
 import os
 import pandas as pd
 
-# PROGRESSIVO CHAT: #091 | Data: 28 Giugno 2026 | Ora: 16:46:27
-# Versione Modulo: 5.91 (Copia Integrale Colonne & Risultati)
+# PROGRESSIVO CHAT: #093 | Data: 28 Giugno 2026 | Ora: 16:52:39
+# Versione Modulo: 5.93 (Mappatura Universale dei Risultati Reali)
 
 STORICO_FILE = "Storico_Validato_Betting.xlsx"
 DATABASE_STORICO_GLOBALE = "Database_Storico_Completo.xlsx"
 
 def genera_chiave_univoca_local(row):
-    # Cerca la data e il match provando sia le versioni pulite che quelle con prefisso numerico
     data = str(row.get('Data_Ora_Match', row.get('Data', row.get('2. Data', '')))).strip()
     match_str = str(row.get('3. Match', row.get('Match', ''))).strip()
     return f"{data}_{match_str}".lower().replace(" ", "")
 
 def _logica_core_trasferimento():
     if not os.path.exists(STORICO_FILE):
-        print(f"⚠️ File {STORICO_FILE} non trovato.")
         return
         
     try:
         df_da_appendere = pd.read_excel(STORICO_FILE)
         if df_da_appendere.empty:
-            print("⚠️ Lo storico sorgente è vuoto.")
             return
             
-        print(f"📊 Colonne rilevate nello storico: {list(df_da_appendere.columns)}")
+        # --- NORMALIZZAZIONE E CLONAZIONE COLONNE CRUCIALI ---
+        # Per ciascuna riga, cerchiamo il risultato reale ovunque sia memorizzato e lo copiamo in tutte le varianti note
+        varianti_risultato = ['Risultato_Reale', 'Risultato Reale', 'Risultato', 'Esito_Finale', 'Gol_Fatti_Totali']
+        varianti_esito = ['Esito 1X2', 'Esito_1X2', 'Esito', '1X2']
         
-        if os.path.exists(DATABASE_STORICO_GLOBALE):
-            df_storico_esistente = pd.read_excel(DATABASE_STORICO_GLOBALE)
+        for idx, row in df_da_appendere.iterrows():
+            # Trova un valore valido per il Risultato Reale
+            valore_risultato = None
+            for var in varianti_risultato:
+                if var in df_da_appendere.columns and pd.notna(row[var]) and str(row[var]).strip() != "":
+                    valore_risultato = row[var]
+                    break
             
-            # Genera set delle chiavi già archiviate per evitare duplicati
-            if not df_storico_esistente.empty:
-                chiavi_storico = set(df_storico_esistente.apply(genera_chiave_univoca_local, axis=1))
-            else:
-                chiavi_storico = set()
+            # Trova un valore valido per l'Esito
+            valore_esito = None
+            for var in varianti_esito:
+                if var in df_da_appendere.columns and pd.notna(row[var]) and str(row[var]).strip() != "":
+                    valore_esito = row[var]
+                    break
+                    
+            # Se abbiamo trovato i dati, li iniettiamo in tutte le possibili colonne target per l'interfaccia
+            if valore_risultato is not None:
+                for var in varianti_risultato:
+                    df_da_appendere.at[idx, var] = valore_risultato
+            if valore_esito is not None:
+                for var in varianti_esito:
+                    df_da_appendere.at[idx, var] = valore_esito
+
+        if os.path.exists(DATABASE_STORICO_GLOBALE):
+            try:
+                os.remove(DATABASE_STORICO_GLOBALE) # Eliminiamo il vecchio database fallato per rigenerarlo pulito
+            except:
+                pass
+                
+        # Scriviamo il file pulito contenente tutte le varianti di colonna
+        df_da_appendere.to_excel(DATABASE_STORICO_GLOBALE, index=False)
+        print("✅ Database Storico rigenerato con mappatura universale delle colonne.")
+            
+    except Exception as e:
+        print(f"❌ Errore nel trasferimento: {e}")
+        raise e
+
+def esegui_allineamento():
+    _logica_core_trasferimento()
+
+def esegui_trasferimento():
+    _logica_core_trasferimento()
+
+me = sys.modules[__name__]
+setattr(me, 'esegui_allineamento', esegui_allineamento)
+setattr(me, 'esegui_trasferimento', esegui_trasferimento)
+
+if __name__ == "__main__":
+    esegui_allineamento()                chiavi_storico = set()
             
             # Filtra solo i match effettivamente nuovi
             nuovi_record = []
