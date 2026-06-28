@@ -4,8 +4,8 @@ import os
 import datetime
 from zoneinfo import ZoneInfo
 
-# PROGRESSIVO CHAT: #104 | Data: 28 Giugno 2026 | Ora: 17:29:15
-# Versione Progetto: 6.04 (Ripristino F-String Tab Storico & Integrità Totale)
+# PROGRESSIVO CHAT: #105 | Data: 28 Giugno 2026 | Ora: 17:31:02
+# Versione Progetto: 6.05 (Fix Totale Stringhe Interrotte & Caratteri Fantasma)
 
 st.set_page_config(page_title="⚽ Betting Pro Mobile", page_icon="⚽", layout="centered")
 
@@ -110,9 +110,49 @@ def safe_get(row, keys_list):
 st.markdown("""
 <div class="brand-box">
     <div class="main-title">⚽ Betting Pro Mobile</div>
-    <div class="version-label">Versione Progetto: 6.04</div>
+    <div class="version-label">Versione Progetto: 6.05</div>
 </div>
 """, unsafe_allow_html=True)
 
 # --- PULSANTI AZIONE INTERFACCIA ---
-testo_p1 = f"🚀 F
+if st.button(f"🚀 FASE 1: Estrazione & Pronostici ({st.session_state.log_fase1})", key="fase_1_btn", use_container_width=True):
+    with st.spinner("⏳ In corso..."):
+        try:
+            import modulo_01_estrattore as m1
+            import modulo_02_motore as m2
+            m1.esegui_estrazione()
+            m2.esegui_calcolo_motore()
+            st.session_state.log_fase1 = datetime.datetime.now(FUSO_ROMA).strftime("%H:%M:%S")
+            st.toast("🚀 Palinsesto Estratto!", icon="✅")
+            st.rerun()
+        except Exception as e: st.error(f"Errore Fase 1: {str(e)}")
+
+if st.button(f"🏆 FASE 2: Convalida Risultati ({st.session_state.log_fase2})", key="fase_2_btn", use_container_width=True):
+    with st.spinner("⏳ In corso..."):
+        try:
+            import modulo_03_validatore as m3
+            m3.esegui_validazione()
+            st.session_state.log_fase2 = datetime.datetime.now(FUSO_ROMA).strftime("%H:%M:%S")
+            st.toast("🏆 Storico Convalidato!", icon="✅")
+            st.rerun()
+        except Exception as e: st.error(f"Errore Fase 2: {str(e)}")
+
+if st.button(f"🗄️ FASE 3: Archiviazione Totale ({st.session_state.log_fase3})", key="fase_3_btn", use_container_width=True):
+    with st.spinner("⏳ In corso..."):
+        try:
+            import modulo_04_trasferitore as m4
+            if hasattr(m4, 'esegui_allineamento'): m4.esegui_allineamento()
+            elif hasattr(m4, 'esegui_trasferimento'): m4.esegui_trasferimento()
+            st.session_state.log_fase3 = datetime.datetime.now(FUSO_ROMA).strftime("%H:%M:%S")
+            st.toast("🗄️ Database Sincronizzato!", icon="✅")
+            st.rerun()
+        except Exception as e: st.error(f"Errore Fase 3: {str(e)}")
+
+st.markdown("<div style='margin-bottom: 10px;'></div>", unsafe_allow_html=True)
+
+# --- TAB NAVIGAZIONE IOS BLINDATA ---
+st.markdown("<div class='tab-click-col'>", unsafe_allow_html=True)
+col_t1, col_t2, col_t3 = st.columns(3)
+
+with col_t1:
+    label_
