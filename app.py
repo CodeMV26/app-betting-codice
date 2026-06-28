@@ -4,8 +4,8 @@ import os
 import datetime
 from zoneinfo import ZoneInfo
 
-# PROGRESSIVO CHAT: #119 | Data: 28 Giugno 2026 | Ora: 21:24:12
-# Versione Progetto: 6.13 (Integrazione Integrale Tab Simulatore iOS 4 Colonne)
+# PROGRESSIVO CHAT: #123 | Data: 28 Giugno 2026 | Ora: 21:55:12
+# Versione Progetto: 6.16 (Integrazione Collegamento Backend Modulo 05)
 
 st.set_page_config(page_title="⚽ Betting Pro Mobile", page_icon="⚽", layout="centered")
 
@@ -125,7 +125,7 @@ def clean(val):
 st.markdown("""
 <div class="brand-box">
     <div class="main-title">⚽ Betting Pro Mobile</div>
-    <div class="version-label">Versione Progetto: 6.13</div>
+    <div class="version-label">Versione Progetto: 6.16</div>
 </div>
 """, unsafe_allow_html=True)
 
@@ -299,7 +299,7 @@ elif st.session_state.tab_selezionata == "DATABASE":
     else: st.info("Database di archiviazione vuoto.")
 
 # =========================================================================
-# 🧪 RIGA 290+: SEZIONE DIRETTA INTERFACCIA MODULO 05 (SIMULATORE)
+# 🧪 RIGA 290+: INTERFACCIA CONNESSA DIRETTAMENTE AL BACKEND MODULO 05
 # =========================================================================
 elif st.session_state.tab_selezionata == "SIMULATORE":
     st.markdown('<div class="block-header" style="color:#6a5acd; font-size:12px; margin-bottom:12px;">🧪 SIMULATORE DI STRATEGIE & BACKTESTING</div>', unsafe_allow_html=True)
@@ -307,7 +307,7 @@ elif st.session_state.tab_selezionata == "SIMULATORE":
     if df_database.empty:
         st.warning("⚠️ L'archivio del Database è vuoto. Archivia le partite con la Fase 3 per abilitare il simulatore.")
     else:
-        # 1. Configurazione Parametri Editabili (Stile Impostazioni iOS)
+        # Configurazione Parametri Editabili (Sliders iOS responsive)
         with st.expander("⚙️ PARAMETRI DI CALIBRAZIONE ALGORITMO", expanded=True):
             st.markdown("<p style='font-size:11px; color:#8e8e93; margin-top:-5px;'>Modifica le soglie matematiche per ricalcolare all'istante le accuratezze dello storico.</p>", unsafe_allow_html=True)
             
@@ -320,122 +320,22 @@ elif st.session_state.tab_selezionata == "SIMULATORE":
             with col_w1: p_casa = st.slider("Peso Medie Casa", 0.70, 1.30, 1.05, 0.05)
             with col_w2: p_trasf = st.slider("Peso Medie Trasferta", 0.70, 1.30, 0.95, 0.05)
 
-        # 2. Pulsante di Attivazione Backtest Touch Native
+        # Pulsante di Attivazione connesso al modulo_05_simulatore
         if st.button("🧪 AVVIA BACKTEST SU ARCHIVIO GENERALE", key="run_backtest_btn", use_container_width=True):
             with st.spinner("⏳ Ricalcolo matrici Dixon-Cole in corso..."):
                 try:
-                    import numpy as np
-                    import math
+                    import modulo_05_simulatore as m5
+                    res_sim, tot_m = m5.esegui_simulazione_archivio(df_database, s_uo15, s_uo25, s_uo35, s_gng, p_casa, p_trasf)
                     
-                    # Funzioni matematiche locali per isolamento totale delle variabili
-                    def poisson_local(l, k):
-                        if l <= 0: return 1 if k == 0 else 0
-                        return (math.exp(-l) * pow(l, k)) / math.factorial(k)
-
-                    def dc_adj_local(i, j, xg_c, xg_t):
-                        rho = -0.09
-                        if i == 0 and j == 0: return 1 - (xg_c * xg_t * rho)
-                        if i == 1 and j == 0: return 1 + (xg_t * rho)
-                        if i == 0 and j == 1: return 1 + (xg_c * rho)
-                        if i == 1 and j == 1: return 1 - rho
-                        return 1.0
-
-                    def get_mg_local(prob_v):
-                        r = {
-                            "1-2 MG": sum(prob_v[1:3]), "1-3 MG": sum(prob_v[1:4]), "1-4 MG": sum(prob_v[1:5]),
-                            "2-3 MG": sum(prob_v[2:4]), "2-4 MG": sum(prob_v[2:5]), "3+ MG": sum(prob_v[3:]), "0-1 MG": sum(prob_v[0:2])
-                        }
-                        return max(r, key=r.get)
-
-                    df_valid = df_database[df_database['Risultato_Reale'].astype(str).str.contains("-")].copy()
-                    df_valid = df_valid[~df_valid['Risultato_Reale'].astype(str).str.contains("NON ANCORA")]
-                    
-                    sim_vinti = {
-                        "1X2": 0, "Ris. Esatto": 0, "Doppia Chance": 0, "Combo DC + U/O": 0,
-                        "U/O 1.5": 0, "U/O 2.5": 0, "U/O 3.5": 0, "Goal/NoGoal": 0,
-                        "MG Casa": 0, "MG Ospite": 0, "Corner 1X2": 0
-                    }
-                    
-                    tot_sim_matches = len(df_valid)
-                    
-                    if tot_sim_matches > 0:
-                        for _, row_s in df_valid.iterrows():
-                            res_s = str(row_s.get('Risultato_Reale', '-')).strip()
-                            g_c_s, g_t_s = map(int, res_s.split("-"))
-                            tot_g_s = g_c_s + g_t_s
-                            segno_s = '1' if g_c_s > g_t_s else ('2' if g_t_s > g_c_s else 'X')
-                            
-                            m_gf_c = float(row_s.get('Media_Goal_Casa_Orig', row_s.get('Media_Goal_Casa', 1.20)))
-                            m_gf_t = float(row_s.get('Media_Goal_Trasferta_Orig', row_s.get('Media_Goal_Trasferta', 1.10)))
-                            if math.isnan(m_gf_c): m_gf_c = 1.20
-                            if math.isnan(m_gf_t): m_gf_t = 1.10
-                            
-                            m_h, m_a = 1.20, 1.10
-                            sos_c = (m_gf_c / m_h) * p_casa
-                            sos_t = (m_gf_t / m_a) * p_trasf
-                            
-                            xg_c = ((m_gf_c * 1.00) / m_h) * sos_c * 1.08
-                            xg_t = ((m_gf_t * 1.00) / m_a) * sos_t
-                            
-                            matrix = [[0.0 for _ in range(6)] for _ in range(6)]
-                            for i in range(6):
-                                for j in range(6):
-                                    matrix[i][j] = poisson_local(xg_c, i) * poisson_local(xg_t, j) * dc_adj_local(i, j, xg_c, xg_t) * (1.12 if i == j else 1.0)
-                                    
-                            p1, px, p2, pu15, pu25, pu35, pgoal = 0, 0, 0, 0, 0, 0, 0
-                            tot_p = sum(sum(r) for r in matrix) if sum(sum(r) for r in matrix) > 0 else 1.0
-                            prob_c, prob_t = [0.0] * 6, [0.0] * 6
-                            
-                            for i in range(6):
-                                for j in range(6):
-                                    p_cell = matrix[i][j] / tot_p
-                                    prob_c[i] += p_cell
-                                    prob_t[j] += p_cell
-                                    if i > j: p1 += p_cell
-                                    elif i == j: px += p_cell
-                                    else: p2 += p_cell
-                                    if (i+j) < 1.5: pu15 += p_cell
-                                    if (i+j) < 2.5: pu25 += p_cell
-                                    if (i+j) < 3.5: pu35 += p_cell
-                                    if i > 0 and j > 0: pgoal += p_cell
-                                    
-                            s_1x2 = max({'1': p1, 'X': px, '2': p2}, key={'1': p1, 'X': px, '2': p2}.get)
-                            s_ex = f"{np.unravel_index(np.argmax(matrix), (6,6))[0]}-{np.unravel_index(np.argmax(matrix), (6,6))[1]}"
-                            s_dc = "1X" if (p1 + px) > (p2 + px) else "X2"
-                            s_uo15 = "UNDER 1.5" if pu15 > s_uo15 else "OVER 1.5"
-                            s_uo25 = "UNDER 2.5" if pu25 > s_uo25 else "OVER 2.5"
-                            s_uo35 = "UNDER 3.5" if pu35 > s_uo35 else "OVER 3.5"
-                            s_gng = "GOAL" if pgoal > s_gng else "NOGOAL"
-                            s_combo = f"{s_dc}+{s_uo25.split(' ')[0]}"
-                            
-                            if s_1x2 == segno_s: sim_vinti["1X2"] += 1
-                            if s_ex == res_s: sim_vinti["Ris. Esatto"] += 1
-                            if (s_dc == "1X" and segno_s in ['1','X']) or (s_dc == "X2" and segno_s in ['X','2']): sim_vinti["Doppia Chance"] += 1
-                            if (s_uo15 == "OVER 1.5" and tot_g_s > 1.5) or (s_uo15 == "UNDER 1.5" and tot_g_s <= 1.5): sim_vinti["U/O 1.5"] += 1
-                            if (s_uo25 == "OVER 2.5" and tot_g_s > 2.5) or (s_uo25 == "UNDER 2.5" and tot_g_s <= 2.5): sim_vinti["U/O 2.5"] += 1
-                            if (s_uo35 == "OVER 3.5" and tot_g_s > 3.5) or (s_uo35 == "UNDER 3.5" and tot_g_s <= 3.5): sim_vinti["U/O 3.5"] += 1
-                            if (s_gng == "GOAL" and g_c_s > 0 and g_t_s > 0) or (s_gng == "NOGOAL" and (g_c_s == 0 or g_t_s == 0)): sim_vinti["Goal/NoGoal"] += 1
-                            
-                            def chk_mg_l(p_str, gol):
-                                p = p_str.replace("MG","").strip()
-                                if "-" in p:
-                                    g_min, g_max = map(int, p.split("-"))
-                                    return g_min <= gol <= g_max
-                                return gol >= 3 if "3+" in p else False
-                                
-                            if chk_mg_l(get_mg_local(prob_c), g_c_s): sim_vinti["MG Casa"] += 1
-                            if chk_mg_l(get_mg_local(prob_t), g_t_s): sim_vinti["MG Ospite"] += 1
-                            if s_combo == row_s.get('DC+U/O2.5') and row_s.get('Esito_DC+U/O2.5') == 'VINCENTE': sim_vinti["Combo DC + U/O"] += 1
-                            if ("1" in row_s.get('Esito_Corner_1X2', 'X') and xg_c > xg_t + 0.3) or ("2" in row_s.get('Esito_Corner_1X2', 'X') and xg_t > xg_c + 0.3): sim_vinti["Corner 1X2"] += 1
-                        
-                        st.session_state.backtest_results = {m: f"{(sim_vinti[m]/tot_sim_matches)*100:.1f}% ({sim_vinti[m]}/{tot_sim_matches})" for m in sim_vinti}
-                        st.toast("🧪 Backtest Completato!", icon="✅")
+                    if tot_m > 0:
+                        st.session_state.backtest_results = res_sim
+                        st.toast("🧪 Backtest Completato con Successo!", icon="✅")
                     else:
                         st.error("Nessun match terminato utilizzabile trovato nell'archivio storico.")
                 except Exception as e:
-                    st.error(f"Errore Backtest: {str(e)}")
+                    st.error(f"Errore di computazione nel Modulo 05: {str(e)}")
 
-        # 3. Render Comparativo Scostamento Performance Reale vs Simulata
+        # Render Comparativo Scostamento Performance Reale vs Simulata
         if "backtest_results" in st.session_state:
             st.markdown('<div class="accuracy-container"><div class="accuracy-title">📈 SCOSTAMENTO PERFORMANCE (REALE VS SIMULATO)</div><div class="accuracy-grid">', unsafe_allow_html=True)
             for m_name, r_val in dict_acc.items():
