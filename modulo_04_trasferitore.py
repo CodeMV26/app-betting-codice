@@ -1,73 +1,74 @@
-import pandas as pd
+import sys
 import os
+import pandas as pd
 
-STORICO_VALIDATO = "Storico_Validato_Betting.xlsx"
-DATABASE_PERMANENTE = "Database_Storico_Completo.xlsx"
+# PROGRESSIVO CHAT: #091 | Data: 28 Giugno 2026 | Ora: 16:46:27
+# Versione Modulo: 5.91 (Copia Integrale Colonne & Risultati)
+
+STORICO_FILE = "Storico_Validato_Betting.xlsx"
+DATABASE_STORICO_GLOBALE = "Database_Storico_Completo.xlsx"
+
+def genera_chiave_univoca_local(row):
+    # Cerca la data e il match provando sia le versioni pulite che quelle con prefisso numerico
+    data = str(row.get('Data_Ora_Match', row.get('Data', row.get('2. Data', '')))).strip()
+    match_str = str(row.get('3. Match', row.get('Match', ''))).strip()
+    return f"{data}_{match_str}".lower().replace(" ", "")
+
+def _logica_core_trasferimento():
+    if not os.path.exists(STORICO_FILE):
+        print(f"⚠️ File {STORICO_FILE} non trovato.")
+        return
+        
+    try:
+        df_da_appendere = pd.read_excel(STORICO_FILE)
+        if df_da_appendere.empty:
+            print("⚠️ Lo storico sorgente è vuoto.")
+            return
+            
+        print(f"📊 Colonne rilevate nello storico: {list(df_da_appendere.columns)}")
+        
+        if os.path.exists(DATABASE_STORICO_GLOBALE):
+            df_storico_esistente = pd.read_excel(DATABASE_STORICO_GLOBALE)
+            
+            # Genera set delle chiavi già archiviate per evitare duplicati
+            if not df_storico_esistente.empty:
+                chiavi_storico = set(df_storico_esistente.apply(genera_chiave_univoca_local, axis=1))
+            else:
+                chiavi_storico = set()
+            
+            # Filtra solo i match effettivamente nuovi
+            nuovi_record = []
+            for _, riga in df_da_appendere.iterrows():
+                if genera_chiave_univoca_local(riga) not in chiavi_storico:
+                    nuovi_record.append(riga)
+            
+            if nuovi_record:
+                df_nuovi = pd.DataFrame(nuovi_record)
+                # Concatenazione totale: mantiene intatte TUTTE le colonne di entrambi i file
+                df_storico_aggiornato = pd.concat([df_storico_esistente, df_nuovi], ignore_index=True, sort=False)
+                df_storico_aggiornato.to_excel(DATABASE_STORICO_GLOBALE, index=False)
+                print(f"✅ Trasferiti con successo {len(nuovi_record)} match completi di statistiche e risultati.")
+            else:
+                print("ℹ️ Nessun nuovo match da aggiungere, archivio già allineato.")
+        else:
+            # Se l'archivio globale non esiste, lo crea copiando al 100% lo storico con tutte le sue colonne
+            df_da_appendere.to_excel(DATABASE_STORICO_GLOBALE, index=False)
+            print("🆕 Creato nuovo archivio globale strutturato.")
+            
+    except Exception as e:
+        print(f"❌ Errore nel trasferimento: {e}")
+        raise e
 
 def esegui_allineamento():
-    """
-    Modulo 04: Trasferitore Permanente (Fase 3) - Versione 5.79
-    Sposta i dati convalidati nel Database Permanente senza duplicati.
-    """
-    print("💾 Avvio Modulo 04: Archiviazione nel Database Permanente...")
-    
-    # Rilevamento automatico della cartella sul server cloud
-    cartella_progetto = os.path.dirname(os.path.abspath(__file__))
-    path_storico = os.path.join(cartella_progetto, STORICO_VALIDATO)
-    path_database = os.path.join(cartella_progetto, DATABASE_PERMANENTE)
+    _logica_core_trasferimento()
 
-    if not os.path.exists(path_storico):
-        print(f"⚠️ Errore: {STORICO_VALIDATO} non trovato.")
-        return
+def esegui_trasferimento():
+    _logica_core_trasferimento()
 
-    try:
-        df_validato = pd.read_excel(path_storico)
-    except Exception as e:
-        print(f"❌ Errore lettura Storico: {e}")
-        return
-
-    if df_validato.empty:
-        print("⚠️ Nessun dato presente nello Storico Validato da archiviare.")
-        return
-
-    if os.path.exists(path_database):
-        try:
-            df_permanente = pd.read_excel(path_database)
-        except:
-            df_permanente = pd.DataFrame()
-    else:
-        df_permanente = pd.DataFrame()
-
-    # Controllo anti-duplicati geometrico
-    chiavi_permanenti = set()
-    if not df_permanente.empty and '3. Match' in df_permanente.columns and 'Data_Ora_Match' in df_permanente.columns:
-        for _, r in df_permanente.iterrows():
-            chiave = f"{str(r['Data_Ora_Match']).strip()}_{str(r['3. Match']).strip().upper()}"
-            chiavi_permanenti.add(chiave)
-
-    indici_da_tenere = []
-    for idx, row in df_validato.iterrows():
-        match_nome = str(row.get('3. Match', '')).strip()
-        match_data = str(row.get('Data_Ora_Match', '')).strip()
-        chiave_corrente = f"{match_data}_{match_nome.upper()}"
-
-        if chiave_corrente in chiavi_permanenti:
-            continue
-        indici_da_tenere.append(idx)
-
-    if not indici_da_tenere:
-        print("💾 Tutti i match sono già archiviati. Zero righe aggiunte.")
-        return
-
-    df_nuovi_salvati = df_validato.loc[indici_da_tenere].copy()
-
-    if not df_permanente.empty:
-        df_database_aggiornato = pd.concat([df_permanente, df_nuovi_salvati], ignore_index=True, sort=False)
-    else:
-        df_database_aggiornato = df_nuovi_salvati
-
-    df_database_aggiornato.to_excel(path_database, index=False)
-    print(f"✅ Database Aggiornato! Record totali: {len(df_database_aggiornato)}")
+# Iniezione forzata per prevenire blocchi di vecchia memoria del server
+me = sys.modules[__name__]
+setattr(me, 'esegui_allineamento', esegui_allineamento)
+setattr(me, 'esegui_trasferimento', esegui_trasferimento)
 
 if __name__ == "__main__":
     esegui_allineamento()
