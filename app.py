@@ -4,8 +4,8 @@ import os
 import datetime
 from zoneinfo import ZoneInfo
 
-# PROGRESSIVO CHAT: #102 | Data: 28 Giugno 2026 | Ora: 17:26:12
-# Versione Progetto: 6.02 (Fix Grafico HTML Database & Integrità Totale)
+# PROGRESSIVO CHAT: #103 | Data: 28 Giugno 2026 | Ora: 17:27:45
+# Versione Progetto: 6.03 (Fix Sintattico Graffe Palinsesto)
 
 st.set_page_config(page_title="⚽ Betting Pro Mobile", page_icon="⚽", layout="centered")
 
@@ -110,7 +110,7 @@ def safe_get(row, keys_list):
 st.markdown("""
 <div class="brand-box">
     <div class="main-title">⚽ Betting Pro Mobile</div>
-    <div class="version-label">Versione Progetto: 6.02</div>
+    <div class="version-label">Versione Progetto: 6.03</div>
 </div>
 """, unsafe_allow_html=True)
 
@@ -164,50 +164,4 @@ with col_t1:
         if st.button(label_p1, key="btn_pal_off", use_container_width=True): st.session_state.tab_selezionata = "PALINSESTO"; st.rerun()
 
 with col_t2:
-    label_p2 = f"📊 Storico ({len(df_storico)})"
-    if st.session_state.tab_selezionata == "STORICO": st.button(label_p2, key="btn_sto", use_container_width=True)
-    else:
-        if st.button(label_p2, key="btn_sto_off", use_container_width=True): st.session_state.tab_selezionata = "STORICO"; st.rerun()
-
-with col_t3:
-    label_p3 = f"🗄️ Database ({len(df_database)})"
-    if st.session_state.tab_selezionata == "DATABASE": st.button(label_p3, key="btn_db", use_container_width=True)
-    else:
-        if st.button(label_p3, key="btn_db_off", use_container_width=True): st.session_state.tab_selezionata = "DATABASE"; st.rerun()
-st.markdown("</div>", unsafe_allow_html=True)
-
-dict_acc = calcola_accuratezza_globale()
-if dict_acc:
-    st.markdown('<div class="accuracy-container"><div class="accuracy-title">📈 Performance Reale Dixon-Cole (12 Mercati)</div><div class="accuracy-grid">', unsafe_allow_html=True)
-    for m_name, m_val in dict_acc.items(): st.markdown(f'<div class="accuracy-item"><span>{m_name}</span><span class="accuracy-val">{m_val}</span></div>', unsafe_allow_html=True)
-    st.markdown("</div></div>", unsafe_allow_html=True)
-
-def clean(val):
-    if pd.isna(val) or val == "-": return "-"
-    try:
-        f_val = float(val)
-        return str(int(f_val)) if f_val.is_integer() else str(f_val)
-    except: return str(val)
-
-# --- VIEW RENDER PALINSESTO ---
-if st.session_state.tab_selezionata == "PALINSESTO":
-    if not df_palinsesto.empty:
-        for idx, row in df_palinsesto.iterrows():
-            st.markdown(f"""
-            <div class="match-card">
-                <div class="meta-label">🏆 {safe_get(row, ['Campionato'])} | {safe_get(row, ['Data_Ora_Match', 'Data'])}</div>
-                <div class="team-text"> {safe_get(row, ['3. Match', 'Match'])}</div>
-                <div class="block-header">🎲 Algoritmo & Probabilità</div>
-                <div class="market-box">
-                    <div class="market-cell"><b>1X2</b><div class="market-val-row">{safe_get(row, ['1X2'])}</div></div>
-                    <div class="market-cell"><b>Ris. Esatto</b><div class="market-val-row">{safe_get(row, ['Risultato_Esatto'])}</div></div>
-                    <div class="market-cell"><b>Doppia Chance</b><div class="market-val-row">{safe_get(row, ['Doppia_Chance'])}</div></div>
-                    <div class="market-cell"><b>Combo DC+U/O2.5</b><div class="market-val-row">{safe_get(row, ['DC+U/O2.5', 'DC+U/O_2.5'])}</div></div>
-                    <div class="market-cell"><b>U/O 1.5</b><div class="market-val-row">{safe_get(row, ['U/O_1.5'])}</div></div>
-                    <div class="market-cell"><b>U/O 2.5</b><div class="market-val-row">{safe_get(row, ['U/O_2.5'])}</div></div>
-                    <div class="market-cell"><b>U/O 3.5</b><div class="market-val-row">{safe_get(row, ['U/O_3.5'])}</div></div>
-                    <div class="market-cell"><b>Goal/NoGoal</b><div class="market-val-row">{safe_get(row, ['Goal_NoGoal'])}</div></div>
-                    <div class="market-cell"><b>MG Casa Expect.</b><div class="market-val-row">{safe_get(row, ['Pronostico_MG_Casa', 'MG_Casa'])}</div></div>
-                    <div class="market-cell"><b>MG Ospite Expect.</b><div class="market-val-row">{safe_get(row, ['Pronostico_MG_Trasferta', 'MG_Ospite'])}</div></div>
-                    <div class="market-cell"><b>MG Totale Expect.</b><div class="market-val-row">{safe_get(row, ['Pronostico_MG_Totale', 'MG_Totale'])}</div></div>
-                    <div class="market-cell"><b>Corner 1X2</b><div class="market-val-row">{
+    label_p2 = f"📊 Storico
