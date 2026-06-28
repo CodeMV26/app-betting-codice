@@ -4,8 +4,8 @@ import os
 import datetime
 from zoneinfo import ZoneInfo
 
-# PROGRESSIVO CHAT: #106 | Data: 28 Giugno 2026 | Ora: 19:57:41
-# Versione Progetto: 6.06 (Fix NameError Label Inizializzazione Navigazione)
+# PROGRESSIVO CHAT: #109 | Data: 28 Giugno 2026 | Ora: 20:07:34
+# Versione Progetto: 6.09 (Versione Integrale Ripristinata con Fix Dinamico Statistiche)
 
 st.set_page_config(page_title="⚽ Betting Pro Mobile", page_icon="⚽", layout="centered")
 
@@ -36,7 +36,6 @@ df_palinsesto = carica_dati(PALINSESTO_FILE)
 df_storico = carica_dati(STORICO_FILE)
 df_database = carica_dati(DB_FILE)
 
-# Conteggi di sicurezza per evitare NameError a runtime nelle f-string
 len_pal = len(df_palinsesto) if not df_palinsesto.empty else 0
 len_sto = len(df_storico) if not df_storico.empty else 0
 len_db = len(df_database) if not df_database.empty else 0
@@ -47,7 +46,7 @@ st.markdown("""
     .brand-box { text-align: center; margin-bottom: 12px; padding: 2px; }
     .main-title { font-size: 22px; font-weight: 800; color: #1c1c1e; margin: 0; }
     .version-label { font-size: 10px; font-weight: 700; color: #007aff; margin-top: 1px; text-transform: uppercase; letter-spacing: 0.5px; }
-    div.stButton > button { border-radius: 8px !important; font-weight: 700 !important; font-size: 11px !important; padding: 6px 10px !important; height: auto !important; width: 100% !important; border: none !important; box-shadow: 0 2px 5px rgba(0,0,0,0.03) !important; margin-bottom: -4px !important; width: 100% !important; }
+    div.stButton > button { border-radius: 8px !important; font-weight: 700 !important; font-size: 11px !important; padding: 6px 10px !important; height: auto !important; width: 100% !important; border: none !important; box-shadow: 0 2px 5px rgba(0,0,0,0.03) !important; margin-bottom: -4px !important; }
     div.stButton > button[id*="fase_1"] { background-color: #2cd158 !important; color: white !important; }
     div.stButton > button[id*="fase_2"] { background-color: #6a5acd !important; color: white !important; }
     div.stButton > button[id*="fase_3"] { background-color: #ffd700 !important; color: #1c1c1e !important; }
@@ -112,10 +111,17 @@ def safe_get(row, keys_list):
             if f"{prefix}{k}" in row: return row[f"{prefix}{k}"]
     return "-"
 
+def clean(val):
+    if pd.isna(val) or str(val).strip().upper() == "NONE" or str(val).strip() == "-": return "-"
+    try:
+        f_val = float(val)
+        return str(int(f_val)) if f_val.is_integer() else f"{f_val:.1f}"
+    except: return str(val)
+
 st.markdown("""
 <div class="brand-box">
     <div class="main-title">⚽ Betting Pro Mobile</div>
-    <div class="version-label">Versione Progetto: 6.06</div>
+    <div class="version-label">Versione Progetto: 6.09</div>
 </div>
 """, unsafe_allow_html=True)
 
@@ -185,13 +191,6 @@ if dict_acc:
     for m_name, m_val in dict_acc.items(): st.markdown(f'<div class="accuracy-item"><span>{m_name}</span><span class="accuracy-val">{m_val}</span></div>', unsafe_allow_html=True)
     st.markdown("</div></div>", unsafe_allow_html=True)
 
-def clean(val):
-    if pd.isna(val) or val == "-": return "-"
-    try:
-        f_val = float(val)
-        return str(int(f_val)) if f_val.is_integer() else str(f_val)
-    except: return str(val)
-
 # --- VIEW RENDER PALINSESTO ---
 if st.session_state.tab_selezionata == "PALINSESTO":
     if not df_palinsesto.empty:
@@ -225,8 +224,8 @@ if st.session_state.tab_selezionata == "PALINSESTO":
                     <div class="market-cell"><b>Punti Totali</b><div class="market-val-row"><span>{clean(safe_get(row, ['Punti_Casa']))} pt</span><span>vs</span><span>{clean(safe_get(row, ['Punti_Trasferta']))} pt</span></div></div>
                     <div class="market-cell"><b>Partite Giocate</b><div class="market-val-row"><span>{clean(safe_get(row, ['Giocate_Casa']))} G</span><span>vs</span><span>{clean(safe_get(row, ['Giocate_Ospite']))} G</span></div></div>
                     <div class="market-cell"><b>V / P / S</b><div class="market-val-row"><span>{clean(safe_get(row, ['Vinte_Casa']))}-{clean(safe_get(row, ['Pareggi_Casa']))}-{clean(safe_get(row, ['Perse_Casa']))}</span><span>vs</span><span>{clean(safe_get(row, ['Vinte_Ospite']))}-{clean(safe_get(row, ['Pareggi_Ospite']))}-{clean(safe_get(row, ['Perse_Ospite']))}</span></div></div>
-                    <div class="market-cell"><b>Gol Fatti Totali</b><div class="market-val-row"><span>{clean(safe_get(row, ['Media_Goal_Casa_Orig', 'Gol_Fatti_Casa']))} F</span><span>vs</span><span>{clean(safe_get(row, ['Media_Goal_Trasferta_Orig', 'Gol_Fatti_Ospite']))} F</span></div></div>
-                    <div class="market-cell"><b>Gol Subiti Totali</b><div class="market-val-row"><span>{clean(safe_get(row, ['Goal_Subiti_Casa']))} S</span><span>vs</span><span>{clean(safe_get(row, ['Goal_Subiti_Ospite']))} S</span></div></div>
+                    <div class="market-cell"><b>Gol Fatti Totali</b><div class="market-val-row"><span>{clean(safe_get(row, ['Media_Goal_Casa_Orig', 'Gol_Fatti_Casa', 'GolFatti_Casa']))} F</span><span>vs</span><span>{clean(safe_get(row, ['Media_Goal_Trasferta_Orig', 'Gol_Fatti_Ospite', 'GolFatti_Ospite']))} F</span></div></div>
+                    <div class="market-cell"><b>Gol Subiti Totali</b><div class="market-val-row"><span>{clean(safe_get(row, ['Goal_Subiti_Casa', 'GolSubiti_Casa']))} S</span><span>vs</span><span>{clean(safe_get(row, ['Goal_Subiti_Ospite', 'GolSubiti_Ospite']))} S</span></div></div>
                 </div>
             </div>
             <div class="match-separator"></div>
@@ -262,7 +261,7 @@ elif st.session_state.tab_selezionata == "STORICO":
             """, unsafe_allow_html=True)
     else: st.info("Nessun match presente nello storico corrente.")
 
-# --- VIEW RENDER DATABASE (ESTESA CON STATISTICHE INTEGRALI) ---
+# --- VIEW RENDER DATABASE ---
 elif st.session_state.tab_selezionata == "DATABASE":
     if not df_database.empty:
         st.markdown('<div class="block-header">🗄️ Archivio Generale Partite</div>', unsafe_allow_html=True)
@@ -275,15 +274,14 @@ elif st.session_state.tab_selezionata == "DATABASE":
                     <div class="market-cell"><b>Risultato Reale</b><div style="font-weight:700;">{safe_get(row, ['Risultato_Reale'])}</div></div>
                     <div class="market-cell"><b>Esito 1X2</b><div style="font-weight:700;">{safe_get(row, ['Esito_1X2'])}</div></div>
                 </div>
-                
                 <div class="block-header stats" style="margin-top: 6px;">📊 Statistiche Storiche Branch</div>
                 <div class="market-box">
                     <div class="market-cell"><b>Pos. Classifica</b><div class="market-val-row"><span>{clean(safe_get(row, ['PosClassifica_Casa']))}°</span><span>vs</span><span>{clean(safe_get(row, ['PosClassifica_Ospite']))}°</span></div></div>
                     <div class="market-cell"><b>Punti Totali</b><div class="market-val-row"><span>{clean(safe_get(row, ['Punti_Casa']))} pt</span><span>vs</span><span>{clean(safe_get(row, ['Punti_Trasferta']))} pt</span></div></div>
                     <div class="market-cell"><b>Partite Giocate</b><div class="market-val-row"><span>{clean(safe_get(row, ['Giocate_Casa']))} G</span><span>vs</span><span>{clean(safe_get(row, ['Giocate_Ospite']))} G</span></div></div>
                     <div class="market-cell"><b>V / P / S</b><div class="market-val-row"><span>{clean(safe_get(row, ['Vinte_Casa']))}-{clean(safe_get(row, ['Pareggi_Casa']))}-{clean(safe_get(row, ['Perse_Casa']))}</span><span>vs</span><span>{clean(safe_get(row, ['Vinte_Ospite']))}-{clean(safe_get(row, ['Pareggi_Ospite']))}-{clean(safe_get(row, ['Perse_Ospite']))}</span></div></div>
-                    <div class="market-cell"><b>Gol Fatti Totali</b><div class="market-val-row"><span>{clean(safe_get(row, ['Media_Goal_Casa_Orig', 'Gol_Fatti_Casa']))} F</span><span>vs</span><span>{clean(safe_get(row, ['Media_Goal_Trasferta_Orig', 'Gol_Fatti_Ospite']))} F</span></div></div>
-                    <div class="market-cell"><b>Gol Subiti Totali</b><div class="market-val-row"><span>{clean(safe_get(row, ['Goal_Subiti_Casa']))} S</span><span>vs</span><span>{clean(safe_get(row, ['Goal_Subiti_Ospite']))} S</span></div></div>
+                    <div class="market-cell"><b>Gol Fatti Totali</b><div class="market-val-row"><span>{clean(safe_get(row, ['Media_Goal_Casa_Orig', 'Gol_Fatti_Casa', 'GolFatti_Casa']))} F</span><span>vs</span><span>{clean(safe_get(row, ['Media_Goal_Trasferta_Orig', 'Gol_Fatti_Ospite', 'GolFatti_Ospite']))} F</span></div></div>
+                    <div class="market-cell"><b>Gol Subiti Totali</b><div class="market-val-row"><span>{clean(safe_get(row, ['Goal_Subiti_Casa', 'GolSubiti_Casa']))} S</span><span>vs</span><span>{clean(safe_get(row, ['Goal_Subiti_Ospite', 'GolSubiti_Ospite']))} S</span></div></div>
                 </div>
             </div>
             <div class="match-separator"></div>
