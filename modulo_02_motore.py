@@ -2,8 +2,8 @@ import pandas as pd
 import numpy as np
 import os
 
-# PROGRESSIVO CHAT: #143 | Data: 30 Giugno 2026 | Ora: 17:24:57
-# Versione Progetto: 6.27 (Fix Dtype Float64 & Separazione Colonne Stringa/Numero)
+# PROGRESSIVO CHAT: #158 | Data: 30 Giugno 2026 | Ora: 21:46:15
+# Versione Progetto: 6.42 (Fix Sintassi df.get su Assegnazione Colonne Stringa)
 
 PALINSESTO_FILE = "Pronostici_App_Betting.xlsx"
 
@@ -28,7 +28,7 @@ def esegui_calcolo_motore():
         return
     
     try:
-        # Forza la lettura delle colonne dei pronostici come stringhe per evitare conflitti Excel
+        # Legge il file Excel generato dall'estrattore
         df = pd.read_excel(PALINSESTO_FILE)
     except:
         return
@@ -36,14 +36,19 @@ def esegui_calcolo_motore():
     if df.empty:
         return
 
-    # Assicurati che le colonne di output siano trattate come object/stringhe
+    # Elenco delle colonne destinate a contenere i testi dei pronostici per la UI mobile
     colonne_testo = [
         'Pronostico_MG_Casa', 'MG_Casa', 'MG Casa',
         'Pronostico_MG_Trasferta', 'MG_Ospite', 'MG Ospite',
         'Pronostico_MG_Totale', 'MG_Totale', 'MG Totale'
     ]
+    
+    # Inizializzazione sicura e conversione a stringa nativa per evitare crash strutturali
     for col in colonne_testo:
-        df[col] = df.get(col, "-").astype(str)
+        if col not in df.columns:
+            df[col] = "-"
+        else:
+            df[col] = df[col].astype(str)
 
     for idx, row in df.iterrows():
         # Estrae il valore numerico puro senza alterare la colonna originale _Orig
@@ -69,6 +74,7 @@ def esegui_calcolo_motore():
         df.at[idx, 'MG_Totale'] = fascia_combinata
         df.at[idx, 'MG Totale'] = fascia_combinata
 
+    # Sovrascrittura protetta del file Excel
     df.to_excel(PALINSESTO_FILE, index=False)
 
 if __name__ == "__main__":
