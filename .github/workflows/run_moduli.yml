@@ -10,28 +10,29 @@ jobs:
   pre-match:
     runs-on: ubuntu-latest
     steps:
-      - name: Sincronizza Codice
+      - name: 📂 Sincronizza Codice
         uses: actions/checkout@v4
 
-      - name: Configura Python
+      - name: 🐍 Configura Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.10'
+          python-version: '3.11'
+          cache: 'pip'
 
-      - name: Installa Librerie
+      - name: 📦 Installa Librerie
         run: |
           python -m pip install --upgrade pip
-          pip install pandas requests openpyxl xlsxwriter numpy streamlit
+          pip install pandas requests openpyxl numpy streamlit xlsxwriter
 
-      - name: Esegui Estrattore e Motore
+      - name: 🚀 Esegui Estrattore e Motore
         run: |
           python modulo_01_estrattore.py
           python modulo_02_motore.py
 
-      - name: Salva Automaticamente i File Excel su GitHub
+      - name: 💾 Salva Automaticamente i File Excel su GitHub
         run: |
           git config --global user.name "GitHub Actions Bot"
           git config --global user.email "actions@github.com"
-          git add --all *.xlsx
-          git commit -m "Aggiornamento database e pronostici (Fase Pre-Match)" || echo "Nessuna modifica da caricare"
-          git push origin main || echo "Push non riuscito o non necessario"
+          git add Pronostici_App_Betting.xlsx || true
+          git commit -m "🤖 Pre-Match: Database e pronostici aggiornati (V6.32)" || echo "Nessuna modifica rilevata"
+          git push origin main || echo "Push non necessario"
