@@ -3,6 +3,9 @@ import numpy as np
 import os
 import math
 
+# PROGRESSIVO CHAT: #134 | Data: 30 Giugno 2026 | Ora: 13:05:20
+# Versione Modulo: 6.23 (Integrazione Range Discreti Multi-Goal & Allineamento Scrittura)
+
 def calcola_poisson_nativo(k, lmbda):
     """Calcola la probabilità di Poisson in modo nativo senza librerie esterne"""
     if lmbda <= 0:
@@ -35,6 +38,19 @@ def calcola_dixon_coles(lambda_casa, mu_ospite, rho=-0.05):
         matrice_prob /= matrice_prob.sum()
         
     return matrice_prob
+
+def determina_range_multigoal(valore_atteso):
+    """Converte una media matematica attesa nel range commerciale di gol corrispondente"""
+    if valore_atteso < 1.0:
+        return "0-1"
+    elif 1.0 <= valore_atteso < 1.6:
+        return "1-2"
+    elif 1.6 <= valore_atteso < 2.3:
+        return "1-3"
+    elif 2.3 <= valore_atteso < 3.2:
+        return "2-4"
+    else:
+        return "3+"
 
 def esegui_calcolo_motore():
     """Analizza il file generato dall'estrattore ed elabora le metriche probabilistiche"""
@@ -104,7 +120,7 @@ def esegui_calcolo_motore():
                 if x > 0 and y > 0: p_goal += matrice[x, y]
                 
         df.at[idx, "U/O_1.5"] = f"OVER 1.5 ({(1-p_under_15)*100:.0f}%)" if p_under_15 < 0.5 else f"UNDER 1.5 ({p_under_15*100:.0f}%)"
-        df.at[idx, "U/O_2.5"] = f"OVER 2.5 ({(1-1-p_under_25)*100:.0f}%)" if p_under_25 < 0.5 else f"UNDER 2.5 ({p_under_25*100:.0f}%)"
+        df.at[idx, "U/O_2.5"] = f"OVER 2.5 ({(1-p_under_25)*100:.0f}%)" if p_under_25 < 0.5 else f"UNDER 2.5 ({p_under_25*100:.0f}%)"
         df.at[idx, "U/O_3.5"] = f"OVER 3.5 ({(1-p_under_35)*100:.0f}%)" if p_under_35 < 0.5 else f"UNDER 3.5 ({p_under_35*100:.0f}%)"
         df.at[idx, "Goal_NoGoal"] = f"GG ({p_goal*100:.0f}%)" if p_goal > 0.5 else f"NG ({(1-p_goal)*100:.0f}%)"
         
@@ -112,9 +128,13 @@ def esegui_calcolo_motore():
         uo_pref = "UN2.5" if p_under_25 >= 0.5 else "OV2.5"
         df.at[idx, "DC+U/O2.5"] = f"{dc_pref}+{uo_pref}"
         
-        df.at[idx, "Pronostico_MG_Casa"] = round(lambda_casa, 1)
-        df.at[idx, "Pronostico_MG_Trasferta"] = round(mu_ospite, 1)
-        df.at[idx, "Pronostico_MG_Totale"] = round(lambda_casa + mu_ospite, 1)
+        # --- DISCRETIZZAZIONE IN RANGE COMMERCIALI PUNTO A ---
+        range_casa = determina_range_multigoal(lambda_casa)
+        range_ospite = determina_range_multigoal(mu_ospite)
+        
+        df.at[idx, "Pronostico_MG_Casa"] = range_casa
+        df.at[idx, "Pronostico_MG_Trasferta"] = range_ospite
+        df.at[idx, "Pronostico_MG_Totale"] = f"{range_casa} + {range_ospite}"
         
         punti_c = row.get("Punti_Casa", 0)
         punti_o = row.get("Punti_Trasferta", 0)
