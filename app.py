@@ -4,8 +4,8 @@ import os
 import datetime
 from zoneinfo import ZoneInfo
 
-# PROGRESSIVO CHAT: #136 | Data: 30 Giugno 2026 | Ora: 13:40:21
-# Versione Progetto: 6.24 (Centralizzazione Dinamica del Software & Forzatura Tipi di Dato)
+# PROGRESSIVO CHAT: #137 | Data: 30 Giugno 2026 | Ora: 14:02:40
+# Versione Progetto: 6.25 (Correzione Mappature Mercati, Rinomina Storica & Ripristino Validazione Modulo 03)
 
 st.set_page_config(page_title="⚽ Betting Pro Mobile", page_icon="⚽", layout="centered")
 
@@ -31,7 +31,7 @@ def ottieni_versione_software():
                         return parti[1].replace("-", "").strip()
     except:
         pass
-    return "6.24"
+    return "6.25"
 
 VERSIONE_CORRENTE = ottieni_versione_software()
 
@@ -100,18 +100,30 @@ def calcola_accuratezza_globale():
     if not frames: return {}
     df_totale = pd.concat(frames, ignore_index=True)
     mappa_esiti = {
-        "1X2": "Esito_1X2", "Ris. Esatto": "Esito_Risultato_Esatto", "Doppia Chance": "Esito_Doppia_Chance",
-        "U/O 1.5": "Esito_U/O_1.5", "U/O 2.5": "Esito_U/O_2.5", "U/O 3.5": "Esito_U/O_3.5", 
-        "Goal/NoGoal": "Esito_Goal_NoGoal", "Combo DC + U/O": "Esito_DC+U/O2.5",
-        "MG Casa": "Esito_Media_Goal_Casa", "MG Ospite": "Esito_Media_Goal_Trasferta",
-        "MG Totale": "Esito_Media_Goal_Totale", "Corner 1X2": "Esito_Corner_1X2"
+        "1X2": ["Esito_1X2"], 
+        "Ris. Esatto": ["Esito_Risultato_Esatto"], 
+        "Doppia Chance": ["Esito_Doppia_Chance"],
+        "U/O 1.5": ["Esito_U/O_1.5"], 
+        "U/O 2.5": ["Esito_U/O_2.5"], 
+        "U/O 3.5": ["Esito_U/O_3.5"], 
+        "Goal/NoGoal": ["Esito_Goal_NoGoal"], 
+        "Combo DC + U/O2.5": ["Esito_DC+U/O2.5", "Esito_DC+U/O_2.5"],
+        "MG Casa": ["Esito_Media_Goal_Casa", "Esito_MG_Casa"], 
+        "MG Ospite": ["Esito_Media_Goal_Trasferta", "Esito_MG_Trasferta"],
+        "MG Casa + MG Ospite": ["Esito_Media_Goal_Totale", "Esito_MG_Totale"], 
+        "Corner 1X2": ["Esito_Corner_1X2"]
     }
     accuratezza = {}
-    for nome_m, col in mappa_esiti.items():
-        if col in df_totale.columns:
-            validi = df_totale[df_totale[col].isin(['VINCENTE', 'PERDENTE'])]
+    for nome_m, chiavi_col in mappa_esiti.items():
+        col_trovata = None
+        for c in chiavi_col:
+            if c in df_totale.columns:
+                col_trovata = c
+                break
+        if col_trovata:
+            validi = df_totale[df_totale[col_trovata].astype(str).str.upper().str.strip().isin(['VINCENTE', 'PERDENTE'])]
             if len(validi) > 0:
-                vincenti = len(validi[validi[col] == 'VINCENTE'])
+                vincenti = len(validi[validi[col_trovata].astype(str).str.upper().str.strip() == 'VINCENTE'])
                 accuratezza[nome_m] = f"{(vincenti / len(validi)) * 100:.1f}% ({vincenti}/{len(validi)})"
             else: accuratezza[nome_m] = "0.0% (0)"
         else: accuratezza[nome_m] = "N.D."
@@ -132,7 +144,6 @@ def safe_get(row, keys_list):
 
 def clean(val):
     if pd.isna(val) or str(val).strip().upper() == "NONE" or str(val).strip() == "-": return "-"
-    # Se il valore contiene già caratteri di range commerciali (es. trattini o simboli più), lo restituisce intatto
     if "-" in str(val) or "+" in str(val): return str(val)
     try:
         f_val = float(val)
@@ -238,7 +249,7 @@ if st.session_state.tab_selezionata == "PALINSESTO":
                     <div class="market-cell"><b>Goal/NoGoal</b><div class="market-val-row">{safe_get(row, ['Goal_NoGoal'])}</div></div>
                     <div class="market-cell"><b>MG Casa Expect.</b><div class="market-val-row">{str(safe_get(row, ['Pronostico_MG_Casa', 'MG_Casa']))}</div></div>
                     <div class="market-cell"><b>MG Ospite Expect.</b><div class="market-val-row">{str(safe_get(row, ['Pronostico_MG_Trasferta', 'MG_Ospite']))}</div></div>
-                    <div class="market-cell"><b>MG Totale Expect.</b><div class="market-val-row">{str(safe_get(row, ['Pronostico_MG_Totale', 'MG_Totale']))}</div></div>
+                    <div class="market-cell"><b>MG Casa + MG Ospite Expect.</b><div class="market-val-row">{str(safe_get(row, ['Pronostico_MG_Totale', 'MG_Totale']))}</div></div>
                     <div class="market-cell"><b>Corner 1X2</b><div class="market-val-row">{safe_get(row, ['Corner_1X2'])}</div></div>
                 </div>
             </div>
@@ -273,14 +284,14 @@ elif st.session_state.tab_selezionata == "STORICO":
                     <div class="market-cell"><b>1X2 ({safe_get(row, ['1X2'])})</b><div class="market-val-row">{get_badge(safe_get(row, ['Esito_1X2']))}</div></div>
                     <div class="market-cell"><b>Ris. Esatto ({safe_get(row, ['Risultato_Esatto'])})</b><div class="market-val-row">{get_badge(safe_get(row, ['Esito_Risultato_Esatto']))}</div></div>
                     <div class="market-cell"><b>Doppia Ch. ({safe_get(row, ['Doppia_Chance'])})</b><div class="market-val-row">{get_badge(safe_get(row, ['Esito_Doppia_Chance']))}</div></div>
-                    <div class="market-cell"><b>Combo DC+U/O ({safe_get(row, ['DC+U/O2.5', 'DC+U/O_2.5'])})</b><div class="market-val-row">{get_badge(safe_get(row, ['Esito_DC+U/O2.5']))}</div></div>
+                    <div class="market-cell"><b>Combo DC+U/O ({safe_get(row, ['DC+U/O2.5', 'DC+U/O_2.5'])})</b><div class="market-val-row">{get_badge(safe_get(row, ['Esito_DC+U/O2.5', 'Esito_DC+U/O_2.5']))}</div></div>
                     <div class="market-cell"><b>U/O 1.5 ({safe_get(row, ['U/O_1.5'])})</b><div class="market-val-row">{get_badge(safe_get(row, ['Esito_U/O_1.5']))}</div></div>
                     <div class="market-cell"><b>U/O 2.5 ({safe_get(row, ['U/O_2.5'])})</b><div class="market-val-row">{get_badge(safe_get(row, ['Esito_U/O_2.5']))}</div></div>
                     <div class="market-cell"><b>U/O 3.5 ({safe_get(row, ['U/O_3.5'])})</b><div class="market-val-row">{get_badge(safe_get(row, ['Esito_U/O_3.5']))}</div></div>
                     <div class="market-cell"><b>Goal/NG ({safe_get(row, ['Goal_NoGoal'])})</b><div class="market-val-row">{get_badge(safe_get(row, ['Esito_Goal_NoGoal']))}</div></div>
-                    <div class="market-cell"><b>MG Casa ({str(safe_get(row, ['Pronostico_MG_Casa', 'MG_Casa']))})</b><div class="market-val-row">{get_badge(safe_get(row, ['Esito_Media_Goal_Casa']))}</div></div>
-                    <div class="market-cell"><b>MG Ospite ({str(safe_get(row, ['Pronostico_MG_Trasferta', 'MG_Ospite']))})</b><div class="market-val-row">{get_badge(safe_get(row, ['Esito_Media_Goal_Trasferta']))}</div></div>
-                    <div class="market-cell"><b>MG Totale ({str(safe_get(row, ['Pronostico_MG_Totale', 'MG_Totale']))})</b><div class="market-val-row">{get_badge(safe_get(row, ['Esito_Media_Goal_Totale']))}</div></div>
+                    <div class="market-cell"><b>MG Casa ({str(safe_get(row, ['Pronostico_MG_Casa', 'MG_Casa']))})</b><div class="market-val-row">{get_badge(safe_get(row, ['Esito_Media_Goal_Casa', 'Esito_MG_Casa']))}</div></div>
+                    <div class="market-cell"><b>MG Ospite ({str(safe_get(row, ['Pronostico_MG_Trasferta', 'MG_Ospite']))})</b><div class="market-val-row">{get_badge(safe_get(row, ['Esito_Media_Goal_Trasferta', 'Esito_MG_Trasferta']))}</div></div>
+                    <div class="market-cell"><b>MG Casa + MG Ospite ({str(safe_get(row, ['Pronostico_MG_Totale', 'MG_Totale']))})</b><div class="market-val-row">{get_badge(safe_get(row, ['Esito_Media_Goal_Totale', 'Esito_MG_Totale']))}</div></div>
                     <div class="market-cell"><b>Corner 1X2 ({safe_get(row, ['Corner_1X2'])})</b><div class="market-val-row">{get_badge(safe_get(row, ['Esito_Corner_1X2']))}</div></div>
                 </div>
             </div>
