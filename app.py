@@ -4,8 +4,8 @@ import os
 import datetime
 from zoneinfo import ZoneInfo
 
-# PROGRESSIVO CHAT: #123 | Data: 28 Giugno 2026 | Ora: 21:55:12
-# Versione Progetto: 6.16 (Integrazione Collegamento Backend Modulo 05)
+# PROGRESSIVO CHAT: #136 | Data: 30 Giugno 2026 | Ora: 13:40:21
+# Versione Progetto: 6.24 (Centralizzazione Dinamica del Software & Forzatura Tipi di Dato)
 
 st.set_page_config(page_title="⚽ Betting Pro Mobile", page_icon="⚽", layout="centered")
 
@@ -19,6 +19,21 @@ if "tab_selezionata" not in st.session_state: st.session_state.tab_selezionata =
 DB_FILE = "Database_Storico_Completo.xlsx"
 STORICO_FILE = "Storico_Validato_Betting.xlsx"
 PALINSESTO_FILE = "Pronostici_App_Betting.xlsx"
+
+def ottieni_versione_software():
+    """Estrae dinamicamente la versione del software dai moduli core per evitare modifiche manuali"""
+    try:
+        with open("modulo_03_validatore.py", "r", encoding="utf-8") as f:
+            for linea in f:
+                if "Versione" in linea:
+                    parti = linea.split("Versione")
+                    if len(parti) > 1:
+                        return parti[1].replace("-", "").strip()
+    except:
+        pass
+    return "6.24"
+
+VERSIONE_CORRENTE = ottieni_versione_software()
 
 @st.cache_data(ttl=2)
 def carica_dati(path):
@@ -117,15 +132,17 @@ def safe_get(row, keys_list):
 
 def clean(val):
     if pd.isna(val) or str(val).strip().upper() == "NONE" or str(val).strip() == "-": return "-"
+    # Se il valore contiene già caratteri di range commerciali (es. trattini o simboli più), lo restituisce intatto
+    if "-" in str(val) or "+" in str(val): return str(val)
     try:
         f_val = float(val)
         return str(int(f_val)) if f_val.is_integer() else f"{f_val:.1f}"
     except: return str(val)
 
-st.markdown("""
+st.markdown(f"""
 <div class="brand-box">
     <div class="main-title">⚽ Betting Pro Mobile</div>
-    <div class="version-label">Versione Progetto: 6.16</div>
+    <div class="version-label">Versione Progetto: {VERSIONE_CORRENTE}</div>
 </div>
 """, unsafe_allow_html=True)
 
@@ -219,9 +236,9 @@ if st.session_state.tab_selezionata == "PALINSESTO":
                     <div class="market-cell"><b>U/O 2.5</b><div class="market-val-row">{safe_get(row, ['U/O_2.5'])}</div></div>
                     <div class="market-cell"><b>U/O 3.5</b><div class="market-val-row">{safe_get(row, ['U/O_3.5'])}</div></div>
                     <div class="market-cell"><b>Goal/NoGoal</b><div class="market-val-row">{safe_get(row, ['Goal_NoGoal'])}</div></div>
-                    <div class="market-cell"><b>MG Casa Expect.</b><div class="market-val-row">{safe_get(row, ['Pronostico_MG_Casa', 'MG_Casa'])}</div></div>
-                    <div class="market-cell"><b>MG Ospite Expect.</b><div class="market-val-row">{safe_get(row, ['Pronostico_MG_Trasferta', 'MG_Ospite'])}</div></div>
-                    <div class="market-cell"><b>MG Totale Expect.</b><div class="market-val-row">{safe_get(row, ['Pronostico_MG_Totale', 'MG_Totale'])}</div></div>
+                    <div class="market-cell"><b>MG Casa Expect.</b><div class="market-val-row">{str(safe_get(row, ['Pronostico_MG_Casa', 'MG_Casa']))}</div></div>
+                    <div class="market-cell"><b>MG Ospite Expect.</b><div class="market-val-row">{str(safe_get(row, ['Pronostico_MG_Trasferta', 'MG_Ospite']))}</div></div>
+                    <div class="market-cell"><b>MG Totale Expect.</b><div class="market-val-row">{str(safe_get(row, ['Pronostico_MG_Totale', 'MG_Totale']))}</div></div>
                     <div class="market-cell"><b>Corner 1X2</b><div class="market-val-row">{safe_get(row, ['Corner_1X2'])}</div></div>
                 </div>
             </div>
@@ -249,7 +266,7 @@ elif st.session_state.tab_selezionata == "STORICO":
             st.markdown(f"""
             <div class="match-card">
                 <div class="meta-label">🏆 {safe_get(row, ['Campionato'])} | {safe_get(row, ['Data_Ora_Match', 'Data'])}</div>
-                <div class="team-text">{safe_get(row, ['3. Match', 'Match'])}</div>
+                <div class="team-text"> {safe_get(row, ['3. Match', 'Match'])}</div>
                 <div class="score-badge">⚽ Risultato Finale: {safe_get(row, ['Risultato_Reale'])}</div>
                 <div class="block-header">🎯 Esiti Pronostici Validati (12 Mercati)</div>
                 <div class="market-box">
@@ -261,9 +278,9 @@ elif st.session_state.tab_selezionata == "STORICO":
                     <div class="market-cell"><b>U/O 2.5 ({safe_get(row, ['U/O_2.5'])})</b><div class="market-val-row">{get_badge(safe_get(row, ['Esito_U/O_2.5']))}</div></div>
                     <div class="market-cell"><b>U/O 3.5 ({safe_get(row, ['U/O_3.5'])})</b><div class="market-val-row">{get_badge(safe_get(row, ['Esito_U/O_3.5']))}</div></div>
                     <div class="market-cell"><b>Goal/NG ({safe_get(row, ['Goal_NoGoal'])})</b><div class="market-val-row">{get_badge(safe_get(row, ['Esito_Goal_NoGoal']))}</div></div>
-                    <div class="market-cell"><b>MG Casa ({safe_get(row, ['Pronostico_MG_Casa', 'MG_Casa'])})</b><div class="market-val-row">{get_badge(safe_get(row, ['Esito_Media_Goal_Casa']))}</div></div>
-                    <div class="market-cell"><b>MG Ospite ({safe_get(row, ['Pronostico_MG_Trasferta', 'MG_Ospite'])})</b><div class="market-val-row">{get_badge(safe_get(row, ['Esito_Media_Goal_Trasferta']))}</div></div>
-                    <div class="market-cell"><b>MG Totale ({safe_get(row, ['Pronostico_MG_Totale', 'MG_Totale'])})</b><div class="market-val-row">{get_badge(safe_get(row, ['Esito_Media_Goal_Totale']))}</div></div>
+                    <div class="market-cell"><b>MG Casa ({str(safe_get(row, ['Pronostico_MG_Casa', 'MG_Casa']))})</b><div class="market-val-row">{get_badge(safe_get(row, ['Esito_Media_Goal_Casa']))}</div></div>
+                    <div class="market-cell"><b>MG Ospite ({str(safe_get(row, ['Pronostico_MG_Trasferta', 'MG_Ospite']))})</b><div class="market-val-row">{get_badge(safe_get(row, ['Esito_Media_Goal_Trasferta']))}</div></div>
+                    <div class="market-cell"><b>MG Totale ({str(safe_get(row, ['Pronostico_MG_Totale', 'MG_Totale']))})</b><div class="market-val-row">{get_badge(safe_get(row, ['Esito_Media_Goal_Totale']))}</div></div>
                     <div class="market-cell"><b>Corner 1X2 ({safe_get(row, ['Corner_1X2'])})</b><div class="market-val-row">{get_badge(safe_get(row, ['Esito_Corner_1X2']))}</div></div>
                 </div>
             </div>
@@ -291,7 +308,7 @@ elif st.session_state.tab_selezionata == "DATABASE":
                     <div class="market-cell"><b>Partite Giocate</b><div class="market-val-row"><span>{clean(safe_get(row, ['Giocate_Casa']))} G</span><span>vs</span><span>{clean(safe_get(row, ['Giocate_Ospite']))} G</span></div></div>
                     <div class="market-cell"><b>V / P / S</b><div class="market-val-row"><span>{clean(safe_get(row, ['Vinte_Casa']))}-{clean(safe_get(row, ['Pareggi_Casa']))}-{clean(safe_get(row, ['Perse_Casa']))}</span><span>vs</span><span>{clean(safe_get(row, ['Vinte_Ospite']))}-{clean(safe_get(row, ['Pareggi_Ospite']))}-{clean(safe_get(row, ['Perse_Ospite']))}</span></div></div>
                     <div class="market-cell"><b>Gol Fatti Totali</b><div class="market-val-row"><span>{clean(safe_get(row, ['Media_Goal_Casa_Orig', 'Gol_Fatti_Casa', 'GolFatti_Casa']))} F</span><span>vs</span><span>{clean(safe_get(row, ['Media_Goal_Trasferta_Orig', 'Gol_Fatti_Ospite', 'GolFatti_Ospite']))} F</span></div></div>
-                    <div class="market-cell"><b>Gol Subiti Totali</b><div class="market-val-row"><span>{clean(safe_get(row, ['Goal_Subiti_Casa', 'GoalSubiti_Casa']))} S</span><span>vs</span><span>{clean(safe_get(row, ['Goal_Subiti_Ospite', 'GoalSubiti_Ospite']))} S</span></div></div>
+                    <div class="market-cell"><b>Gol Subiti Totali</b><div class="market-val-row"><span>{clean(safe_get(row, ['Goal_Subiti_Casa', 'GolSubiti_Casa']))} S</span><span>vs</span><span>{clean(safe_get(row, ['Goal_Subiti_Ospite', 'GolSubiti_Ospite']))} S</span></div></div>
                 </div>
             </div>
             <div class="match-separator"></div>
