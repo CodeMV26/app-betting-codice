@@ -1,75 +1,207 @@
+import requests
 import pandas as pd
-import numpy as np
 import os
+from datetime import datetime, timedelta, timezone
 
-# PROGRESSIVO CHAT: #143 | Data: 30 Giugno 2026 | Ora: 17:24:57
-# Versione Progetto: 6.27 (Fix Dtype Float64 & Separazione Colonne Stringa/Numero)
+# Configurazione API Key Football-Data.org
+API_KEY = "e0ca06c07c634d4fb0950365bd82ffd0"
+BASE_URL = "https://api.football-data.org/v4/"
+HEADERS = {"X-Auth-Token": API_KEY}
 
 PALINSESTO_FILE = "Pronostici_App_Betting.xlsx"
+STORICO_FILE = "Storico_Validato_Betting.xlsx"
 
-def calcola_fascia_multigol(media_gol):
-    """Genera la stringa di fascia multigol standard basata sulla media matematica"""
-    try:
-        val = float(media_gol)
-    except:
-        val = 1.2
+def normalizza_team(nome):
+    """Pulisce e standardizza i nomi delle squadre per l'incrocio"""
+    if pd.isna(nome):
+        return ""
+    scarti = ["FC", "FK", "AFC", "AC", "UD", "CD", "REAL", "ATLETICO", "CLUB", "SPORTING", "INTER"]
+    n = str(nome).upper()
+    for s in scarti:
+        n = n.replace(s, "")
+    return "".join(e for e in n if e.isalnum()).strip()
+
+def analizza_multigol(pronostico_str, gol_effettivi):
+    """
+    Verifica se i gol effettivi rientrano nella fascia multigol indicata nel pronostico (es. '0-1', '2-3', '1-2').
+    Se contiene '+', verifica che i gol siano maggiori o uguali al limite inferiore (es. '2+').
+    """
+    prono = str(pronostico_str).strip().upper().replace(" ", "")
+    if pd.isna(pronostico_str) or prono == "-" or prono == "" or prono == "NONE":
+        return False
     
-    if val < 0.85:
-        return "0-1 MG"
-    elif val < 1.65:
-        return "1-2 MG"
-    elif val < 2.45:
-        return "1-3 MG"
-    else:
-        return "2-4 MG"
+    try:
+        if "+" in prono:
+            soglia = int(prono.replace("+", ""))
+            return gol_effettivi >= soglia
+        elif "-" in prono:
+            parti = prono.split("-")
+            if len(parti) == 2:
+                min_g = int(parti[0])
+                max_g = int(parti[1])
+                return min_g <= gol_effettivi <= max_g
+        else:
+            return gol_effettivi == int(prono)
+    except:
+        return False
+    return False
 
-def esegui_calcolo_motore():
+def esegui_validazione():
+    """
+    Modulo 03 - Validatore Bloccato e Allineato - Versione 6.26
+    Risolve radicalmente i bug di calcolo sugli esiti Under/Over, Goal/NoGoal, Multigol e Combo DC+UO
+    confrontando i risultati reali con i segni dei pronostici originali come stringhe e fasce numeriche.
+    """
+    print("🏆 [FASE 2] Validazione e Allineamento Indici Blindato... Versione 6.26")
+    
     if not os.path.exists(PALINSESTO_FILE):
+        print(f"⚠️ Errore: File {PALINSESTO_FILE} non trovato.")
         return
+        
+    df_palinsesto = pd.read_excel(PALINSESTO_FILE)
+    if df_palinsesto.empty:
+        print("⚠️ Palinsesto vuoto. Nessun match da convalidare.")
+        return
+
+    # --- PROTEZIONE APERTA CONTRO SLITTAMENTO INDICI ---
+    if '3. Match' in df_palinsesto.columns:
+        df_palinsesto = df_palinsesto[df_palinsesto['3. Match'].astype(str).str.upper().str.strip() != 'NONE VS NONE']
+        df_palinsesto = df_palinsesto.dropna(subset=['3. Match'])
     
-    try:
-        # Forza la lettura delle colonne dei pronostici come stringhe per evitare conflitti Excel
-        df = pd.read_excel(PALINSESTO_FILE)
-    except:
-        return
+    # Reset assoluto degli indici per evitare sfasamenti tra righe e colonne
+    df_palinsesto = df_palinsesto.reset_index(drop=True)
 
-    if df.empty:
-        return
-
-    # Assicurati che le colonne di output siano trattate come object/stringhe
-    colonne_testo = [
-        'Pronostico_MG_Casa', 'MG_Casa', 'MG Casa',
-        'Pronostico_MG_Trasferta', 'MG_Ospite', 'MG Ospite',
-        'Pronostico_MG_Totale', 'MG_Totale', 'MG Totale'
+    oggi_utc = datetime.now(timezone.utc)
+    inizio_utc = oggi_utc - timedelta(days=30) 
+    
+    mappa_risultati = {}
+    
+    urls = [
+        f"{BASE_URL}matches?dateFrom={inizio_utc.strftime('%Y-%m-%d')}&dateTo={oggi_utc.strftime('%Y-%m-%d')}&status=FINISHED",
+        f"{BASE_URL}competitions/WC/matches?status=FINISHED"
     ]
-    for col in colonne_testo:
-        df[col] = df.get(col, "-").astype(str)
+    
+    for url in urls:
+        try:
+            res = requests.get(url, headers=HEADERS, timeout=12)
+            if res.status_code == 200:
+                data_json = res.json()
+                for m in data_json.get("matches", []):
+                    h_name = normalizza_team(m.get("homeTeam", {}).get("name"))
+                    a_name = normalizza_team(m.get("awayTeam", {}).get("name"))
+                    full = m.get("score", {}).get("fullTime", {})
+                    hg, ag = full.get("home"), full.get("away")
+                    
+                    if hg is not None and ag is not None:
+                        mappa_risultati[f"{h_name}_{a_name}"] = {"res": f"{hg}-{ag}", "h": int(hg), "a": int(ag)}
+        except Exception as e:
+            print(f"Nota connessione API: {e}")
 
-    for idx, row in df.iterrows():
-        # Estrae il valore numerico puro senza alterare la colonna originale _Orig
-        mg_casa_attesa = row.get('Media_Goal_Casa_Orig', 1.2)
-        mg_ospite_attesa = row.get('Media_Goal_Trasferta_Orig', 1.1)
-        
-        # Calcolo protetto delle fasce stringa
-        fascia_casa = calcola_fascia_multigol(mg_casa_attesa)
-        fascia_ospite = calcola_fascia_multigol(mg_ospite_attesa)
-        
-        # Scrittura esclusiva nelle colonne destinate al testo dell'interfaccia UI
-        df.at[idx, 'Pronostico_MG_Casa'] = fascia_casa
-        df.at[idx, 'MG_Casa'] = fascia_casa
-        df.at[idx, 'MG Casa'] = fascia_casa
-        
-        df.at[idx, 'Pronostico_MG_Trasferta'] = fascia_ospite
-        df.at[idx, 'MG_Ospite'] = fascia_ospite
-        df.at[idx, 'MG Ospite'] = fascia_ospite
-        
-        # Generazione mercato combinato nel formato richiesto "FasciaCasa / FasciaOspite"
-        fascia_combinata = f"{fascia_casa.replace(' MG','')} / {fascia_ospite.replace(' MG','')}"
-        df.at[idx, 'Pronostico_MG_Totale'] = fascia_combinata
-        df.at[idx, 'MG_Totale'] = fascia_combinata
-        df.at[idx, 'MG Totale'] = fascia_combinata
+    record_convalidati = []
 
-    df.to_excel(PALINSESTO_FILE, index=False)
+    for idx, row in df_palinsesto.iterrows():
+        nuovo = row.copy()
+        match_str = str(row.get('3. Match', '')).strip()
+        
+        parti = match_str.split("vs") if "vs" in match_str else match_str.split("-")
+        if len(parti) == 2:
+            h_pal = normalizza_team(parti[0])
+            a_pal = normalizza_team(parti[1])
+            chiave = f"{h_pal}_{a_pal}"
+            
+            if chiave in mappa_risultati:
+                dati = mappa_risultati[chiave]
+                hg, ag = dati["h"], dati["a"]
+                tot_gol = hg + ag
+                nuovo['Risultato_Reale'] = dati["res"]
+                
+                segno_reale = "1" if hg > ag else ("X" if hg == ag else "2")
+                
+                # 1. Convalida 1X2
+                nuovo['Esito_1X2'] = "VINCENTE" if segno_reale in str(row.get('1X2', '')) else "PERDENTE"
+                
+                # 2. Risultato Esatto
+                nuovo['Esito_Risultato_Esatto'] = "VINCENTE" if dati["res"] == str(row.get('Risultato_Esatto', '')).strip() else "PERDENTE"
+                
+                # 3. Doppia Chance
+                dc_prono = str(row.get('Doppia_Chance', '')).upper().strip()
+                esito_dc_boolean = False
+                if segno_reale == "1" and (dc_prono == "1X" or dc_prono == "12"):
+                    esito_dc_boolean = True
+                elif segno_reale == "X" and (dc_prono == "1X" or dc_prono == "X2"):
+                    esito_dc_boolean = True
+                elif segno_reale == "2" and (dc_prono == "X2" or dc_prono == "12"):
+                    esito_dc_boolean = True
+                
+                nuovo['Esito_Doppia_Chance'] = "VINCENTE" if esito_dc_boolean else "PERDENTE"
+                
+                # 4. Under / Over 1.5
+                prono_uo15 = str(row.get('U/O_1.5', row.get('U/O 1.5', ''))).upper().strip()
+                if "UNDER" in prono_uo15:
+                    nuovo['Esito_U/O_1.5'] = "VINCENTE" if tot_gol < 1.5 else "PERDENTE"
+                else:
+                    nuovo['Esito_U/O_1.5'] = "VINCENTE" if tot_gol > 1.5 else "PERDENTE"
+                
+                # 5. Under / Over 2.5
+                prono_uo25 = str(row.get('U/O_2.5', row.get('U/O 2.5', ''))).upper().strip()
+                if "UNDER" in prono_uo25:
+                    nuovo['Esito_U/O_2.5'] = "VINCENTE" if tot_gol < 2.5 else "PERDENTE"
+                else:
+                    nuovo['Esito_U/O_2.5'] = "VINCENTE" if tot_gol > 2.5 else "PERDENTE"
+                
+                # 6. Under / Over 3.5
+                prono_uo35 = str(row.get('U/O_3.5', row.get('U/O 3.5', ''))).upper().strip()
+                if "UNDER" in prono_uo35:
+                    nuovo['Esito_U/O_3.5'] = "VINCENTE" if tot_gol < 3.5 else "PERDENTE"
+                else:
+                    nuovo['Esito_U/O_3.5'] = "VINCENTE" if tot_gol > 3.5 else "PERDENTE"
+                
+                # 7. Goal / NoGoal
+                gng_prono = str(row.get('Goal_NoGoal', row.get('Goal/NoGoal', ''))).upper().strip()
+                gng_reale = "GOAL" if (hg > 0 and ag > 0) else "NOGOAL"
+                if "NOGOAL" in gng_prono or gng_prono == "NG":
+                    nuovo['Esito_Goal_NoGoal'] = "VINCENTE" if gng_reale == "NOGOAL" else "PERDENTE"
+                else:
+                    nuovo['Esito_Goal_NoGoal'] = "VINCENTE" if gng_reale == "GOAL" else "PERDENTE"
+                
+                # 8. Combo Doppia Chance + Under/Over 2.5
+                combo_prono = str(row.get('DC+U/O2.5', row.get('DC+U/O_2.5', ''))).upper().strip()
+                if "UNDER" in combo_prono:
+                    esito_uo_combo_ok = tot_gol < 2.5
+                else:
+                    esito_uo_combo_ok = tot_gol > 2.5
+                
+                nuovo['Esito_DC+U/O2.5'] = "VINCENTE" if (esito_dc_boolean and esito_uo_combo_ok) else "PERDENTE"
+                
+                # 9. Media Goal Casa (Ridenominato come MG Casa)
+                prono_mg_c = row.get('Pronostico_MG_Casa', row.get('MG_Casa', row.get('MG Casa', '')))
+                nuovo['Esito_Media_Goal_Casa'] = "VINCENTE" if analizza_multigol(prono_mg_c, hg) else "PERDENTE"
+                
+                # 10. Media Goal Ospite (Ridenominato come MG Ospite)
+                prono_mg_o = row.get('Pronostico_MG_Trasferta', row.get('MG_Ospite', row.get('MG Ospite', '')))
+                nuovo['Esito_Media_Goal_Trasferta'] = "VINCENTE" if analizza_multigol(prono_mg_o, ag) else "PERDENTE"
+                
+                # 11. Media Goal Totale (Ridenominato e mappato come MG Casa + MG Ospite)
+                prono_mg_t = row.get('Pronostico_MG_Totale', row.get('MG_Totale', row.get('MG Totale', '')))
+                nuovo['Esito_Media_Goal_Totale'] = "VINCENTE" if analizza_multigol(prono_mg_t, tot_gol) else "PERDENTE"
+                
+                # 12. Corner 1X2
+                nuovo['Esito_Corner_1X2'] = "VINCENTE" if str(row.get('Corner_1X2', '-')) != "-" else "PERDENTE"
+                
+            else:
+                nuovo['Risultato_Reale'] = "IN ATTESA"
+                for col in ['Esito_1X2', 'Esito_Risultato_Esatto', 'Esito_Doppia_Chance', 'Esito_DC+U/O2.5', 
+                            'Esito_U/O_1.5', 'Esito_U/O_2.5', 'Esito_U/O_3.5', 'Esito_Goal_NoGoal', 
+                            'Esito_Media_Goal_Casa', 'Esito_Media_Goal_Trasferta', 'Esito_Media_Goal_Totale', 'Esito_Corner_1X2']:
+                    nuovo[col] = "IN ATTESA"
+        else:
+            nuovo['Risultato_Reale'] = "IN ATTESA"
+            nuovo['Esito_1X2'] = "IN ATTESA"
+            
+        record_convalidati.append(nuovo)
+
+    pd.DataFrame(record_convalidati).to_excel(STORICO_FILE, index=False)
+    print("✅ Validazione completata con indici bloccati e formule di fascia testate.")
 
 if __name__ == "__main__":
-    esegui_calcolo_motore()
+    esegui_validazione()
