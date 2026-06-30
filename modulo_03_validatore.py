@@ -21,13 +21,38 @@ def normalizza_team(nome):
         n = n.replace(s, "")
     return "".join(e for e in n if e.isalnum()).strip()
 
+def analizza_multigol(pronostico_str, gol_effettivi):
+    """
+    Verifica se i gol effettivi rientrano nella fascia multigol indicata nel pronostico (es. '0-1', '2-3', '1-2').
+    Se contiene '+', verifica che i gol siano maggiori o uguali al limite inferiore (es. '2+').
+    """
+    prono = str(pronostico_str).strip().upper().replace(" ", "")
+    if pd.isna(pronostico_str) or prono == "-" or prono == "" or prono == "NONE":
+        return False
+    
+    try:
+        if "+" in prono:
+            soglia = int(prono.replace("+", ""))
+            return gol_effettivi >= soglia
+        elif "-" in prono:
+            parti = prono.split("-")
+            if len(parti) == 2:
+                min_g = int(parti[0])
+                max_g = int(parti[1])
+                return min_g <= gol_effettivi <= max_g
+        else:
+            return gol_effettivi == int(prono)
+    except:
+        return False
+    return False
+
 def esegui_validazione():
     """
-    Modulo 03 - Validatore Bloccato e Allineato - Versione 6.22
-    Risolve radicalmente i bug di calcolo sugli esiti Under/Over, Goal/NoGoal e Combo DC+UO
-    confrontando i risultati reali con i segni dei pronostici originali.
+    Modulo 03 - Validatore Bloccato e Allineato - Versione 6.26
+    Risolve radicalmente i bug di calcolo sugli esiti Under/Over, Goal/NoGoal, Multigol e Combo DC+UO
+    confrontando i risultati reali con i segni dei pronostici originali come stringhe e fasce numeriche.
     """
-    print("🏆 [FASE 2] Validazione e Allineamento Indici Blindato...")
+    print("🏆 [FASE 2] Validazione e Allineamento Indici Blindato... Versione 6.26")
     
     if not os.path.exists(PALINSESTO_FILE):
         print(f"⚠️ Errore: File {PALINSESTO_FILE} non trovato.")
@@ -68,7 +93,7 @@ def esegui_validazione():
                     hg, ag = full.get("home"), full.get("away")
                     
                     if hg is not None and ag is not None:
-                        mappa_risultati[f"{h_name}_{a_name}"] = {"res": f"{hg}-{ag}", "h": hg, "a": ag}
+                        mappa_risultati[f"{h_name}_{a_name}"] = {"res": f"{hg}-{ag}", "h": int(hg), "a": int(ag)}
         except Exception as e:
             print(f"Nota connessione API: {e}")
 
@@ -100,69 +125,67 @@ def esegui_validazione():
                 
                 # 3. Doppia Chance
                 dc_prono = str(row.get('Doppia_Chance', '')).upper().strip()
+                esito_dc_boolean = False
                 if segno_reale == "1" and (dc_prono == "1X" or dc_prono == "12"):
-                    nuovo['Esito_Doppia_Chance'] = "VINCENTE"
+                    esito_dc_boolean = True
                 elif segno_reale == "X" and (dc_prono == "1X" or dc_prono == "X2"):
-                    nuovo['Esito_Doppia_Chance'] = "VINCENTE"
+                    esito_dc_boolean = True
                 elif segno_reale == "2" and (dc_prono == "X2" or dc_prono == "12"):
-                    nuovo['Esito_Doppia_Chance'] = "VINCENTE"
+                    esito_dc_boolean = True
+                
+                nuovo['Esito_Doppia_Chance'] = "VINCENTE" if esito_dc_boolean else "PERDENTE"
+                
+                # 4. Under / Over 1.5
+                prono_uo15 = str(row.get('U/O_1.5', row.get('U/O 1.5', ''))).upper().strip()
+                if "UNDER" in prono_uo15:
+                    nuovo['Esito_U/O_1.5'] = "VINCENTE" if tot_gol < 1.5 else "PERDENTE"
                 else:
-                    nuovo['Esito_Doppia_Chance'] = "PERDENTE"
+                    nuovo['Esito_U/O_1.5'] = "VINCENTE" if tot_gol > 1.5 else "PERDENTE"
                 
-                # 4. Under / Over Standard (Confronto Dinamico col Segno del Pronostico)
-                prono_uo15 = str(row.get('U/O_1.5', '')).upper().strip()
-                if "UNDER" in prono_uo15: nuovo['Esito_U/O_1.5'] = "VINCENTE" if tot_gol < 1.5 else "PERDENTE"
-                else: nuovo['Esito_U/O_1.5'] = "VINCENTE" if tot_gol > 1.5 else "PERDENTE"
+                # 5. Under / Over 2.5
+                prono_uo25 = str(row.get('U/O_2.5', row.get('U/O 2.5', ''))).upper().strip()
+                if "UNDER" in prono_uo25:
+                    nuovo['Esito_U/O_2.5'] = "VINCENTE" if tot_gol < 2.5 else "PERDENTE"
+                else:
+                    nuovo['Esito_U/O_2.5'] = "VINCENTE" if tot_gol > 2.5 else "PERDENTE"
                 
-                prono_uo25 = str(row.get('U/O_2.5', '')).upper().strip()
-                if "UNDER" in prono_uo25: nuovo['Esito_U/O_2.5'] = "VINCENTE" if tot_gol < 2.5 else "PERDENTE"
-                else: nuovo['Esito_U/O_2.5'] = "VINCENTE" if tot_gol > 2.5 else "PERDENTE"
+                # 6. Under / Over 3.5
+                prono_uo35 = str(row.get('U/O_3.5', row.get('U/O 3.5', ''))).upper().strip()
+                if "UNDER" in prono_uo35:
+                    nuovo['Esito_U/O_3.5'] = "VINCENTE" if tot_gol < 3.5 else "PERDENTE"
+                else:
+                    nuovo['Esito_U/O_3.5'] = "VINCENTE" if tot_gol > 3.5 else "PERDENTE"
                 
-                prono_uo35 = str(row.get('U/O_3.5', '')).upper().strip()
-                if "UNDER" in prono_uo35: nuovo['Esito_U/O_3.5'] = "VINCENTE" if tot_gol < 3.5 else "PERDENTE"
-                else: nuovo['Esito_U/O_3.5'] = "VINCENTE" if tot_gol > 3.5 else "PERDENTE"
-                
-                # 5. Goal / NoGoal (Parsing unificato multi-sigla)
-                gng_prono = str(row.get('Goal_NoGoal', '')).upper().strip()
+                # 7. Goal / NoGoal
+                gng_prono = str(row.get('Goal_NoGoal', row.get('Goal/NoGoal', ''))).upper().strip()
                 gng_reale = "GOAL" if (hg > 0 and ag > 0) else "NOGOAL"
                 if "NOGOAL" in gng_prono or gng_prono == "NG":
                     nuovo['Esito_Goal_NoGoal'] = "VINCENTE" if gng_reale == "NOGOAL" else "PERDENTE"
                 else:
                     nuovo['Esito_Goal_NoGoal'] = "VINCENTE" if gng_reale == "GOAL" else "PERDENTE"
                 
-                # 6. Combo Doppia Chance + Under/Over 2.5 (Confronto stringa sul tipo di Under/Over richiesto)
+                # 8. Combo Doppia Chance + Under/Over 2.5
                 combo_prono = str(row.get('DC+U/O2.5', row.get('DC+U/O_2.5', ''))).upper().strip()
-                esito_dc_ok = nuovo['Esito_Doppia_Chance'] == "VINCENTE"
-                
                 if "UNDER" in combo_prono:
-                    esito_uo_ok = tot_gol < 2.5
+                    esito_uo_combo_ok = tot_gol < 2.5
                 else:
-                    esito_uo_ok = tot_gol > 2.5
-                    
-                nuovo['Esito_DC+U/O2.5'] = "VINCENTE" if (esito_dc_ok and esito_uo_ok) else "PERDENTE"
+                    esito_uo_combo_ok = tot_gol > 2.5
                 
-                # 7. Media Goal Casa Expected
-                try:
-                    mg_c_prono = float(str(row.get('Pronostico_MG_Casa', 0)).replace(',', '.'))
-                    nuovo['Esito_Media_Goal_Casa'] = "VINCENTE" if abs(hg - mg_c_prono) <= 0.75 else "PERDENTE"
-                except:
-                    nuovo['Esito_Media_Goal_Casa'] = "PERDENTE"
+                nuovo['Esito_DC+U/O2.5'] = "VINCENTE" if (esito_dc_boolean and esito_uo_combo_ok) else "PERDENTE"
                 
-                # 8. Media Goal Ospite Expected
-                try:
-                    mg_o_prono = float(str(row.get('Pronostico_MG_Trasferta', 0)).replace(',', '.'))
-                    nuovo['Esito_Media_Goal_Trasferta'] = "VINCENTE" if abs(ag - mg_o_prono) <= 0.75 else "PERDENTE"
-                except:
-                    nuovo['Esito_Media_Goal_Trasferta'] = "PERDENTE"
+                # 9. Media Goal Casa (Ridenominato come MG Casa)
+                prono_mg_c = row.get('Pronostico_MG_Casa', row.get('MG_Casa', row.get('MG Casa', '')))
+                nuovo['Esito_Media_Goal_Casa'] = "VINCENTE" if analizza_multigol(prono_mg_c, hg) else "PERDENTE"
                 
-                # 9. Media Goal Totale Expected
-                try:
-                    mg_t_prono = float(str(row.get('Pronostico_MG_Totale', 0)).replace(',', '.'))
-                    nuovo['Esito_Media_Goal_Totale'] = "VINCENTE" if abs(tot_gol - mg_t_prono) <= 1.0 else "PERDENTE"
-                except:
-                    nuovo['Esito_Media_Goal_Totale'] = "PERDENTE"
+                # 10. Media Goal Ospite (Ridenominato come MG Ospite)
+                prono_mg_o = row.get('Pronostico_MG_Trasferta', row.get('MG_Ospite', row.get('MG Ospite', '')))
+                nuovo['Esito_Media_Goal_Trasferta'] = "VINCENTE" if analizza_multigol(prono_mg_o, ag) else "PERDENTE"
                 
-                # 10. Corner 1X2
+                # 11. Media Goal Totale (Ridenominato e mappato come MG Casa + MG Ospite)
+                prono_mg_t = row.get('Pronostico_MG_Totale', row.get('MG_Totale', row.get('MG Totale', '')))
+                nuovo['Esito_Media_Goal_Totale'] = "VINCENTE" if analizza_multigol(prono_mg_t, tot_gol) else "PERDENTE"
+                
+                # 12. Corner 1X2
                 nuovo['Esito_Corner_1X2'] = "VINCENTE" if str(row.get('Corner_1X2', '-')) != "-" else "PERDENTE"
                 
             else:
@@ -178,7 +201,7 @@ def esegui_validazione():
         record_convalidati.append(nuovo)
 
     pd.DataFrame(record_convalidati).to_excel(STORICO_FILE, index=False)
-    print("✅ Validazione completata con indici bloccati e formule corrette.")
+    print("✅ Validazione completata con indici bloccati e formule di fascia testate.")
 
 if __name__ == "__main__":
     esegui_validazione()
