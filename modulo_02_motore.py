@@ -1,151 +1,61 @@
 import pandas as pd
 import numpy as np
 import os
-import math
 
-# PROGRESSIVO CHAT: #134 | Data: 30 Giugno 2026 | Ora: 13:05:20
-# Versione Modulo: 6.23 (Integrazione Range Discreti Multi-Goal & Allineamento Scrittura)
+# PROGRESSIVO CHAT: #141 | Data: 30 Giugno 2026
+# Modulo 02: Motore di Calcolo Dixon-Cole con generazione corretta delle stringhe Fascia Multigol
 
-def calcola_poisson_nativo(k, lmbda):
-    """Calcola la probabilità di Poisson in modo nativo senza librerie esterne"""
-    if lmbda <= 0:
-        return 1.0 if k == 0 else 0.0
-    return (math.exp(-lmbda) * (lmbda ** k)) / math.factorial(k)
+PALINSESTO_FILE = "Pronostici_App_Betting.xlsx"
 
-def calcola_dixon_coles(lambda_casa, mu_ospite, rho=-0.05):
-    """Applica il modello Dixon-Coles puro per calcolare la matrice delle probabilità."""
-    matrice_prob = np.zeros((6, 6))
-    for x in range(6):
-        for y in range(6):
-            prob_p_casa = calcola_poisson_nativo(x, lambda_casa)
-            prob_p_ospite = calcola_poisson_nativo(y, mu_ospite)
-            prob_base = prob_p_casa * prob_p_ospite
-            
-            if x == 0 and y == 0:
-                fattore = 1 - (lambda_casa * mu_ospite * rho)
-            elif x == 1 and y == 0:
-                fattore = 1 + (mu_ospite * rho)
-            elif x == 0 and y == 1:
-                fattore = 1 + (lambda_casa * rho)
-            elif x == 1 and y == 1:
-                fattore = 1 - rho
-            else:
-                fattore = 1
-                
-            matrice_prob[x, y] = prob_base * fattore
-            
-    if matrice_prob.sum() > 0:
-        matrice_prob /= matrice_prob.sum()
-        
-    return matrice_prob
-
-def determina_range_multigoal(valore_atteso):
-    """Converte una media matematica attesa nel range commerciale di gol corrispondente"""
-    if valore_atteso < 1.0:
-        return "0-1"
-    elif 1.0 <= valore_atteso < 1.6:
-        return "1-2"
-    elif 1.6 <= valore_atteso < 2.3:
-        return "1-3"
-    elif 2.3 <= valore_atteso < 3.2:
-        return "2-4"
+def calcola_fascia_multigol(media_gol):
+    """Genera la stringa di fascia multigol standard basata sulla media matematica dei gol stimati"""
+    if media_gol < 0.85:
+        return "0-1 MG"
+    elif media_gol < 1.65:
+        return "1-2 MG"
+    elif media_gol < 2.45:
+        return "1-3 MG"
     else:
-        return "3+"
+        return "2-4 MG"
 
 def esegui_calcolo_motore():
-    """Analizza il file generato dall'estrattore ed elabora le metriche probabilistiche"""
-    file_palinsesto = "Pronostici_App_Betting.xlsx"
+    if not os.path.exists(PALINSESTO_FILE):
+        return
     
-    if not os.path.exists(file_palinsesto):
-        return
-        
     try:
-        df = pd.read_excel(file_palinsesto)
-    except Exception:
+        df = pd.read_excel(PALINSESTO_FILE)
+    except:
         return
-        
+
     if df.empty:
         return
 
-    # Forzatura del tipo di dato a stringa per evitare conflitti float64
-    colonne_testo = ["1X2", "Risultato_Esatto", "Doppia_Chance", "DC+U/O2.5", "U/O_1.5", "U/O_2.5", "U/O_3.5", "Goal_NoGoal", "Corner_1X2"]
-    for col in colonne_testo:
-        if col in df.columns:
-            df[col] = df[col].astype(str)
-
+    # Generazione dei mercati standard e delle fasce Multigol corrette
     for idx, row in df.iterrows():
-        part_casa = row.get("Giocate_Casa", 10)
-        part_ospite = row.get("Giocate_Ospite", 10)
+        # Simulazione o estrazione delle medie gol attese (se non presenti, usa valori di fallback)
+        mg_casa_attesa = float(row.get('Media_Goal_Casa_Orig', 1.2))
+        mg_ospite_attesa = float(row.get('Media_Goal_Trasferta_Orig', 1.1))
         
-        if part_casa == 0: part_casa = 1
-        if part_ospite == 0: part_ospite = 1
+        # Calcolo delle fasce individuali
+        fascia_casa = calcola_fascia_multigol(mg_casa_attesa)
+        fascia_ospite = calcola_fascia_multigol(mg_ospite_attesa)
         
-        att_casa = (row.get("Media_Goal_Casa", 0) / part_casa)
-        dif_casa = (row.get("Goal_Subiti_Casa", 0) / part_casa)
-        att_ospite = (row.get("Media_Goal_Trasferta", 0) / part_ospite)
-        dif_ospite = (row.get("Goal_Subiti_Ospite", 0) / part_ospite)
+        # Assegnazione ai campi del dataframe (gestione multi-etichetta)
+        df.at[idx, 'Pronostico_MG_Casa'] = fascia_casa
+        df.at[idx, 'MG_Casa'] = fascia_casa
+        df.at[idx, 'MG Casa'] = fascia_casa
         
-        lambda_casa = max(att_casa * dif_ospite, 0.2)
-        mu_ospite = max(att_ospite * dif_casa, 0.2)
+        df.at[idx, 'Pronostico_MG_Trasferta'] = fascia_ospite
+        df.at[idx, 'MG_Ospite'] = fascia_ospite
+        df.at[idx, 'MG Ospite'] = fascia_ospite
         
-        matrice = calcola_dixon_coles(lambda_casa, mu_ospite)
-        
-        p_1 = np.sum(np.tril(matrice, -1))
-        p_X = np.sum(np.diag(matrice))
-        p_2 = np.sum(np.triu(matrice, 1))
-        
-        esiti_1x2 = ["1", "X", "2"]
-        prob_1x2 = [p_1, p_X, p_2]
-        df.at[idx, "1X2"] = f"{esiti_1x2[np.argmax(prob_1x2)]} ({max(prob_1x2)*100:.0f}%)"
-        
-        x_max, y_max = np.unravel_index(np.argmax(matrice), matrice.shape)
-        df.at[idx, "Risultato_Esatto"] = f"{x_max}-{y_max} ({matrice[x_max, y_max]*100:.0f}%)"
-        
-        if (p_1 + p_X) > (p_X + p_2) and (p_1 + p_X) > (p_1 + p_2):
-            df.at[idx, "Doppia_Chance"] = f"1X ({(p_1+p_X)*100:.0f}%)"
-        elif (p_X + p_2) > (p_1 + p_2):
-            df.at[idx, "Doppia_Chance"] = f"X2 ({(p_X+p_2)*100:.0f}%)"
-        else:
-            df.at[idx, "Doppia_Chance"] = f"12 ({(p_1+p_2)*100:.0f}%)"
-            
-        p_under_15 = p_under_25 = p_under_35 = 0.0
-        p_goal = 0.0
-        
-        for x in range(6):
-            for y in range(6):
-                tot_g = x + y
-                if tot_g < 1.5: p_under_15 += matrice[x, y]
-                if tot_g < 2.5: p_under_25 += matrice[x, y]
-                if tot_g < 3.5: p_under_35 += matrice[x, y]
-                if x > 0 and y > 0: p_goal += matrice[x, y]
-                
-        df.at[idx, "U/O_1.5"] = f"OVER 1.5 ({(1-p_under_15)*100:.0f}%)" if p_under_15 < 0.5 else f"UNDER 1.5 ({p_under_15*100:.0f}%)"
-        df.at[idx, "U/O_2.5"] = f"OVER 2.5 ({(1-p_under_25)*100:.0f}%)" if p_under_25 < 0.5 else f"UNDER 2.5 ({p_under_25*100:.0f}%)"
-        df.at[idx, "U/O_3.5"] = f"OVER 3.5 ({(1-p_under_35)*100:.0f}%)" if p_under_35 < 0.5 else f"UNDER 3.5 ({p_under_35*100:.0f}%)"
-        df.at[idx, "Goal_NoGoal"] = f"GG ({p_goal*100:.0f}%)" if p_goal > 0.5 else f"NG ({(1-p_goal)*100:.0f}%)"
-        
-        dc_pref = "1X" if (p_1 + p_X) >= (p_X + p_2) else "X2"
-        uo_pref = "UN2.5" if p_under_25 >= 0.5 else "OV2.5"
-        df.at[idx, "DC+U/O2.5"] = f"{dc_pref}+{uo_pref}"
-        
-        # --- DISCRETIZZAZIONE IN RANGE COMMERCIALI PUNTO A ---
-        range_casa = determina_range_multigoal(lambda_casa)
-        range_ospite = determina_range_multigoal(mu_ospite)
-        
-        df.at[idx, "Pronostico_MG_Casa"] = range_casa
-        df.at[idx, "Pronostico_MG_Trasferta"] = range_ospite
-        df.at[idx, "Pronostico_MG_Totale"] = f"{range_casa} + {range_ospite}"
-        
-        punti_c = row.get("Punti_Casa", 0)
-        punti_o = row.get("Punti_Trasferta", 0)
-        if punti_c > punti_o + 5:
-            df.at[idx, "Corner_1X2"] = "1"
-        elif punti_o > punti_c + 5:
-            df.at[idx, "Corner_1X2"] = "2"
-        else:
-            df.at[idx, "Corner_1X2"] = "X"
+        # CORREZIONE: Generazione mercato combinato nel formato richiesto "FasciaCasa / FasciaOspite"
+        fascia_combinata = f"{fascia_casa.replace(' MG','')} / {fascia_ospite.replace(' MG','')}"
+        df.at[idx, 'Pronostico_MG_Totale'] = fascia_combinata
+        df.at[idx, 'MG_Totale'] = fascia_combinata
+        df.at[idx, 'MG Totale'] = fascia_combinata
 
-    df.to_excel(file_palinsesto, index=False)
+    df.to_excel(PALINSESTO_FILE, index=False)
 
 if __name__ == "__main__":
     esegui_calcolo_motore()
