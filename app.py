@@ -4,8 +4,8 @@ import os
 import datetime
 from zoneinfo import ZoneInfo
 
-# PROGRESSIVO CHAT: #137 | Data: 30 Giugno 2026 | Ora: 14:02:40
-# Versione Progetto: 6.25 (Correzione Mappature Mercati, Rinomina Storica & Ripristino Validazione Modulo 03)
+# PROGRESSIVO CHAT: #140 | Data: 30 Giugno 2026 | Ora: 16:35:00
+# Versione Progetto: 6.26 (Bypass Cache Totale iPhone X & Allineamento Stringhe Multigol Fascia & Statistiche)
 
 st.set_page_config(page_title="⚽ Betting Pro Mobile", page_icon="⚽", layout="centered")
 
@@ -20,22 +20,10 @@ DB_FILE = "Database_Storico_Completo.xlsx"
 STORICO_FILE = "Storico_Validato_Betting.xlsx"
 PALINSESTO_FILE = "Pronostici_App_Betting.xlsx"
 
-def ottieni_versione_software():
-    """Estrae dinamicamente la versione del software dai moduli core per evitare modifiche manuali"""
-    try:
-        with open("modulo_03_validatore.py", "r", encoding="utf-8") as f:
-            for linea in f:
-                if "Versione" in linea:
-                    parti = linea.split("Versione")
-                    if len(parti) > 1:
-                        return parti[1].replace("-", "").strip()
-    except:
-        pass
-    return "6.25"
+# BLOCCO TOTALMENTE HARDCODED PER DISTRUGGERE IL PROBLEMA DI CACHE 6.22 SU IPHONE X
+VERSIONE_CORRENTE = "6.26"
 
-VERSIONE_CORRENTE = ottieni_versione_software()
-
-@st.cache_data(ttl=2)
+@st.cache_data(ttl=0)  # Impostato a 0 per annullare definitivamente la cache interna del browser mobile
 def carica_dati(path):
     if os.path.exists(path):
         try:
@@ -60,7 +48,7 @@ st.markdown("""
     .block-container { padding-top: 2rem !important; padding-bottom: 1rem !important; padding-left: 0.5rem !important; padding-right: 0.5rem !important; }
     .brand-box { text-align: center; margin-bottom: 12px; padding: 2px; }
     .main-title { font-size: 22px; font-weight: 800; color: #1c1c1e; margin: 0; }
-    .version-label { font-size: 10px; font-weight: 700; color: #007aff; margin-top: 1px; text-transform: uppercase; letter-spacing: 0.5px; }
+    .version-label { font-size: 11px; font-weight: 900; color: #ffffff; margin-top: 2px; text-transform: uppercase; letter-spacing: 0.5px; background: #007aff; padding: 3px 8px; border-radius: 5px; display: inline-block; }
     div.stButton > button { border-radius: 8px !important; font-weight: 700 !important; font-size: 11px !important; padding: 6px 10px !important; height: auto !important; width: 100% !important; border: none !important; box-shadow: 0 2px 5px rgba(0,0,0,0.03) !important; margin-bottom: -4px !important; }
     div.stButton > button[id*="fase_1"] { background-color: #2cd158 !important; color: white !important; }
     div.stButton > button[id*="fase_2"] { background-color: #6a5acd !important; color: white !important; }
@@ -86,8 +74,6 @@ st.markdown("""
     .accuracy-item { background: #f8f9fa; padding: 6px 8px; border-radius: 8px; font-size: 11px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #e5e5ea; }
     .accuracy-item span { color: #48484a; font-weight: 600; }
     .accuracy-val { color: #007aff; font-weight: 800; font-size: 11px; }
-    
-    /* Nuovi Stili per la sezione Backtest */
     .delta-win { color: #2cd158; font-weight: 800; font-size: 10px; background: #e8f9ee; padding: 1px 4px; border-radius: 3px; }
     .delta-lose { color: #ff3b30; font-weight: 800; font-size: 10px; background: #ffebeb; padding: 1px 4px; border-radius: 3px; }
     </style>
@@ -99,6 +85,7 @@ def calcola_accuratezza_globale():
     if not df_database.empty: frames.append(df_database)
     if not frames: return {}
     df_totale = pd.concat(frames, ignore_index=True)
+    
     mappa_esiti = {
         "1X2": ["Esito_1X2"], 
         "Ris. Esatto": ["Esito_Risultato_Esatto"], 
@@ -153,7 +140,7 @@ def clean(val):
 st.markdown(f"""
 <div class="brand-box">
     <div class="main-title">⚽ Betting Pro Mobile</div>
-    <div class="version-label">Versione Progetto: {VERSIONE_CORRENTE}</div>
+    <div class="version-label">BUILD FORZATA ONLINE: {VERSIONE_CORRENTE}</div>
 </div>
 """, unsafe_allow_html=True)
 
@@ -242,14 +229,14 @@ if st.session_state.tab_selezionata == "PALINSESTO":
                     <div class="market-cell"><b>1X2</b><div class="market-val-row">{safe_get(row, ['1X2'])}</div></div>
                     <div class="market-cell"><b>Ris. Esatto</b><div class="market-val-row">{safe_get(row, ['Risultato_Esatto'])}</div></div>
                     <div class="market-cell"><b>Doppia Chance</b><div class="market-val-row">{safe_get(row, ['Doppia_Chance'])}</div></div>
-                    <div class="market-cell"><b>Combo DC+U/O2.5</b><div class="market-val-row">{safe_get(row, ['DC+U/O2.5', 'DC+U/O_2.5'])}</div></div>
-                    <div class="market-cell"><b>U/O 1.5</b><div class="market-val-row">{safe_get(row, ['U/O_1.5'])}</div></div>
-                    <div class="market-cell"><b>U/O 2.5</b><div class="market-val-row">{safe_get(row, ['U/O_2.5'])}</div></div>
-                    <div class="market-cell"><b>U/O 3.5</b><div class="market-val-row">{safe_get(row, ['U/O_3.5'])}</div></div>
-                    <div class="market-cell"><b>Goal/NoGoal</b><div class="market-val-row">{safe_get(row, ['Goal_NoGoal'])}</div></div>
-                    <div class="market-cell"><b>MG Casa Expect.</b><div class="market-val-row">{str(safe_get(row, ['Pronostico_MG_Casa', 'MG_Casa']))}</div></div>
-                    <div class="market-cell"><b>MG Ospite Expect.</b><div class="market-val-row">{str(safe_get(row, ['Pronostico_MG_Trasferta', 'MG_Ospite']))}</div></div>
-                    <div class="market-cell"><b>MG Casa + MG Ospite Expect.</b><div class="market-val-row">{str(safe_get(row, ['Pronostico_MG_Totale', 'MG_Totale']))}</div></div>
+                    <div class="market-cell"><b>Combo DC+U/O2.5</b><div class="market-val-row">{safe_get(row, ['DC+U/O2.5', 'DC+U/O_2.5', 'Combo_DC_U/O2.5'])}</div></div>
+                    <div class="market-cell"><b>U/O 1.5</b><div class="market-val-row">{safe_get(row, ['U/O_1.5', 'U/O 1.5'])}</div></div>
+                    <div class="market-cell"><b>U/O 2.5</b><div class="market-val-row">{safe_get(row, ['U/O_2.5', 'U/O 2.5'])}</div></div>
+                    <div class="market-cell"><b>U/O 3.5</b><div class="market-val-row">{safe_get(row, ['U/O_3.5', 'U/O 3.5'])}</div></div>
+                    <div class="market-cell"><b>Goal/NoGoal</b><div class="market-val-row">{safe_get(row, ['Goal_NoGoal', 'Goal/NoGoal'])}</div></div>
+                    <div class="market-cell"><b>MG Casa</b><div class="market-val-row">{str(safe_get(row, ['Pronostico_MG_Casa', 'MG_Casa', 'MG Casa']))}</div></div>
+                    <div class="market-cell"><b>MG Ospite</b><div class="market-val-row">{str(safe_get(row, ['Pronostico_MG_Trasferta', 'MG_Ospite', 'MG Ospite']))}</div></div>
+                    <div class="market-cell"><b>MG Casa + MG Ospite</b><div class="market-val-row">{str(safe_get(row, ['Pronostico_MG_Totale', 'MG_Totale', 'MG Totale']))}</div></div>
                     <div class="market-cell"><b>Corner 1X2</b><div class="market-val-row">{safe_get(row, ['Corner_1X2'])}</div></div>
                 </div>
             </div>
@@ -278,7 +265,7 @@ elif st.session_state.tab_selezionata == "STORICO":
             <div class="match-card">
                 <div class="meta-label">🏆 {safe_get(row, ['Campionato'])} | {safe_get(row, ['Data_Ora_Match', 'Data'])}</div>
                 <div class="team-text"> {safe_get(row, ['3. Match', 'Match'])}</div>
-                <div class="score-badge">⚽ Risultato Finale: {safe_get(row, ['Risultato_Reale'])}</div>
+                <div class="score-badge">⚽ Risultato Reale: {safe_get(row, ['Risultato_Reale'])}</div>
                 <div class="block-header">🎯 Esiti Pronostici Validati (12 Mercati)</div>
                 <div class="market-box">
                     <div class="market-cell"><b>1X2 ({safe_get(row, ['1X2'])})</b><div class="market-val-row">{get_badge(safe_get(row, ['Esito_1X2']))}</div></div>
@@ -289,9 +276,9 @@ elif st.session_state.tab_selezionata == "STORICO":
                     <div class="market-cell"><b>U/O 2.5 ({safe_get(row, ['U/O_2.5'])})</b><div class="market-val-row">{get_badge(safe_get(row, ['Esito_U/O_2.5']))}</div></div>
                     <div class="market-cell"><b>U/O 3.5 ({safe_get(row, ['U/O_3.5'])})</b><div class="market-val-row">{get_badge(safe_get(row, ['Esito_U/O_3.5']))}</div></div>
                     <div class="market-cell"><b>Goal/NG ({safe_get(row, ['Goal_NoGoal'])})</b><div class="market-val-row">{get_badge(safe_get(row, ['Esito_Goal_NoGoal']))}</div></div>
-                    <div class="market-cell"><b>MG Casa ({str(safe_get(row, ['Pronostico_MG_Casa', 'MG_Casa']))})</b><div class="market-val-row">{get_badge(safe_get(row, ['Esito_Media_Goal_Casa', 'Esito_MG_Casa']))}</div></div>
-                    <div class="market-cell"><b>MG Ospite ({str(safe_get(row, ['Pronostico_MG_Trasferta', 'MG_Ospite']))})</b><div class="market-val-row">{get_badge(safe_get(row, ['Esito_Media_Goal_Trasferta', 'Esito_MG_Trasferta']))}</div></div>
-                    <div class="market-cell"><b>MG Casa + MG Ospite ({str(safe_get(row, ['Pronostico_MG_Totale', 'MG_Totale']))})</b><div class="market-val-row">{get_badge(safe_get(row, ['Esito_Media_Goal_Totale', 'Esito_MG_Totale']))}</div></div>
+                    <div class="market-cell"><b>MG Casa ({str(safe_get(row, ['Pronostico_MG_Casa', 'MG_Casa']))})</b><div class="market-val-row">{get_badge(safe_get(row, ['Esito_Media_Goal_Casa']))}</div></div>
+                    <div class="market-cell"><b>MG Ospite ({str(safe_get(row, ['Pronostico_MG_Trasferta', 'MG_Ospite']))})</b><div class="market-val-row">{get_badge(safe_get(row, ['Esito_Media_Goal_Trasferta']))}</div></div>
+                    <div class="market-cell"><b>MG Casa + MG Ospite ({str(safe_get(row, ['Pronostico_MG_Totale', 'MG_Totale']))})</b><div class="market-val-row">{get_badge(safe_get(row, ['Esito_Media_Goal_Totale']))}</div></div>
                     <div class="market-cell"><b>Corner 1X2 ({safe_get(row, ['Corner_1X2'])})</b><div class="market-val-row">{get_badge(safe_get(row, ['Esito_Corner_1X2']))}</div></div>
                 </div>
             </div>
@@ -326,16 +313,13 @@ elif st.session_state.tab_selezionata == "DATABASE":
             """, unsafe_allow_html=True)
     else: st.info("Database di archiviazione vuoto.")
 
-# =========================================================================
-# 🧪 RIGA 290+: INTERFACCIA CONNESSA DIRETTAMENTE AL BACKEND MODULO 05
-# =========================================================================
+# --- SIMULATORE DI STRATEGIE ---
 elif st.session_state.tab_selezionata == "SIMULATORE":
     st.markdown('<div class="block-header" style="color:#6a5acd; font-size:12px; margin-bottom:12px;">🧪 SIMULATORE DI STRATEGIE & BACKTESTING</div>', unsafe_allow_html=True)
     
     if df_database.empty:
         st.warning("⚠️ L'archivio del Database è vuoto. Archivia le partite con la Fase 3 per abilitare il simulatore.")
     else:
-        # Configurazione Parametri Editabili (Sliders iOS responsive)
         with st.expander("⚙️ PARAMETRI DI CALIBRAZIONE ALGORITMO", expanded=True):
             st.markdown("<p style='font-size:11px; color:#8e8e93; margin-top:-5px;'>Modifica le soglie matematiche per ricalcolare all'istante le accuratezze dello storico.</p>", unsafe_allow_html=True)
             
@@ -348,7 +332,6 @@ elif st.session_state.tab_selezionata == "SIMULATORE":
             with col_w1: p_casa = st.slider("Peso Medie Casa", 0.70, 1.30, 1.05, 0.05)
             with col_w2: p_trasf = st.slider("Peso Medie Trasferta", 0.70, 1.30, 0.95, 0.05)
 
-        # Pulsante di Attivazione connesso al modulo_05_simulatore
         if st.button("🧪 AVVIA BACKTEST SU ARCHIVIO GENERALE", key="run_backtest_btn", use_container_width=True):
             with st.spinner("⏳ Ricalcolo matrici Dixon-Cole in corso..."):
                 try:
@@ -363,7 +346,6 @@ elif st.session_state.tab_selezionata == "SIMULATORE":
                 except Exception as e:
                     st.error(f"Errore di computazione nel Modulo 05: {str(e)}")
 
-        # Render Comparativo Scostamento Performance Reale vs Simulata
         if "backtest_results" in st.session_state:
             st.markdown('<div class="accuracy-container"><div class="accuracy-title">📈 SCOSTAMENTO PERFORMANCE (REALE VS SIMULATO)</div><div class="accuracy-grid">', unsafe_allow_html=True)
             for m_name, r_val in dict_acc.items():
