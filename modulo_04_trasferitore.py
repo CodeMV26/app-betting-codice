@@ -2,8 +2,8 @@ import sys
 import os
 import pandas as pd
 
-# PROGRESSIVO CHAT: #131 | Data: 30 Giugno 2026 | Ora: 10:18:52
-# Versione Modulo: 6.21 (Fix Totale Append & Protezione Anti-Sovrascrittura)
+# PROGRESSIVO CHAT: #160 | Data: 30 Giugno 2026 | Ora: 22:30:15
+# Versione Progetto: 6.44 (Fix Dtype Float64 su Fusione Stringhe Combinate MultiGoal)
 
 STORICO_FILE = "Storico_Validato_Betting.xlsx"
 DATABASE_STORICO_GLOBALE = "Database_Storico_Completo.xlsx"
@@ -24,6 +24,21 @@ def _logica_core_trasferimento():
             print("⚠️ Lo storico sorgente è vuoto.")
             return
             
+        # Elenco completo delle colonne dei mercati e pronostici testuali per forzare il tipo stringa
+        colonne_mercati_testo = [
+            "1X2", "Risultato_Esatto", "Doppia_Chance", "DC+U/O2.5", 
+            "U/O_1.5", "U/O_2.5", "U/O_3.5", "Goal_NoGoal", "Corner_1X2",
+            "Pronostico_MG_Casa", "MG_Casa", "MG Casa",
+            "Pronostico_MG_Trasferta", "MG_Ospite", "MG Ospite",
+            "Pronostico_MG_Totale", "MG_Totale", "MG Totale",
+            "Risultato_Reale", "Esito_1X2"
+        ]
+
+        # Forza il tipo stringa sul file da appendere per evitare il crash su valori tipo '2-4 / 2-4'
+        for col in colonne_mercati_testo:
+            if col in df_da_appendere.columns:
+                df_da_appendere[col] = df_da_appendere[col].astype(str)
+            
         # --- ALLINEAMENTO DI SICUREZZA DELLE COLONNE CRUCIALI ---
         mappa_repliche = {
             'Risultato_Reale': ['Risultato Reale', 'Risultato', 'Esito_Finale', 'Risultato_Finale'],
@@ -34,17 +49,24 @@ def _logica_core_trasferimento():
             if col_target not in df_da_appendere.columns:
                 for v in varianti:
                     if v in df_da_appendere.columns:
-                        df_da_appendere[col_target] = df_da_appendere[v]
+                        df_da_appendere[col_target] = df_da_appendere[v].astype(str)
                         break
                 if col_target not in df_da_appendere.columns:
                     df_da_appendere[col_target] = "Dato Non Rilevato"
 
-        # Se esiste già un archivio globale, lo fondiamo controllando i duplicati in modo non distruttivo
+        # Se esiste già un archivio globale, lo fondiamo controllando i duplicati
         if os.path.exists(DATABASE_STORICO_GLOBALE):
             df_storico_esistente = pd.read_excel(DATABASE_STORICO_GLOBALE)
             
             if not df_storico_esistente.empty:
-                # Creiamo una mappatura indice -> chiave per aggiornare record esistenti (es. da IN ATTESA a VINCENTE)
+                # Forza il tipo stringa anche sul database storico globale per uniformare i tipi di dato
+                for col in colonne_mercati_testo:
+                    if col in df_storico_esistente.columns:
+                        df_storico_esistente[col] = df_storico_esistente[col].astype(str)
+                    elif col in df_da_appendere.columns:
+                        df_storico_esistente[col] = "-"
+
+                # Creiamo una mappatura indice -> chiave per aggiornare record esistenti
                 mappa_chiavi_esistenti = {}
                 for idx, riga in df_storico_esistente.iterrows():
                     chk_key = genera_chiave_univoca_local(riga)
@@ -55,32 +77,34 @@ def _logica_core_trasferimento():
                     chiave_nuova = genera_chiave_univoca_local(riga)
                     
                     if chiave_nuova in mappa_chiavi_esistenti:
-                        # Il record esiste già: aggiorniamo i dati in modo intelligente solo se lo stato precedente era instabile
+                        # Il record esiste già: aggiorniamo i dati solo se lo stato precedente era instabile
                         idx_esistente = mappa_chiavi_esistenti[chiave_nuova]
                         stato_prec = str(df_storico_esistente.at[idx_esistente, 'Esito_1X2']).upper().strip()
                         
-                        if "ATTESA" in stato_prec or "NON RILEVATO" in stato_prec or stato_prec == "-":
+                        if "ATTESA" in stato_prec or "NON RILEVATO" in stato_prec or stato_prec == "-" or stato_prec == "NAN":
                             for col in df_da_appendere.columns:
                                 if col in df_storico_esistente.columns:
-                                    df_storico_esistente.at[idx_esistente, col] = riga[col]
+                                    df_storico_esistente.at[idx_esistente, col] = str(riga[col])
                     else:
-                        # È un match completamente nuovo: lo inseriamo nella coda di inserimento
+                        # È un match completamente info: lo inseriamo nella coda di inserimento
                         nuovi_record.append(riga)
                 
                 if nuovi_record:
                     df_nuovi = pd.DataFrame(nuovi_record)
+                    # Sincronizzazione dei tipi prima del concat
+                    for col in colonne_mercati_testo:
+                        if col in df_nuovi.columns:
+                            df_nuovi[col] = df_nuovi[col].astype(str)
+                    
                     df_storico_aggiornato = pd.concat([df_storico_esistente, df_nuovi], ignore_index=True, sort=False)
                     df_storico_aggiornato.to_excel(DATABASE_STORICO_GLOBALE, index=False)
                     print("✅ Sincronizzazione completata: Nuovi record aggiunti in append.")
                 else:
-                    # Se non ci sono nuovi record, risalviamo la matrice esistente (potenzialmente aggiornata negli stati)
                     df_storico_esistente.to_excel(DATABASE_STORICO_GLOBALE, index=False)
                     print("✅ Sincronizzazione completata: Nessun nuovo match, aggiornati stati esistenti.")
             else:
-                # Se il file esiste ma è vuoto, lo scriviamo direttamente
                 df_da_appendere.to_excel(DATABASE_STORICO_GLOBALE, index=False)
         else:
-            # Se non esiste, creiamo il file direttamente
             df_da_appendere.to_excel(DATABASE_STORICO_GLOBALE, index=False)
             print("✅ Sincronizzazione completata: Creato nuovo database storico globale.")
             
