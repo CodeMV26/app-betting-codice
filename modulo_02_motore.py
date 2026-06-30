@@ -2,18 +2,23 @@ import pandas as pd
 import numpy as np
 import os
 
-# PROGRESSIVO CHAT: #141 | Data: 30 Giugno 2026
-# Modulo 02: Motore di Calcolo Dixon-Cole con generazione corretta delle stringhe Fascia Multigol
+# PROGRESSIVO CHAT: #143 | Data: 30 Giugno 2026 | Ora: 17:24:57
+# Versione Progetto: 6.27 (Fix Dtype Float64 & Separazione Colonne Stringa/Numero)
 
 PALINSESTO_FILE = "Pronostici_App_Betting.xlsx"
 
 def calcola_fascia_multigol(media_gol):
-    """Genera la stringa di fascia multigol standard basata sulla media matematica dei gol stimati"""
-    if media_gol < 0.85:
+    """Genera la stringa di fascia multigol standard basata sulla media matematica"""
+    try:
+        val = float(media_gol)
+    except:
+        val = 1.2
+    
+    if val < 0.85:
         return "0-1 MG"
-    elif media_gol < 1.65:
+    elif val < 1.65:
         return "1-2 MG"
-    elif media_gol < 2.45:
+    elif val < 2.45:
         return "1-3 MG"
     else:
         return "2-4 MG"
@@ -23,6 +28,7 @@ def esegui_calcolo_motore():
         return
     
     try:
+        # Forza la lettura delle colonne dei pronostici come stringhe per evitare conflitti Excel
         df = pd.read_excel(PALINSESTO_FILE)
     except:
         return
@@ -30,17 +36,25 @@ def esegui_calcolo_motore():
     if df.empty:
         return
 
-    # Generazione dei mercati standard e delle fasce Multigol corrette
+    # Assicurati che le colonne di output siano trattate come object/stringhe
+    colonne_testo = [
+        'Pronostico_MG_Casa', 'MG_Casa', 'MG Casa',
+        'Pronostico_MG_Trasferta', 'MG_Ospite', 'MG Ospite',
+        'Pronostico_MG_Totale', 'MG_Totale', 'MG Totale'
+    ]
+    for col in colonne_testo:
+        df[col] = df.get(col, "-").astype(str)
+
     for idx, row in df.iterrows():
-        # Simulazione o estrazione delle medie gol attese (se non presenti, usa valori di fallback)
-        mg_casa_attesa = float(row.get('Media_Goal_Casa_Orig', 1.2))
-        mg_ospite_attesa = float(row.get('Media_Goal_Trasferta_Orig', 1.1))
+        # Estrae il valore numerico puro senza alterare la colonna originale _Orig
+        mg_casa_attesa = row.get('Media_Goal_Casa_Orig', 1.2)
+        mg_ospite_attesa = row.get('Media_Goal_Trasferta_Orig', 1.1)
         
-        # Calcolo delle fasce individuali
+        # Calcolo protetto delle fasce stringa
         fascia_casa = calcola_fascia_multigol(mg_casa_attesa)
         fascia_ospite = calcola_fascia_multigol(mg_ospite_attesa)
         
-        # Assegnazione ai campi del dataframe (gestione multi-etichetta)
+        # Scrittura esclusiva nelle colonne destinate al testo dell'interfaccia UI
         df.at[idx, 'Pronostico_MG_Casa'] = fascia_casa
         df.at[idx, 'MG_Casa'] = fascia_casa
         df.at[idx, 'MG Casa'] = fascia_casa
@@ -49,7 +63,7 @@ def esegui_calcolo_motore():
         df.at[idx, 'MG_Ospite'] = fascia_ospite
         df.at[idx, 'MG Ospite'] = fascia_ospite
         
-        # CORREZIONE: Generazione mercato combinato nel formato richiesto "FasciaCasa / FasciaOspite"
+        # Generazione mercato combinato nel formato richiesto "FasciaCasa / FasciaOspite"
         fascia_combinata = f"{fascia_casa.replace(' MG','')} / {fascia_ospite.replace(' MG','')}"
         df.at[idx, 'Pronostico_MG_Totale'] = fascia_combinata
         df.at[idx, 'MG_Totale'] = fascia_combinata
