@@ -4,8 +4,8 @@ import os
 import datetime
 from zoneinfo import ZoneInfo
 
-# PROGRESSIVO CHAT: #140 | Data: 30 Giugno 2026 | Ora: 16:35:00
-# Versione Progetto: 6.26 (Bypass Cache Totale iPhone X & Allineamento Stringhe Multigol Fascia & Statistiche)
+# PROGRESSIVO CHAT: #145 | Data: 30 Giugno 2026 | Ora: 17:31:04
+# Versione Progetto: 6.29 (Allineamento UI Mobile a Logica Multigol Rigida & No-Cache)
 
 st.set_page_config(page_title="⚽ Betting Pro Mobile", page_icon="⚽", layout="centered")
 
@@ -20,10 +20,9 @@ DB_FILE = "Database_Storico_Completo.xlsx"
 STORICO_FILE = "Storico_Validato_Betting.xlsx"
 PALINSESTO_FILE = "Pronostici_App_Betting.xlsx"
 
-# BLOCCO TOTALMENTE HARDCODED PER DISTRUGGERE IL PROBLEMA DI CACHE 6.22 SU IPHONE X
-VERSIONE_CORRENTE = "6.26"
+VERSIONE_CORRENTE = "6.29"
 
-@st.cache_data(ttl=0)  # Impostato a 0 per annullare definitivamente la cache interna del browser mobile
+@st.cache_data(ttl=0)
 def carica_dati(path):
     if os.path.exists(path):
         try:
@@ -48,7 +47,7 @@ st.markdown("""
     .block-container { padding-top: 2rem !important; padding-bottom: 1rem !important; padding-left: 0.5rem !important; padding-right: 0.5rem !important; }
     .brand-box { text-align: center; margin-bottom: 12px; padding: 2px; }
     .main-title { font-size: 22px; font-weight: 800; color: #1c1c1e; margin: 0; }
-    .version-label { font-size: 11px; font-weight: 900; color: #ffffff; margin-top: 2px; text-transform: uppercase; letter-spacing: 0.5px; background: #007aff; padding: 3px 8px; border-radius: 5px; display: inline-block; }
+    .version-label { font-size: 10px; font-weight: 700; color: #007aff; margin-top: 1px; text-transform: uppercase; letter-spacing: 0.5px; }
     div.stButton > button { border-radius: 8px !important; font-weight: 700 !important; font-size: 11px !important; padding: 6px 10px !important; height: auto !important; width: 100% !important; border: none !important; box-shadow: 0 2px 5px rgba(0,0,0,0.03) !important; margin-bottom: -4px !important; }
     div.stButton > button[id*="fase_1"] { background-color: #2cd158 !important; color: white !important; }
     div.stButton > button[id*="fase_2"] { background-color: #6a5acd !important; color: white !important; }
@@ -85,7 +84,6 @@ def calcola_accuratezza_globale():
     if not df_database.empty: frames.append(df_database)
     if not frames: return {}
     df_totale = pd.concat(frames, ignore_index=True)
-    
     mappa_esiti = {
         "1X2": ["Esito_1X2"], 
         "Ris. Esatto": ["Esito_Risultato_Esatto"], 
@@ -95,9 +93,9 @@ def calcola_accuratezza_globale():
         "U/O 3.5": ["Esito_U/O_3.5"], 
         "Goal/NoGoal": ["Esito_Goal_NoGoal"], 
         "Combo DC + U/O2.5": ["Esito_DC+U/O2.5", "Esito_DC+U/O_2.5"],
-        "MG Casa": ["Esito_Media_Goal_Casa", "Esito_MG_Casa"], 
-        "MG Ospite": ["Esito_Media_Goal_Trasferta", "Esito_MG_Trasferta"],
-        "MG Casa + MG Ospite": ["Esito_Media_Goal_Totale", "Esito_MG_Totale"], 
+        "MG Casa": ["Esito_MG_Casa", "Esito_Media_Goal_Casa"], 
+        "MG Ospite": ["Esito_MG_Trasferta", "Esito_Media_Goal_Trasferta"],
+        "MG Casa + MG Ospite": ["Esito_MG_Totale", "Esito_Media_Goal_Totale"], 
         "Corner 1X2": ["Esito_Corner_1X2"]
     }
     accuratezza = {}
@@ -140,7 +138,7 @@ def clean(val):
 st.markdown(f"""
 <div class="brand-box">
     <div class="main-title">⚽ Betting Pro Mobile</div>
-    <div class="version-label">BUILD FORZATA ONLINE: {VERSIONE_CORRENTE}</div>
+    <div class="version-label">Versione Progetto: {VERSIONE_CORRENTE}</div>
 </div>
 """, unsafe_allow_html=True)
 
@@ -229,14 +227,14 @@ if st.session_state.tab_selezionata == "PALINSESTO":
                     <div class="market-cell"><b>1X2</b><div class="market-val-row">{safe_get(row, ['1X2'])}</div></div>
                     <div class="market-cell"><b>Ris. Esatto</b><div class="market-val-row">{safe_get(row, ['Risultato_Esatto'])}</div></div>
                     <div class="market-cell"><b>Doppia Chance</b><div class="market-val-row">{safe_get(row, ['Doppia_Chance'])}</div></div>
-                    <div class="market-cell"><b>Combo DC+U/O2.5</b><div class="market-val-row">{safe_get(row, ['DC+U/O2.5', 'DC+U/O_2.5', 'Combo_DC_U/O2.5'])}</div></div>
-                    <div class="market-cell"><b>U/O 1.5</b><div class="market-val-row">{safe_get(row, ['U/O_1.5', 'U/O 1.5'])}</div></div>
-                    <div class="market-cell"><b>U/O 2.5</b><div class="market-val-row">{safe_get(row, ['U/O_2.5', 'U/O 2.5'])}</div></div>
-                    <div class="market-cell"><b>U/O 3.5</b><div class="market-val-row">{safe_get(row, ['U/O_3.5', 'U/O 3.5'])}</div></div>
-                    <div class="market-cell"><b>Goal/NoGoal</b><div class="market-val-row">{safe_get(row, ['Goal_NoGoal', 'Goal/NoGoal'])}</div></div>
-                    <div class="market-cell"><b>MG Casa</b><div class="market-val-row">{str(safe_get(row, ['Pronostico_MG_Casa', 'MG_Casa', 'MG Casa']))}</div></div>
-                    <div class="market-cell"><b>MG Ospite</b><div class="market-val-row">{str(safe_get(row, ['Pronostico_MG_Trasferta', 'MG_Ospite', 'MG Ospite']))}</div></div>
-                    <div class="market-cell"><b>MG Casa + MG Ospite</b><div class="market-val-row">{str(safe_get(row, ['Pronostico_MG_Totale', 'MG_Totale', 'MG Totale']))}</div></div>
+                    <div class="market-cell"><b>Combo DC+U/O2.5</b><div class="market-val-row">{safe_get(row, ['DC+U/O2.5', 'DC+U/O_2.5'])}</div></div>
+                    <div class="market-cell"><b>U/O 1.5</b><div class="market-val-row">{safe_get(row, ['U/O_1.5'])}</div></div>
+                    <div class="market-cell"><b>U/O 2.5</b><div class="market-val-row">{safe_get(row, ['U/O_2.5'])}</div></div>
+                    <div class="market-cell"><b>U/O 3.5</b><div class="market-val-row">{safe_get(row, ['U/O_3.5'])}</div></div>
+                    <div class="market-cell"><b>Goal/NoGoal</b><div class="market-val-row">{safe_get(row, ['Goal_NoGoal'])}</div></div>
+                    <div class="market-cell"><b>MG Casa Expect.</b><div class="market-val-row">{str(safe_get(row, ['Pronostico_MG_Casa', 'MG_Casa']))}</div></div>
+                    <div class="market-cell"><b>MG Ospite Expect.</b><div class="market-val-row">{str(safe_get(row, ['Pronostico_MG_Trasferta', 'MG_Ospite']))}</div></div>
+                    <div class="market-cell"><b>MG Casa + MG Ospite Expect.</b><div class="market-val-row">{str(safe_get(row, ['Pronostico_MG_Totale', 'MG_Totale']))}</div></div>
                     <div class="market-cell"><b>Corner 1X2</b><div class="market-val-row">{safe_get(row, ['Corner_1X2'])}</div></div>
                 </div>
             </div>
@@ -265,7 +263,7 @@ elif st.session_state.tab_selezionata == "STORICO":
             <div class="match-card">
                 <div class="meta-label">🏆 {safe_get(row, ['Campionato'])} | {safe_get(row, ['Data_Ora_Match', 'Data'])}</div>
                 <div class="team-text"> {safe_get(row, ['3. Match', 'Match'])}</div>
-                <div class="score-badge">⚽ Risultato Reale: {safe_get(row, ['Risultato_Reale'])}</div>
+                <div class="score-badge">⚽ Risultato Finale: {safe_get(row, ['Risultato_Reale'])}</div>
                 <div class="block-header">🎯 Esiti Pronostici Validati (12 Mercati)</div>
                 <div class="market-box">
                     <div class="market-cell"><b>1X2 ({safe_get(row, ['1X2'])})</b><div class="market-val-row">{get_badge(safe_get(row, ['Esito_1X2']))}</div></div>
@@ -276,9 +274,9 @@ elif st.session_state.tab_selezionata == "STORICO":
                     <div class="market-cell"><b>U/O 2.5 ({safe_get(row, ['U/O_2.5'])})</b><div class="market-val-row">{get_badge(safe_get(row, ['Esito_U/O_2.5']))}</div></div>
                     <div class="market-cell"><b>U/O 3.5 ({safe_get(row, ['U/O_3.5'])})</b><div class="market-val-row">{get_badge(safe_get(row, ['Esito_U/O_3.5']))}</div></div>
                     <div class="market-cell"><b>Goal/NG ({safe_get(row, ['Goal_NoGoal'])})</b><div class="market-val-row">{get_badge(safe_get(row, ['Esito_Goal_NoGoal']))}</div></div>
-                    <div class="market-cell"><b>MG Casa ({str(safe_get(row, ['Pronostico_MG_Casa', 'MG_Casa']))})</b><div class="market-val-row">{get_badge(safe_get(row, ['Esito_Media_Goal_Casa']))}</div></div>
-                    <div class="market-cell"><b>MG Ospite ({str(safe_get(row, ['Pronostico_MG_Trasferta', 'MG_Ospite']))})</b><div class="market-val-row">{get_badge(safe_get(row, ['Esito_Media_Goal_Trasferta']))}</div></div>
-                    <div class="market-cell"><b>MG Casa + MG Ospite ({str(safe_get(row, ['Pronostico_MG_Totale', 'MG_Totale']))})</b><div class="market-val-row">{get_badge(safe_get(row, ['Esito_Media_Goal_Totale']))}</div></div>
+                    <div class="market-cell"><b>MG Casa ({str(safe_get(row, ['Pronostico_MG_Casa', 'MG_Casa']))})</b><div class="market-val-row">{get_badge(safe_get(row, ['Esito_MG_Casa']))}</div></div>
+                    <div class="market-cell"><b>MG Ospite ({str(safe_get(row, ['Pronostico_MG_Trasferta', 'MG_Ospite']))})</b><div class="market-val-row">{get_badge(safe_get(row, ['Esito_MG_Trasferta']))}</div></div>
+                    <div class="market-cell"><b>MG Casa + MG Ospite ({str(safe_get(row, ['Pronostico_MG_Totale', 'MG_Totale']))})</b><div class="market-val-row">{get_badge(safe_get(row, ['Esito_MG_Totale']))}</div></div>
                     <div class="market-cell"><b>Corner 1X2 ({safe_get(row, ['Corner_1X2'])})</b><div class="market-val-row">{get_badge(safe_get(row, ['Esito_Corner_1X2']))}</div></div>
                 </div>
             </div>
