@@ -1,15 +1,15 @@
 import pandas as pd
 import os
 
-# PROGRESSIVO CHAT: #144 | Data: 30 Giugno 2026 | Ora: 17:28:12
-# Versione Progetto: 6.28 (Fix Validazione Multigol & Protezione Risultati Reali)
+# PROGRESSIVO CHAT: #142 | Data: 30 Giugno 2026
+# Modulo 03: Validatore con logica booleana corretta per il calcolo dei range Multigol (0 inclusivo)
 
 STORICO_FILE = "Storico_Validato_Betting.xlsx"
 
 def controlla_range_multigol(pronostico_str, gol_effettivi):
-    """Scompone la stringa (es. '0-1 MG' o '1-3') e verifica matematicamente se i gol rientrano nel range"""
+    """Scompone la stringa (es. '0-1 MG' o '1-3') e verifica se i gol effettivi rientrano nel range numerico"""
     p_str = str(pronostico_str).upper().replace("MG", "").strip()
-    if p_str == "-" or p_str == "NONE" or not p_str or p_str == "NAN":
+    if p_str == "-" or p_str == "NONE" or not p_str:
         return "IN ATTESA"
     
     try:
@@ -27,47 +27,35 @@ def controlla_range_multigol(pronostico_str, gol_effettivi):
 
 def esegui_validazione():
     if not os.path.exists(STORICO_FILE):
-        print(f"Errore: Il file {STORICO_FILE} non esiste.")
         return
         
     try:
         df = pd.read_excel(STORICO_FILE)
-    except Exception as e:
-        print(f"Errore nella lettura del file Excel: {e}")
+    except:
         return
 
     if df.empty:
-        print("Il file Excel è vuoto.")
         return
 
-    # Assicurati che le colonne degli esiti siano trattate come stringhe
-    colonne_esiti = ['Esito_MG_Casa', 'Esito_MG_Trasferta', 'Esito_MG_Totale']
-    for col in colonne_esiti:
-        if col not in df.columns:
-            df[col] = "-"
-
     for idx, row in df.iterrows():
-        # Recupero protetto del risultato reale senza alterarlo o sovrascriverlo con stringhe di errore
         ris_reale = str(row.get('Risultato_Reale', '')).strip()
-        
-        # Se il risultato è vuoto, nullo o non ancora definito, passa alla riga successiva senza toccare nulla
-        if not ris_reale or "-" not in ris_reale or ris_reale.upper() in ["NONE", "NAN", "NON ANCORA REALE/DA VALIDARE"]:
+        if not ris_reale or "-" not in ris_reale or ris_reale.upper() == "NONE":
             continue
             
         try:
-            parti_ris = ris_reale.split("-")
-            gol_casa = int(parti_ris[0].strip())
-            gol_ospite = int(parti_ris[1].strip())
+            gol_casa = int(ris_reale.split("-")[0].strip())
+            gol_ospite = int(ris_reale.split("-")[1].strip())
         except:
-            # Salta la riga se il formato del risultato reale è temporaneamente invalido (es. rinvii)
             continue
 
-        # 1. Validazione Multigol Casa (0 gol inclusi nel range 0-1)
-        p_casa = str(row.get('Pronostico_MG_Casa', row.get('MG_Casa', row.get('MG Casa', '-')))).strip()
+        # 1. Validazione Multigol Casa
+        p_casa = row.get('Pronostico_MG_Casa', row.get('MG_Casa', row.get('MG Casa', '-')))
+        df.at[idx, 'Esito_Media_Goal_Casa'] = controlla_range_multigol(p_casa, gol_casa)
         df.at[idx, 'Esito_MG_Casa'] = controlla_range_multigol(p_casa, gol_casa)
 
-        # 2. Validazione Multigol Ospite (1 gol incluso nel range 0-1)
-        p_ospite = str(row.get('Pronostico_MG_Trasferta', row.get('MG_Ospite', row.get('MG Ospite', '-')))).strip()
+        # 2. Validazione Multigol Ospite
+        p_ospite = row.get('Pronostico_MG_Trasferta', row.get('MG_Ospite', row.get('MG Ospite', '-')))
+        df.at[idx, 'Esito_Media_Goal_Trasferta'] = controlla_range_multigol(p_ospite, gol_ospite)
         df.at[idx, 'Esito_MG_Trasferta'] = controlla_range_multigol(p_ospite, gol_ospite)
 
         # 3. Validazione Multigol Combinato (FasciaCasa / FasciaOspite)
@@ -79,19 +67,18 @@ def esegui_validazione():
                 esito_o = controlla_range_multigol(parti_comb[1], gol_ospite)
                 
                 if esito_c == "VINCENTE" and esito_o == "VINCENTE":
-                    df.at[idx, 'Esito_MG_Totale'] = "VINCENTE"
+                    esito_finale = "VINCENTE"
                 else:
-                    df.at[idx, 'Esito_MG_Totale'] = "PERDENTE"
+                    esito_finale = "PERDENTE"
             except:
-                df.at[idx, 'Esito_MG_Totale'] = "PERDENTE"
+                esito_finale = "PERDENTE"
         else:
-            df.at[idx, 'Esito_MG_Totale'] = "PERDENTE"
+            esito_finale = "PERDENTE"
+            
+        df.at[idx, 'Esito_Media_Goal_Totale'] = esito_finale
+        df.at[idx, 'Esito_MG_Totale'] = esito_finale
 
-    try:
-        df.to_excel(STORICO_FILE, index=False)
-        print("Validazione completata con successo con logica corretta.")
-    except Exception as e:
-        print(f"Errore nel salvataggio del file Excel: {e}")
+    df.to_excel(STORICO_FILE, index=False)
 
 if __name__ == "__main__":
     esegui_validazione()
