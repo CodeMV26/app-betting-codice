@@ -120,10 +120,10 @@ def esegui_estrazione():
                         "Diff_Reti_Casa": st_casa.get("Differenza_Reti", 0),
                         "Diff_Reti_Ospite": st_ospite.get("Differenza_Reti", 0),
                         
-                        "1X2": None, "Risultato_Esatto": None, "Doppia_Chance": None, "DC+U/O2.5": None,
-                        "U/O_1.5": None, "U/O_2.5": None, "U/O_3.5": None, "Goal_NoGoal": None,
-                        "Pronostico_MG_Casa": None, "Pronostico_MG_Trasferta": None, "Pronostico_MG_Totale": None,
-                        "Corner_1X2": None
+                        "1X2": "-", "Risultato_Esatto": "-", "Doppia_Chance": "-", "DC+U/O2.5": "-",
+                        "U/O_1.5": "-", "U/O_2.5": "-", "U/O_3.5": "-", "Goal_NoGoal": "-",
+                        "Pronostico_MG_Casa": "-", "Pronostico_MG_Trasferta": "-", "Pronostico_MG_Totale": "-",
+                        "Corner_1X2": "-"
                     }
                     lista_match_totale.append(match_dict)
         except Exception as e:
@@ -131,10 +131,13 @@ def esegui_estrazione():
             
     df_risultato = pd.DataFrame(lista_match_totale)
     if not df_risultato.empty:
+        # Inizializziamo esplicitamente le colonne dei mercati come stringhe
+        colonne_stringa = ["1X2", "Risultato_Esatto", "Doppia_Chance", "DC+U/O2.5", "U/O_1.5", "U/O_2.5", "U/O_3.5", "Goal_NoGoal", "Pronostico_MG_Casa", "Pronostico_MG_Trasferta", "Pronostico_MG_Totale", "Corner_1X2"]
+        for c in colonne_stringa:
+            df_risultato[c] = df_risultato[c].astype(str)
         df_risultato.to_excel("Pronostici_App_Betting.xlsx", index=False)
         print(f"✅ Palinsesto creato con successo! Salvati {len(df_risultato)} match correnti.")
     else:
-        # Se la chiamata manuale fallisce, preserviamo la struttura vuota senza distruggere i file successivi
         if not os.path.exists("Pronostici_App_Betting.xlsx"):
             pd.DataFrame(columns=["Campionato", "3. Match"]).to_excel("Pronostici_App_Betting.xlsx", index=False)
 
