@@ -3,9 +3,6 @@ import numpy as np
 import os
 import math
 
-# PROGRESSIVO CHAT: #134 | Data: 30 Giugno 2026 | Ora: 13:05:20
-# Versione Modulo: 6.23 (Integrazione Range Discreti Multi-Goal & Allineamento Scrittura)
-
 def calcola_poisson_nativo(k, lmbda):
     """Calcola la probabilità di Poisson in modo nativo senza librerie esterne"""
     if lmbda <= 0:
@@ -60,18 +57,22 @@ def esegui_calcolo_motore():
         return
         
     try:
-        df = pd.read_excel(file_palinsesto)
+        # Leggiamo forzando l'interpretazione testuale delle colonne pronostico
+        df = pd.read_excel(file_palinsesto, dtype=str)
+        
+        # Ripristiniamo il tipo numerico corretto solo per i campi matematici di calcolo
+        colonne_numeriche = [
+            "Giocate_Casa", "Giocate_Ospite", "Media_Goal_Casa", "Goal_Subiti_Casa",
+            "Media_Goal_Trasferta", "Goal_Subiti_Ospite", "Punti_Casa", "Punti_Trasferta"
+        ]
+        for col in colonne_numeriche:
+            if col in df.columns:
+                df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
     except Exception:
         return
         
     if df.empty:
         return
-
-    # Forzatura del tipo di dato a stringa per evitare conflitti float64
-    colonne_testo = ["1X2", "Risultato_Esatto", "Doppia_Chance", "DC+U/O2.5", "U/O_1.5", "U/O_2.5", "U/O_3.5", "Goal_NoGoal", "Corner_1X2"]
-    for col in colonne_testo:
-        if col in df.columns:
-            df[col] = df[col].astype(str)
 
     for idx, row in df.iterrows():
         part_casa = row.get("Giocate_Casa", 10)
@@ -128,7 +129,6 @@ def esegui_calcolo_motore():
         uo_pref = "UN2.5" if p_under_25 >= 0.5 else "OV2.5"
         df.at[idx, "DC+U/O2.5"] = f"{dc_pref}+{uo_pref}"
         
-        # --- DISCRETIZZAZIONE IN RANGE COMMERCIALI PUNTO A ---
         range_casa = determina_range_multigoal(lambda_casa)
         range_ospite = determina_range_multigoal(mu_ospite)
         
@@ -138,6 +138,14 @@ def esegui_calcolo_motore():
         
         punti_c = row.get("Punti_Casa", 0)
         punti_o = row.get("Punti_Trasferta", 0)
+        
+        # Cast esplicito a float per evitare problemi di comparazione stringa/numero
+        try:
+            punti_c = float(punti_c)
+            punti_o = float(punti_o)
+        except:
+            punti_c, punti_o = 0.0, 0.0
+            
         if punti_c > punti_o + 5:
             df.at[idx, "Corner_1X2"] = "1"
         elif punti_o > punti_c + 5:
