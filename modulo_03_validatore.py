@@ -3,8 +3,8 @@ import pandas as pd
 import os
 from datetime import datetime, timedelta, timezone
 
-# PROGRESSIVO CHAT: #162 | Data: 01 Luglio 2026 | Ora: 08:12:35
-# Versione Modulo: 6.46 (Fix Totale Etichette In Attesa su Mercati MG Casa / Ospite / Totale)
+# PROGRESSIVO CHAT: #163 | Data: 01 Luglio 2026 | Ora: 08:26:17
+# Versione Modulo: 6.47 (Sblocco Forzato e Ispezione Flessibile Colonne MultiGoal)
 
 # Configurazione API Key Football-Data.org
 API_KEY = "e0ca06c07c634d4fb0950365bd82ffd0"
@@ -53,11 +53,11 @@ def analizza_multigol(pronostico_str, gol_effettivi):
 
 def esegui_validazione():
     """
-    Modulo 03 - Validatore Bloccato e Allineato - Versione 6.46
+    Modulo 03 - Validatore Bloccato e Allineato - Versione 6.47
     Risolve radicalmente i bug di calcolo sugli esiti Under/Over, Goal/NoGoal, Multigol e Combo DC+UO
     confrontando i risultati reali con i segni dei pronostici originali come stringhe e fasce numeriche.
     """
-    print("🏆 [FASE 2] Validazione e Allineamento Indici Blindato... Versione 6.46")
+    print("🏆 [FASE 2] Validazione e Allineamento Indici Blindato... Versione 6.47")
     
     if not os.path.exists(PALINSESTO_FILE):
         print(f"⚠️ Errore: File {PALINSESTO_FILE} non trovato.")
@@ -103,6 +103,12 @@ def esegui_validazione():
             print(f"Nota connessione API: {e}")
 
     record_convalidati = []
+
+    # Identificazione dinamica delle colonne per evitare mismatch di etichette
+    colonne_disponibili = list(df_palinsesto.columns)
+    col_casa = next((c for c in colonne_disponibili if "MG" in c.upper() and ("CASA" in c.upper() or "HOME" in c.upper())), None)
+    col_ospite = next((c for c in colonne_disponibili if "MG" in c.upper() and ("OSPITE" in c.upper() or "TRASFERTA" in c.upper() or "AWAY" in c.upper())), None)
+    col_totale = next((c for c in colonne_disponibili if "MG" in c.upper() and ("TOTALE" in c.upper() or "TOT" in c.upper() or "CASA + MG OSPITE" in c.upper())), None)
 
     for idx, row in df_palinsesto.iterrows():
         nuovo = row.copy()
@@ -178,17 +184,16 @@ def esegui_validazione():
                 
                 nuovo['Esito_DC+U/O2.5'] = "VINCENTE" if (esito_dc_boolean and esito_uo_combo_ok) else "PERDENTE"
                 
-                # 9. Media Goal Casa (Recupero colonne flessibile multi-chiave)
-                prono_mg_c = row.get('Pronostico_MG_Casa', row.get('MG_Casa', row.get('MG Casa', row.get('Media Goal Casa', '-'))))
+                # 9. Media Goal Casa (Risoluzione dinamica e forzatura esito)
+                prono_mg_c = row.get(col_casa, '-') if col_casa else '-'
                 nuovo['Esito_Media_Goal_Casa'] = "VINCENTE" if analizza_multigol(prono_mg_c, hg) else "PERDENTE"
                 
-                # 10. Media Goal Ospite (Recupero colonne flessibile multi-chiave)
-                prono_mg_o = row.get('Pronostico_MG_Trasferta', row.get('MG_Ospite', row.get('MG Ospite', row.get('Media Goal Ospite', '-'))))
+                # 10. Media Goal Ospite (Risoluzione dinamica e forzatura esito)
+                prono_mg_o = row.get(col_ospite, '-') if col_ospite else '-'
                 nuovo['Esito_Media_Goal_Trasferta'] = "VINCENTE" if analizza_multigol(prono_mg_o, ag) else "PERDENTE"
                 
-                # 11. Media Goal Totale / Combinata (Recupero colonne flessibile multi-chiave)
-                prono_mg_t = row.get('Pronostico_MG_Totale', row.get('MG_Totale', row.get('MG Totale', row.get('Media Goal Totale', '-'))))
-                prono_mg_t = str(prono_mg_t).strip()
+                # 11. Media Goal Totale / Combinata (Risoluzione dinamica e forzatura esito)
+                prono_mg_t = str(row.get(col_totale, '-')).strip() if col_totale else '-'
                 
                 esito_mg_t_ok = False
                 if "/" in prono_mg_t:
