@@ -4,8 +4,8 @@ import os
 import re
 from datetime import datetime, timedelta, timezone
 
-# PROGRESSIVO CHAT: #192 | Data: 01 Luglio 2026 | Ora: 21:01:15
-# Versione Modulo: 6.76 (Integrazione della Mappatura Doppia e Parsing Stringhe Combinato MG Casa + MG Ospite nel Modulo 03)
+# PROGRESSIVO CHAT: #193 | Data: 01 Luglio 2026 | Ora: 21:07:25
+# Versione Modulo: 6.77 (Modifica Totale e Allineamento Stringa MG Casa + MG Ospite con parentesi ed esito combinato rigido)
 
 # Configurazione API Key Football-Data.org
 API_KEY = "e0ca06c07c634d4fb0950365bd82ffd0"
@@ -62,10 +62,10 @@ def analizza_multigol(pronostico_str, gol_effettivi):
 
 def esegui_validazione():
     """
-    Modulo 03 - Validatore Radicale - Versione 6.76
+    Modulo 03 - Validatore Radicale - Versione 6.77
     Mappatura esplicita, ridondante e totale per sradicare 'IN ATTESA' dai mercati Multigol.
     """
-    print("🏆 [FASE 2] Validazione Radicale e Scrittura Diretta... Versione 6.76")
+    print("🏆 [FASE 2] Validazione Radicale e Scrittura Diretta... Versione 6.77")
     
     if not os.path.exists(PALINSESTO_FILE):
         print(f"⚠️ Errore: File {PALINSESTO_FILE} non trovato.")
@@ -181,14 +181,12 @@ def esegui_validazione():
                 nuovo['MG_Ospite'] = esito_ospite_calc
                 nuovo['MG Ospite'] = esito_ospite_calc
 
-                # Allineamento dinamico su colonne create on-the-fly
                 for c_index in nuovo.index:
                     c_upper = str(c_index).upper()
                     if "TRASFERTA" in c_upper or "OSPITE" in c_upper:
                         if "ESITO" in c_upper:
                             nuovo[c_index] = esito_ospite_calc
 
-                # Isolamento e pulizia del pronostico testuale senza intaccare gli esiti scritti sopra
                 ricerca_p_o = re.search(r'\((.*?)\)', str(val_o))
                 stringa_o_pulita = ricerca_p_o.group(1).replace("MG", "").strip() if ricerca_p_o else str(val_o).replace("MG", "").strip()
                 if stringa_o_pulita != "":
@@ -197,27 +195,44 @@ def esegui_validazione():
                         nuovo['Pronostico_MG_Ospite'] = stringa_o_pulita
 
                 # 11. VERIFICA MULTIGOL TOTALE MATCH (MERCATO COMBINATO: MG CASA + MG OSPITE)
-                val_t = row.get('Pronostico_MG_Totale', row.get('MG_Totale', row.get('MG Totale', '-')))
+                val_t = row.get('Pronostico_MG_Totale', row.get('MG_Totale', row.get('MG Totale', row.get('MG_Casa+MG_Ospite', '-'))))
                 stringa_t_pulita = str(val_t).strip().upper()
                 
-                # Estrazione accurata se racchiusa tra parentesi
+                # Estrazione del contenuto puro tra parentesi se presente
                 ricerca_parentesi_t = re.search(r'\((.*?)\)', stringa_t_pulita)
                 stringa_parsing = ricerca_parentesi_t.group(1).strip() if ricerca_parentesi_t else stringa_t_pulita
                 
-                esito_mg_t_ok = False
+                esito_mg_combinato_ok = False
+                coppia_pulita = "0-0 / 0-0" # Valore di fallback grafico
+                
                 if "/" in stringa_parsing:
                     parti_mg = stringa_parsing.split("/")
                     if len(parti_mg) == 2:
-                        # Controllo combinato incrociato: blocco 1 su gol Casa, blocco 2 su gol Ospite
-                        esito_c_ok = analizza_multigol(parti_mg[0].strip(), hg)
-                        esito_o_ok = analizza_multigol(parti_mg[1].strip(), ag)
-                        esito_mg_t_ok = esito_c_ok and esito_o_ok
+                        range_casa = parti_mg[0].replace("MG", "").strip()
+                        range_ospite = parti_mg[1].replace("MG", "").strip()
+                        coppia_pulita = f"{range_casa} / {range_ospite}"
+                        
+                        # Convalida incrociata indipendente e tassativa dei due singoli scompartimenti gol
+                        esito_c_ok = analizza_multigol(range_casa, hg)
+                        esito_o_ok = analizza_multigol(range_target=range_ospite, gol_effettivi=ag) if 'range_target' in str(analizza_multigol.__code__.co_varnames) else analizza_multigol(range_ospite, ag)
+                        
+                        esito_mg_combinato_ok = esito_c_ok and esito_o_ok
                 else:
-                    esito_mg_t_ok = analizza_multigol(stringa_parsing, tot_gol)
-                    
-                esito_totale_calc = "VINCENTE" if esito_mg_t_ok else "PERDENTE"
-                for col_t in ['Esito_MG_Totale', 'MG_Totale', 'MG Totale']:
+                    # Fallback sul totale se la stringa non è formattata con lo slash
+                    esito_mg_combinato_ok = analizza_multigol(stringa_parsing, tot_gol)
+                    coppia_pulita = stringa_parsing
+
+                esito_totale_calc = "VINCENTE" if esito_mg_combinato_ok else "PERDENTE"
+                
+                # Salvataggio esiti su tutte le colonne possibili per prevenire troncamenti o mancate letture
+                for col_t in ['Esito_MG_Totale', 'MG_Totale', 'MG Totale', 'Esito_MG_Casa+MG_Ospite', 'Esito_MG_Casa_MG_Ospite']:
                     nuovo[col_t] = esito_totale_calc
+                
+                # Formattazione e inserimento a destra del nome del mercato racchiuso tra parentesi
+                stringa_finale_mercato = f"MG Casa + MG Ospite ({coppia_pulita})"
+                for col_label in ['Pronostico_MG_Totale', 'MG_Totale', 'MG Totale', 'MG_Casa+MG_Ospite']:
+                    if col_label in nuovo:
+                        nuovo[col_label] = stringa_finale_mercato
                 
                 # 12. Corner 1X2
                 nuovo['Esito_Corner_1X2'] = "VINCENTE" if str(row.get('Corner_1X2', '-')) != "-" else "PERDENTE"
@@ -228,7 +243,7 @@ def esegui_validazione():
                             'Esito_U/O_1.5', 'Esito_U/O_2.5', 'Esito_U/O_3.5', 'Esito_Goal_NoGoal', 
                             'Esito_MG_Casa', 'MG_Casa', 'MG Casa', 'Esito_MG_Trasferta', 'Esito_MG_Ospite', 
                             'Esito_Pronostico_MG_Trasferta', 'Esito_Pronostico_MG_Ospite', 'MG_Ospite', 'MG Ospite', 
-                            'Esito_MG_Totale', 'MG_Totale', 'MG Totale', 'Esito_Corner_1X2']:
+                            'Esito_MG_Totale', 'MG_Totale', 'MG Totale', 'Esito_Corner_1X2', 'Esito_MG_Casa+MG_Ospite']:
                     nuovo[col] = "IN ATTESA"
         else:
             nuovo['Risultato_Reale'] = "IN ATTESA"
