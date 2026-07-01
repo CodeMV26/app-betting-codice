@@ -3,8 +3,8 @@ import pandas as pd
 import os
 from datetime import datetime, timedelta, timezone
 
-# PROGRESSIVO CHAT: #177 | Data: 01 Luglio 2026 | Ora: 12:38:12
-# Versione Modulo: 6.62 (Sradicamento Totale di "IN ATTESA" e Forzatura Sovrascrittura Diretta su MG Ospite)
+# PROGRESSIVO CHAT: #178 | Data: 01 Luglio 2026 | Ora: 12:44:30
+# Versione Modulo: 6.63 (Bonifica Forzata Struttura DataFrame - Sradicamento Definitivo "IN ATTESA")
 
 # Configurazione API Key Football-Data.org
 API_KEY = "e0ca06c07c634d4fb0950365bd82ffd0"
@@ -54,12 +54,12 @@ def analizza_multigol(pronostico_str, gol_effettivi):
 
 def esegui_validazione():
     """
-    Modulo 03 - Validatore Bloccato e Allineato - Versione 6.62
+    Modulo 03 - Validatore Bloccato e Allineato - Versione 6.63
     Sradica totalmente il messaggio 'IN ATTESA' dal pannello MG Ospite forzando
     l'allineamento di tutti i possibili alias di colonna usati dalla webapp.
     Preserva intatto il resto del motore di calcolo e validazione.
     """
-    print("🏆 [FASE 2] Validazione e Allineamento Indici Blindato... Versione 6.62")
+    print("🏆 [FASE 2] Validazione e Allineamento Indici Blindato... Versione 6.63")
     
     if not os.path.exists(PALINSESTO_FILE):
         print(f"⚠️ Errore: File {PALINSESTO_FILE} non trovato.")
@@ -178,16 +178,25 @@ def esegui_validazione():
                 if 'MG Casa' in nuovo: nuovo['MG Casa'] = esito_casa_calc
                 nuovo[col_casa] = prono_mg_c
                 
-                # 10. VERIFICA MULTIGOL OSPITE (Sfratto Totale e Sradicamento di ogni stringa 'IN ATTESA')
+                # 10. VERIFICA MULTIGOL OSPITE (Sfratto Totale e Sradicamento Dinamico di ogni stringa 'IN ATTESA')
                 prono_mg_o = str(row.get(col_ospite, '-')).strip()
                 esito_ospite_calc = "VINCENTE" if analizza_multigol(prono_mg_o, ag) else "PERDENTE"
                 
-                # Sovrascrittura rigida e atomica su tutte le chiavi possibili per annientare 'IN ATTESA'
+                # Ciclo di pulizia radicale: sovrascrive qualsiasi colonna Ospite che contenga "IN ATTESA"
+                for c_chiave in nuovo.index:
+                    c_upper = str(c_chiave).upper()
+                    if "OSPITE" in c_upper or "TRASFERTA" in c_upper or "AWAY" in c_upper:
+                        if "ESITO" in c_upper or "MG" in c_upper:
+                            # Se la cella conteneva "IN ATTESA" o vecchi esiti di controllo, forziamo il valore reale
+                            if str(nuovo[c_chiave]).strip().upper() == "IN ATTESA" or "ESITO" in c_upper:
+                                nuovo[c_chiave] = esito_ospite_calc
+                
+                # Garanzia di allineamento sulle chiavi canoniche fisse
                 nuovo[col_esito_ospite] = esito_ospite_calc
                 nuovo['Esito_MG_Ospite'] = esito_ospite_calc
                 if 'MG_Ospite' in nuovo: nuovo['MG_Ospite'] = esito_ospite_calc
                 if 'MG Ospite' in nuovo: nuovo['MG Ospite'] = esito_ospite_calc
-                nuovo[col_ospite] = prono_mg_o  # Mantiene il pronostico numerico a destra
+                nuovo[col_ospite] = prono_mg_o  # Lascia intatto il valore del pronostico a destra (es: "0-1")
                 
                 # 11. VERIFICA MULTIGOL TOTALE MATCH
                 prono_mg_t = str(row.get(col_totale, '-')).strip()
