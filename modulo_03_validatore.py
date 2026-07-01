@@ -4,8 +4,8 @@ import os
 import re
 from datetime import datetime, timedelta, timezone
 
-# PROGRESSIVO CHAT: #186 | Data: 01 Luglio 2026 | Ora: 19:23:14
-# Versione Modulo: 6.70 (Correzione Mappatura Rigida "Pronostico_MG_Trasferta" Modulo 03)
+# PROGRESSIVO CHAT: #187 | Data: 01 Luglio 2026 | Ora: 19:43:55
+# Versione Modulo: 6.71 (Risoluzione Definitiva Sovrascrittura Colonna Pronostico e Iniezione Esito MG Trasferta)
 
 # Configurazione API Key Football-Data.org
 API_KEY = "e0ca06c07c634d4fb0950365bd82ffd0"
@@ -62,10 +62,10 @@ def analizza_multigol(pronostico_str, gol_effettivi):
 
 def esegui_validazione():
     """
-    Modulo 03 - Validatore Radicale - Versione 6.70
+    Modulo 03 - Validatore Radicale - Versione 6.71
     Mappatura esplicita, ridondante e totale per sradicare 'IN ATTESA' dai mercati Multigol.
     """
-    print("🏆 [FASE 2] Validazione Radicale e Scrittura Diretta... Versione 6.70")
+    print("🏆 [FASE 2] Validazione Radicale e Scrittura Diretta... Versione 6.71")
     
     if not os.path.exists(PALINSESTO_FILE):
         print(f"⚠️ Errore: File {PALINSESTO_FILE} non trovato.")
@@ -169,18 +169,21 @@ def esegui_validazione():
                 for col_c in ['Esito_MG_Casa', 'MG_Casa', 'MG Casa', 'Esito_MG_Casa_Calcolato']:
                     nuovo[col_c] = esito_casa_calc
                 
-                # 10. VERIFICA MULTIGOL OSPITE (Allineamento Rigido su 'Pronostico_MG_Trasferta')
+                # 10. VERIFICA MULTIGOL OSPITE (Mappatura Rigida e Allineamento Totale con Modulo 02)
                 val_o = row.get('Pronostico_MG_Trasferta', row.get('Pronostico_MG_Ospite', row.get('MG_Ospite', row.get('MG Ospite', '-'))))
                 esito_ospite_calc = "VINCENTE" if analizza_multigol(val_o, ag) else "PERDENTE"
-                for col_o in ['Esito_MG_Ospite', 'MG_Ospite', 'MG Ospite', 'Esito_MG_Ospite_Calcolato']:
+                
+                # Riempimento massivo e blindato delle colonne di esito per la Trasferta / Ospite
+                for col_o in ['Esito_MG_Trasferta', 'Esito_MG_Ospite', 'MG_Ospite', 'MG Ospite', 'Esito_MG_Ospite_Calcolato']:
                     nuovo[col_o] = esito_ospite_calc
 
-                # Pulizia della stringa pronostico per evitare sovrascritture sporche nell'Excel visualizzato
+                # Pulizia della stringa pronostico per rimuovere appendici pendenti nell'output dell'Excel
                 ricerca_p_o = re.search(r'\((.*?)\)', str(val_o))
                 stringa_o_pulita = ricerca_p_o.group(1).replace("MG", "").strip() if ricerca_p_o else str(val_o).replace("MG", "").strip()
-                if "ATTESA" not in stringa_o_pulita.upper() and stringa_o_pulita != "-":
-                    for col_p_o in ['Pronostico_MG_Trasferta', 'Pronostico_MG_Ospite']:
-                        nuovo[col_p_o] = stringa_o_pulita
+                if stringa_o_pulita != "-" and "ATTESA" not in stringa_o_pulita.upper():
+                    nuovo['Pronostico_MG_Trasferta'] = stringa_o_pulita
+                    if 'Pronostico_MG_Ospite' in nuovo:
+                        nuovo['Pronostico_MG_Ospite'] = stringa_o_pulita
 
                 # 11. VERIFICA MULTIGOL TOTALE MATCH
                 val_t = row.get('Pronostico_MG_Totale', row.get('MG_Totale', row.get('MG Totale', '-')))
@@ -206,7 +209,7 @@ def esegui_validazione():
                 nuovo['Risultato_Reale'] = "IN ATTESA"
                 for col in ['Esito_1X2', 'Esito_Risultato_Esatto', 'Esito_Doppia_Chance', 'Esito_DC+U/O2.5', 
                             'Esito_U/O_1.5', 'Esito_U/O_2.5', 'Esito_U/O_3.5', 'Esito_Goal_NoGoal', 
-                            'Esito_MG_Casa', 'MG_Casa', 'MG Casa', 'Esito_MG_Ospite', 'MG_Ospite', 'MG Ospite', 
+                            'Esito_MG_Casa', 'MG_Casa', 'MG Casa', 'Esito_MG_Trasferta', 'Esito_MG_Ospite', 'MG_Ospite', 'MG Ospite', 
                             'Esito_MG_Totale', 'MG_Totale', 'MG Totale', 'Esito_Corner_1X2']:
                     nuovo[col] = "IN ATTESA"
         else:
