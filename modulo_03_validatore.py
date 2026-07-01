@@ -3,8 +3,8 @@ import pandas as pd
 import os
 from datetime import datetime, timedelta, timezone
 
-# PROGRESSIVO CHAT: #176 | Data: 01 Luglio 2026 | Ora: 12:30:57
-# Versione Modulo: 6.61 (Blindatura Posizioni Pronostici e Pulizia "IN ATTESA" su MG Ospite e MG Combo)
+# PROGRESSIVO CHAT: #177 | Data: 01 Luglio 2026 | Ora: 12:38:12
+# Versione Modulo: 6.62 (Sradicamento Totale di "IN ATTESA" e Forzatura Sovrascrittura Diretta su MG Ospite)
 
 # Configurazione API Key Football-Data.org
 API_KEY = "e0ca06c07c634d4fb0950365bd82ffd0"
@@ -54,12 +54,12 @@ def analizza_multigol(pronostico_str, gol_effettivi):
 
 def esegui_validazione():
     """
-    Modulo 03 - Validatore Bloccato e Allineato - Versione 6.61
-    Risolve le anomalie di locazione stringhe per MG Ospite e MG Combo.
-    Assicura che i messaggi 'IN ATTESA' spariscano sotto il mercato inserendo gli esiti reali,
-    e mappa correttamente i pronostici originari da mostrare a destra tra parentesi.
+    Modulo 03 - Validatore Bloccato e Allineato - Versione 6.62
+    Sradica totalmente il messaggio 'IN ATTESA' dal pannello MG Ospite forzando
+    l'allineamento di tutti i possibili alias di colonna usati dalla webapp.
+    Preserva intatto il resto del motore di calcolo e validazione.
     """
-    print("🏆 [FASE 2] Validazione e Allineamento Indici Blindato... Versione 6.61")
+    print("🏆 [FASE 2] Validazione e Allineamento Indici Blindato... Versione 6.62")
     
     if not os.path.exists(PALINSESTO_FILE):
         print(f"⚠️ Errore: File {PALINSESTO_FILE} non trovato.")
@@ -178,15 +178,18 @@ def esegui_validazione():
                 if 'MG Casa' in nuovo: nuovo['MG Casa'] = esito_casa_calc
                 nuovo[col_casa] = prono_mg_c
                 
-                # 10. VERIFICA MULTIGOL OSPITE (Spostamento Esito Sotto il Nome e Rimozione Rigida "IN ATTESA")
+                # 10. VERIFICA MULTIGOL OSPITE (Sfratto Totale e Sradicamento di ogni stringa 'IN ATTESA')
                 prono_mg_o = str(row.get(col_ospite, '-')).strip()
                 esito_ospite_calc = "VINCENTE" if analizza_multigol(prono_mg_o, ag) else "PERDENTE"
+                
+                # Sovrascrittura rigida e atomica su tutte le chiavi possibili per annientare 'IN ATTESA'
                 nuovo[col_esito_ospite] = esito_ospite_calc
+                nuovo['Esito_MG_Ospite'] = esito_ospite_calc
                 if 'MG_Ospite' in nuovo: nuovo['MG_Ospite'] = esito_ospite_calc
                 if 'MG Ospite' in nuovo: nuovo['MG Ospite'] = esito_ospite_calc
-                nuovo[col_ospite] = prono_mg_o
+                nuovo[col_ospite] = prono_mg_o  # Mantiene il pronostico numerico a destra
                 
-                # 11. VERIFICA MULTIGOL TOTALE MATCH (Mappatura Doppio Pronostico Originario a Destra)
+                # 11. VERIFICA MULTIGOL TOTALE MATCH
                 prono_mg_t = str(row.get(col_totale, '-')).strip()
                 
                 esito_mg_t_ok = False
