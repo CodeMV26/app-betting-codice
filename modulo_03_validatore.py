@@ -4,8 +4,8 @@ import os
 import re
 from datetime import datetime, timedelta, timezone
 
-# PROGRESSIVO CHAT: #181 | Data: 01 Luglio 2026 | Ora: 18:14:50
-# Versione Modulo: 6.66 (Sradicamento Atomico e Totale di "IN ATTESA" su MG Ospite)
+# PROGRESSIVO CHAT: #183 | Data: 01 Luglio 2026 | Ora: 18:39:52
+# Versione Modulo: 6.67 (Allineamento Simmetrico di MG Ospite sul Modello Standard di MG Casa)
 
 # Configurazione API Key Football-Data.org
 API_KEY = "e0ca06c07c634d4fb0950365bd82ffd0"
@@ -55,11 +55,10 @@ def analizza_multigol(pronostico_str, gol_effettivi):
 
 def esegui_validazione():
     """
-    Modulo 03 - Validatore Bloccato e Allineato - Versione 6.66
-    Intercetta ed estrae chirurgicamente il pronostico dalle stringhe sporche 
-    del tipo 'MG OSPITE (0-1 MG)IN ATTESA' calcolando l'esito reale.
+    Modulo 03 - Validatore Bloccato e Allineato - Versione 6.67
+    Intercetta ed estrae il pronostico ed impone la correzione simmetrica sul mercato MG Ospite.
     """
-    print("🏆 [FASE 2] Validazione e Allineamento Indici Blindato... Versione 6.66")
+    print("🏆 [FASE 2] Validazione e Allineamento Indici Blindato... Versione 6.67")
     
     if not os.path.exists(PALINSESTO_FILE):
         print(f"⚠️ Errore: File {PALINSESTO_FILE} non trovato.")
@@ -178,10 +177,10 @@ def esegui_validazione():
                 if 'MG Casa' in nuovo: nuovo['MG Casa'] = esito_casa_calc
                 nuovo[col_casa] = prono_mg_c
                 
-                # 10. VERIFICA MULTIGOL OSPITE - CORREZIONE CON VALUTAZIONE REGEX AVANZATA E SOVRASCRITTURA FORZATA
+                # 10. VERIFICA MULTIGOL OSPITE - ADATTATA DA MODELLO CASA
                 valore_grezzo_ospite = str(row.get(col_ospite, '-')).strip()
                 
-                # Estrazione del range numerico (es: 0-1) da stringhe del tipo "MG OSPITE (0-1 MG)IN ATTESA"
+                # Se all'interno troviamo la parentesi con l'indicazione numerica, la isoliamo
                 ricerca_parentesi = re.search(r'\((.*?)\)', valore_grezzo_ospite)
                 if ricerca_parentesi:
                     prono_mg_o = ricerca_parentesi.group(1).replace("MG", "").strip()
@@ -189,21 +188,10 @@ def esegui_validazione():
                     prono_mg_o = valore_grezzo_ospite.replace("MG", "").strip()
                 
                 esito_ospite_calc = "VINCENTE" if analizza_multigol(prono_mg_o, ag) else "PERDENTE"
-                
-                # Bonifica totale: sovrascrive ed elimina qualsiasi residuo di "IN ATTESA" su colonne Ospite
-                for c_chiave in nuovo.index:
-                    c_upper = str(c_chiave).upper()
-                    if "OSPITE" in c_upper or "TRASFERTA" in c_upper or "AWAY" in c_upper:
-                        # Se è una colonna esito o se contiene la stringa bloccata "IN ATTESA", forza l'esito reale calcolato
-                        if "ESITO" in c_upper or "IN ATTESA" in str(nuovo[c_chiave]).upper():
-                            nuovo[c_chiave] = esito_ospite_calc
-                            
-                # Blindatura statica degli indici noti per azzerare rischi di visualizzazione legacy
                 nuovo[col_esito_ospite] = esito_ospite_calc
-                nuovo['Esito_MG_Ospite'] = esito_ospite_calc
                 if 'MG_Ospite' in nuovo: nuovo['MG_Ospite'] = esito_ospite_calc
                 if 'MG Ospite' in nuovo: nuovo['MG Ospite'] = esito_ospite_calc
-                nuovo[col_ospite] = prono_mg_o  # Mantiene solo la stringa numerica pulita (es: "0-1")
+                nuovo[col_ospite] = prono_mg_o
                 
                 # 11. VERIFICA MULTIGOL TOTALE MATCH
                 prono_mg_t = str(row.get(col_totale, '-')).strip()
