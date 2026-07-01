@@ -4,8 +4,8 @@ import os
 import re
 from datetime import datetime, timedelta, timezone
 
-# PROGRESSIVO CHAT: #190 | Data: 01 Luglio 2026 | Ora: 20:14:56
-# Versione Modulo: 6.74 (Iniezione di Sicurezza sul Ciclo For e Sblocco "IN ATTESA" nel Modulo 03)
+# PROGRESSIVO CHAT: #191 | Data: 01 Luglio 2026 | Ora: 20:40:37
+# Versione Modulo: 6.75 (Sradicamento Totale di "IN ATTESA" e Forzatura della Colonna Esatta nell'Output Finalizzato)
 
 # Configurazione API Key Football-Data.org
 API_KEY = "e0ca06c07c634d4fb0950365bd82ffd0"
@@ -62,10 +62,10 @@ def analizza_multigol(pronostico_str, gol_effettivi):
 
 def esegui_validazione():
     """
-    Modulo 03 - Validatore Radicale - Versione 6.74
+    Modulo 03 - Validatore Radicale - Versione 6.75
     Mappatura esplicita, ridondante e totale per sradicare 'IN ATTESA' dai mercati Multigol.
     """
-    print("🏆 [FASE 2] Validazione Radicale e Scrittura Diretta... Versione 6.74")
+    print("🏆 [FASE 2] Validazione Radicale e Scrittura Diretta... Versione 6.75")
     
     if not os.path.exists(PALINSESTO_FILE):
         print(f"⚠️ Errore: File {PALINSESTO_FILE} non trovato.")
@@ -169,21 +169,26 @@ def esegui_validazione():
                 for col_c in ['Esito_MG_Casa', 'MG_Casa', 'MG Casa', 'Esito_MG_Casa_Calcolato']:
                     nuovo[col_c] = esito_casa_calc
                 
-                # 10. VERIFICA MULTIGOL OSPITE (Mappatura assoluta e creazione colonna speculare esito)
+                # 10. VERIFICA MULTIGOL OSPITE (Forzatura e allineamento totale)
                 val_o = row.get('Pronostico_MG_Trasferta', row.get('Pronostico_MG_Ospite', row.get('MG_Ospite', row.get('MG Ospite', '-'))))
                 esito_ospite_calc = "VINCENTE" if analizza_multigol(val_o, ag) else "PERDENTE"
                 
-                # Riempimento totale e assoluto di tutte le combinazioni possibili
-                for col_o in ['Esito_Pronostico_MG_Trasferta', 'Esito_MG_Trasferta', 'Esito_MG_Ospite', 'MG_Ospite', 'MG Ospite', 'Esito_MG_Ospite_Calcolato']:
-                    nuovo[col_o] = esito_ospite_calc
+                # Scrittura forzata dell'esito calcolato su tutte le chiavi possibili cercate dall'app mobile
+                nuovo['Esito_MG_Trasferta'] = esito_ospite_calc
+                nuovo['Esito_MG_Ospite'] = esito_ospite_calc
+                nuovo['Esito_Pronostico_MG_Trasferta'] = esito_ospite_calc
+                nuovo['Esito_Pronostico_MG_Ospite'] = esito_ospite_calc
+                nuovo['MG_Ospite'] = esito_ospite_calc
+                nuovo['MG Ospite'] = esito_ospite_calc
 
-                for col_chiave in nuovo.index:
-                    col_upper = str(col_chiave).upper()
-                    if "TRASFERTA" in col_upper or "OSPITE" in col_upper:
-                        if "ESITO" in col_upper:
-                            nuovo[col_chiave] = esito_ospite_calc
+                # Allineamento dinamico su colonne create on-the-fly
+                for c_index in nuovo.index:
+                    c_upper = str(c_index).upper()
+                    if "TRASFERTA" in c_upper or "OSPITE" in c_upper:
+                        if "ESITO" in c_upper:
+                            nuovo[c_index] = esito_ospite_calc
 
-                # Pulizia stringa pronostico per rimuovere stringhe parassite
+                # Isolamento e pulizia del pronostico testuale senza intaccare gli esiti scritti sopra
                 ricerca_p_o = re.search(r'\((.*?)\)', str(val_o))
                 stringa_o_pulita = ricerca_p_o.group(1).replace("MG", "").strip() if ricerca_p_o else str(val_o).replace("MG", "").strip()
                 if stringa_o_pulita != "":
@@ -215,7 +220,8 @@ def esegui_validazione():
                 nuovo['Risultato_Reale'] = "IN ATTESA"
                 for col in ['Esito_1X2', 'Esito_Risultato_Esatto', 'Esito_Doppia_Chance', 'Esito_DC+U/O2.5', 
                             'Esito_U/O_1.5', 'Esito_U/O_2.5', 'Esito_U/O_3.5', 'Esito_Goal_NoGoal', 
-                            'Esito_MG_Casa', 'MG_Casa', 'MG Casa', 'Esito_Pronostico_MG_Trasferta', 'Esito_MG_Trasferta', 'Esito_MG_Ospite', 'MG_Ospite', 'MG Ospite', 
+                            'Esito_MG_Casa', 'MG_Casa', 'MG Casa', 'Esito_MG_Trasferta', 'Esito_MG_Ospite', 
+                            'Esito_Pronostico_MG_Trasferta', 'Esito_Pronostico_MG_Ospite', 'MG_Ospite', 'MG Ospite', 
                             'Esito_MG_Totale', 'MG_Totale', 'MG Totale', 'Esito_Corner_1X2']:
                     nuovo[col] = "IN ATTESA"
         else:
