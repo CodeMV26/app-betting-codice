@@ -4,8 +4,8 @@ import os
 import re
 from datetime import datetime, timedelta, timezone
 
-# PROGRESSIVO CHAT: #191 | Data: 01 Luglio 2026 | Ora: 20:40:37
-# Versione Modulo: 6.75 (Sradicamento Totale di "IN ATTESA" e Forzatura della Colonna Esatta nell'Output Finalizzato)
+# PROGRESSIVO CHAT: #192 | Data: 01 Luglio 2026 | Ora: 21:01:15
+# Versione Modulo: 6.76 (Integrazione della Mappatura Doppia e Parsing Stringhe Combinato MG Casa + MG Ospite nel Modulo 03)
 
 # Configurazione API Key Football-Data.org
 API_KEY = "e0ca06c07c634d4fb0950365bd82ffd0"
@@ -62,10 +62,10 @@ def analizza_multigol(pronostico_str, gol_effettivi):
 
 def esegui_validazione():
     """
-    Modulo 03 - Validatore Radicale - Versione 6.75
+    Modulo 03 - Validatore Radicale - Versione 6.76
     Mappatura esplicita, ridondante e totale per sradicare 'IN ATTESA' dai mercati Multigol.
     """
-    print("🏆 [FASE 2] Validazione Radicale e Scrittura Diretta... Versione 6.75")
+    print("🏆 [FASE 2] Validazione Radicale e Scrittura Diretta... Versione 6.76")
     
     if not os.path.exists(PALINSESTO_FILE):
         print(f"⚠️ Errore: File {PALINSESTO_FILE} non trovato.")
@@ -196,18 +196,24 @@ def esegui_validazione():
                     if 'Pronostico_MG_Ospite' in nuovo:
                         nuovo['Pronostico_MG_Ospite'] = stringa_o_pulita
 
-                # 11. VERIFICA MULTIGOL TOTALE MATCH
+                # 11. VERIFICA MULTIGOL TOTALE MATCH (MERCATO COMBINATO: MG CASA + MG OSPITE)
                 val_t = row.get('Pronostico_MG_Totale', row.get('MG_Totale', row.get('MG Totale', '-')))
-                prono_mg_t = str(val_t).strip()
+                stringa_t_pulita = str(val_t).strip().upper()
+                
+                # Estrazione accurata se racchiusa tra parentesi
+                ricerca_parentesi_t = re.search(r'\((.*?)\)', stringa_t_pulita)
+                stringa_parsing = ricerca_parentesi_t.group(1).strip() if ricerca_parentesi_t else stringa_t_pulita
+                
                 esito_mg_t_ok = False
-                if "/" in prono_mg_t:
-                    parti_mg = prono_mg_t.split("/")
+                if "/" in stringa_parsing:
+                    parti_mg = stringa_parsing.split("/")
                     if len(parti_mg) == 2:
-                        esito_c_ok = analizza_multigol(parti_mg[0], hg)
-                        esito_o_ok = analizza_multigol(parti_mg[1], ag)
+                        # Controllo combinato incrociato: blocco 1 su gol Casa, blocco 2 su gol Ospite
+                        esito_c_ok = analizza_multigol(parti_mg[0].strip(), hg)
+                        esito_o_ok = analizza_multigol(parti_mg[1].strip(), ag)
                         esito_mg_t_ok = esito_c_ok and esito_o_ok
                 else:
-                    esito_mg_t_ok = analizza_multigol(prono_mg_t, tot_gol)
+                    esito_mg_t_ok = analizza_multigol(stringa_parsing, tot_gol)
                     
                 esito_totale_calc = "VINCENTE" if esito_mg_t_ok else "PERDENTE"
                 for col_t in ['Esito_MG_Totale', 'MG_Totale', 'MG Totale']:
