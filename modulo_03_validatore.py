@@ -3,8 +3,8 @@ import pandas as pd
 import os
 from datetime import datetime, timedelta, timezone
 
-# PROGRESSIVO CHAT: #165 | Data: 01 Luglio 2026 | Ora: 08:50:39
-# Versione Modulo: 6.49 (Sradicamento Totale "IN ATTESA" e Allineamento Rigido alle Fasce di Gol)
+# PROGRESSIVO CHAT: #170 | Data: 01 Luglio 2026 | Ora: 09:20:11
+# Versione Modulo: 6.55 (Risoluzione Definitiva Mappatura Etichette Multigol)
 
 # Configurazione API Key Football-Data.org
 API_KEY = "e0ca06c07c634d4fb0950365bd82ffd0"
@@ -27,7 +27,7 @@ def normalizza_team(nome):
 def analizza_multigol(pronostico_str, gol_effettivi):
     """
     Verifica se i gol effettivi rientrano nella fascia multigol indicata nel pronostico (es. '0-1', '2-3', '1-2').
-    Se contiene '+', verifica che i gol siano maggiori o uguali al limite inferiore (es. '2+').
+    Se contiene '+', verifica che i gol siano maiores o uguali al limite inferiore (es. '2+').
     """
     if pd.isna(pronostico_str):
         return False
@@ -55,11 +55,11 @@ def analizza_multigol(pronostico_str, gol_effettivi):
 
 def esegui_validazione():
     """
-    Modulo 03 - Validatore Bloccato e Allineato - Versione 6.49
+    Modulo 03 - Validatore Bloccato e Allineato - Versione 6.55
     Risolve radicalmente i bug di calcolo sugli esiti Under/Over, Goal/NoGoal, Multigol e Combo DC+UO
     confrontando i risultati reali con i segni dei pronostici originali come stringhe e fasce numeriche.
     """
-    print("🏆 [FASE 2] Validazione e Allineamento Indici Blindato... Versione 6.49")
+    print("🏆 [FASE 2] Validazione e Allineamento Indici Blindato... Versione 6.55")
     
     if not os.path.exists(PALINSESTO_FILE):
         print(f"⚠️ Errore: File {PALINSESTO_FILE} non trovato.")
@@ -130,10 +130,10 @@ def esegui_validazione():
                 
                 segno_reale = "1" if hg > ag else ("X" if hg == ag else "2")
                 
-                # Pre-impostazione degli esiti per sovrascrivere preventivamente i testi ereditati
-                nuovo['Esito_Media_Goal_Casa'] = "PERDENTE"
-                nuovo['Esito_Media_Goal_Trasferta'] = "PERDENTE"
-                nuovo['Esito_Media_Goal_Totale'] = "PERDENTE"
+                # Pre-impostazione degli esiti allineata alle etichette corrette del Modulo 02
+                nuovo['Esito_MG_Casa'] = "PERDENTE"
+                nuovo['Esito_MG_Ospite'] = "PERDENTE"
+                nuovo['Esito_MG_Totale'] = "PERDENTE"
                 
                 # 1. Convalida 1X2
                 nuovo['Esito_1X2'] = "VINCENTE" if segno_reale in str(row.get('1X2', '')) else "PERDENTE"
@@ -191,15 +191,15 @@ def esegui_validazione():
                 
                 nuovo['Esito_DC+U/O2.5'] = "VINCENTE" if (esito_dc_boolean and esito_uo_combo_ok) else "PERDENTE"
                 
-                # 9. Media Goal Casa
+                # 9. Media Goal Casa (Mappatura Corretta sulle Fasce di Gol del Modulo 02)
                 prono_mg_c = row.get(col_casa, '-') if col_casa else row.get('Pronostico_MG_Casa', row.get('MG_Casa', row.get('MG Casa', '-')))
-                nuovo['Esito_Media_Goal_Casa'] = "VINCENTE" if analizza_multigol(prono_mg_c, hg) else "PERDENTE"
+                nuovo['Esito_MG_Casa'] = "VINCENTE" if analizza_multigol(prono_mg_c, hg) else "PERDENTE"
                 
-                # 10. Media Goal Ospite
+                # 10. Media Goal Ospite (Mappatura Corretta sulle Fasce di Gol del Modulo 02)
                 prono_mg_o = row.get(col_ospite, '-') if col_ospite else row.get('Pronostico_MG_Trasferta', row.get('MG_Ospite', row.get('MG Ospite', '-')))
-                nuovo['Esito_Media_Goal_Trasferta'] = "VINCENTE" if analizza_multigol(prono_mg_o, ag) else "PERDENTE"
+                nuovo['Esito_MG_Ospite'] = "VINCENTE" if analizza_multigol(prono_mg_o, ag) else "PERDENTE"
                 
-                # 11. Media Goal Totale / Combinata
+                # 11. Media Goal Totale / Combinata (Verifica dell'intervallo o della combinazione '/')
                 prono_mg_t = row.get(col_totale, '-') if col_totale else row.get('Pronostico_MG_Totale', row.get('MG_Totale', row.get('MG Totale', '-')))
                 prono_mg_t = str(prono_mg_t).strip()
                 
@@ -213,7 +213,7 @@ def esegui_validazione():
                 else:
                     esito_mg_t_ok = analizza_multigol(prono_mg_t, tot_gol)
                     
-                nuovo['Esito_Media_Goal_Totale'] = "VINCENTE" if esito_mg_t_ok else "PERDENTE"
+                nuovo['Esito_MG_Totale'] = "VINCENTE" if esito_mg_t_ok else "PERDENTE"
                 
                 # 12. Corner 1X2
                 nuovo['Esito_Corner_1X2'] = "VINCENTE" if str(row.get('Corner_1X2', '-')) != "-" else "PERDENTE"
@@ -222,7 +222,7 @@ def esegui_validazione():
                 nuovo['Risultato_Reale'] = "IN ATTESA"
                 for col in ['Esito_1X2', 'Esito_Risultato_Esatto', 'Esito_Doppia_Chance', 'Esito_DC+U/O2.5', 
                             'Esito_U/O_1.5', 'Esito_U/O_2.5', 'Esito_U/O_3.5', 'Esito_Goal_NoGoal', 
-                            'Esito_Media_Goal_Casa', 'Esito_Media_Goal_Trasferta', 'Esito_Media_Goal_Totale', 'Esito_Corner_1X2']:
+                            'Esito_MG_Casa', 'Esito_MG_Ospite', 'Esito_MG_Totale', 'Esito_Corner_1X2']:
                     nuovo[col] = "IN ATTESA"
         else:
             nuovo['Risultato_Reale'] = "IN ATTESA"
