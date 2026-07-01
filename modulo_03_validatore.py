@@ -3,8 +3,8 @@ import pandas as pd
 import os
 from datetime import datetime, timedelta, timezone
 
-# PROGRESSIVO CHAT: #172 | Data: 01 Luglio 2026 | Ora: 09:43:07
-# Versione Modulo: 6.57 (Allineamento Rigido Colonne Esito su Modulo 02)
+# PROGRESSIVO CHAT: #173 | Data: 01 Luglio 2026 | Ora: 09:50:51
+# Versione Modulo: 6.58 (Risoluzione Rigida Nomi Colonne Modulo 02 e Pulizia Testuale)
 
 # Configurazione API Key Football-Data.org
 API_KEY = "e0ca06c07c634d4fb0950365bd82ffd0"
@@ -27,6 +27,7 @@ def normalizza_team(nome):
 def analizza_multigol(pronostico_str, gol_effettivi):
     """
     Verifica numerica pura: controlla se i gol effettivi rientrano nel range (es. '0-1', '2-3').
+    Pulisce in modo aggressivo qualsiasi suffisso o spazio residuo.
     """
     if pd.isna(pronostico_str):
         return False
@@ -53,11 +54,11 @@ def analizza_multigol(pronostico_str, gol_effettivi):
 
 def esegui_validazione():
     """
-    Modulo 03 - Validatore Bloccato e Allineato - Versione 6.57
+    Modulo 03 - Validatore Bloccato e Allineato - Versione 6.58
     Risolve il blocco 'IN ATTESA' sui mercati Ospite e Totale (Combo) mappando
     correttamente le colonne ed effettuando il doppio controllo indipendente sulla stringa '/'.
     """
-    print("🏆 [FASE 2] Validazione e Allineamento Indici Blindato... Versione 6.57")
+    print("🏆 [FASE 2] Validazione e Allineamento Indici Blindato... Versione 6.58")
     
     if not os.path.exists(PALINSESTO_FILE):
         print(f"⚠️ Errore: File {PALINSESTO_FILE} non trovato.")
@@ -213,7 +214,8 @@ def esegui_validazione():
                 for col in ['Esito_1X2', 'Esito_Risultato_Esatto', 'Esito_Doppia_Chance', 'Esito_DC+U/O2.5', 
                             'Esito_U/O_1.5', 'Esito_U/O_2.5', 'Esito_U/O_3.5', 'Esito_Goal_NoGoal', 
                             col_esito_casa, col_esito_ospite, col_esito_totale, 'Esito_Corner_1X2',
-                            'MG_Casa', 'MG Casa', 'MG_Ospite', 'MG Ospite', 'MG_Totale', 'MG Totale']:
+                            'MG_Casa', 'MG Casa', 'MG_Ospite', 'MG Ospite', 'MG_Totale', 'MG Totale',
+                            col_casa, col_ospite, col_totale]:
                     if col in nuovo:
                         nuovo[col] = "IN ATTESA"
         else:
