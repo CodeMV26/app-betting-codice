@@ -4,8 +4,8 @@ import os
 import re
 from datetime import datetime, timedelta, timezone
 
-# PROGRESSIVO CHAT: #188 | Data: 01 Luglio 2026 | Ora: 19:58:30
-# Versione Modulo: 6.72 (Risoluzione Definitiva Tramite Allineamento Indici e Mappatura Dinamica Colonne Modulo 03)
+# PROGRESSIVO CHAT: #189 | Data: 01 Luglio 2026 | Ora: 20:03:14
+# Versione Modulo: 6.73 (Iniezione Dinamica Totale "Pronostico_MG_Trasferta" su Dizionario di Riga)
 
 # Configurazione API Key Football-Data.org
 API_KEY = "e0ca06c07c634d4fb0950365bd82ffd0"
@@ -33,7 +33,7 @@ def analizza_multigol(pronostico_str, gol_effettivi):
     if pd.isna(pronostico_str):
         return False
     
-    # Estrazione di emergence del range numerico tramite espressione regolare se la stringa contiene parentesi
+    # Estrazione di emergenza del range numerico tramite espressione regolare se la stringa contiene parentesi
     stringa_pulita = str(pronostico_str).strip().upper()
     ricerca_parentesi = re.search(r'\((.*?)\)', stringa_pulita)
     if ricerca_parentesi:
@@ -62,10 +62,10 @@ def analizza_multigol(pronostico_str, gol_effettivi):
 
 def esegui_validazione():
     """
-    Modulo 03 - Validatore Radicale - Versione 6.72
+    Modulo 03 - Validatore Radicale - Versione 6.73
     Mappatura esplicita, ridondante e totale per sradicare 'IN ATTESA' dai mercati Multigol.
     """
-    print("🏆 [FASE 2] Validazione Radicale e Scrittura Diretta... Versione 6.72")
+    print("🏆 [FASE 2] Validazione Radicale e Scrittura Diretta... Versione 6.73")
     
     if not os.path.exists(PALINSESTO_FILE):
         print(f"⚠️ Errore: File {PALINSESTO_FILE} non trovato.")
@@ -169,22 +169,28 @@ def esegui_validazione():
                 for col_c in ['Esito_MG_Casa', 'MG_Casa', 'MG Casa', 'Esito_MG_Casa_Calcolato']:
                     nuovo[col_c] = esito_casa_calc
                 
-                # 10. VERIFICA MULTIGOL OSPITE (Intercettazione Dinamica Totale e Scrittura Blindata)
+                # 10. VERIFICA MULTIGOL OSPITE (Sovrascrittura Dinamica ed Esplicita di ogni colonna di riga)
                 val_o = row.get('Pronostico_MG_Trasferta', row.get('Pronostico_MG_Ospite', row.get('MG_Ospite', row.get('MG Ospite', '-'))))
                 esito_ospite_calc = "VINCENTE" if analizza_multigol(val_o, ag) else "PERDENTE"
                 
-                # Riempimento totale e ridondante di ogni possibile colonna d'esito associata a Ospite o Trasferta
-                colonne_esito_ospite_target = [
-                    'Esito_MG_Trasferta', 'Esito_MG_Ospite', 'MG_Ospite', 'MG Ospite', 
-                    'Esito_MG_Ospite_Calcolato', 'Esito_Pronostico_MG_Trasferta', 'Esito_Pronostico_MG_Ospite'
-                ]
-                for col_o in colonne_esito_ospite_target:
-                    nuovo[col_o] = esito_ospite_calc
+                # Ciclo totale di riga: intercettiamo qualsiasi colonna che contenga parole chiave per sovrascriverla all'istante
+                for col_chiave in nuovo.index:
+                    col_upper = str(col_chiave).upper()
+                    if "TRASFERTA" in col_upper or "OSPITE" in col_upper:
+                        if "ESITO" in col_upper or col_chiave in ['MG_Ospite', 'MG Ospite', 'MG_Trasferta']:
+                            nuovo[col_chiave] = esito_ospite_calc
 
-                # Rilevamento dinamico di colonne presenti in Excel contenenti parole chiave per sovrascriverle direttamente
-                for col_corrente in nuovo.index:
-                    if "ESITO" in str(col_corrente).upper() and ("TRASFERTA" in str(col_corrente).upper() or "OSPITE" in str(col_corrente).upper()):
-                        nuovo[col_corrente] = esito_ospite_calc
+                # Garantiamo la scrittura esplicita e ridondante sui campi standard cercati dai pannelli
+                for col_standard in ['Esito_MG_Trasferta', 'Esito_MG_Ospite', 'MG_Ospite', 'MG Ospite', 'Esito_Pronostico_MG_Trasferta']:
+                    nuovo[col_standard] = esito_ospite_calc
+
+                # Pulizia stringa pronostico per rimuovere appendici pendenti nell'output finale
+                ricerca_p_o = re.search(r'\((.*?)\)', str(val_o))
+                stringa_o_pulita = ricerca_p_o.group(1).replace("MG", "").strip() if ricerca_p_o else str(val_o).replace("MG", "").strip()
+                if stringa_o_pulita != "":
+                    nuovo['Pronostico_MG_Trasferta'] = stringa_o_pulita
+                    if 'Pronostico_MG_Ospite' in nuovo:
+                        nuovo['Pronostico_MG_Ospite'] = stringa_o_pulita
 
                 # 11. VERIFICA MULTIGOL TOTALE MATCH
                 val_t = row.get('Pronostico_MG_Totale', row.get('MG_Totale', row.get('MG Totale', '-')))
