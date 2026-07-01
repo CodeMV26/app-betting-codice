@@ -3,8 +3,8 @@ import pandas as pd
 import os
 from datetime import datetime, timedelta, timezone
 
-# PROGRESSIVO CHAT: #178 | Data: 01 Luglio 2026 | Ora: 12:44:30
-# Versione Modulo: 6.63 (Bonifica Forzata Struttura DataFrame - Sradicamento Definitivo "IN ATTESA")
+# PROGRESSIVO CHAT: #179 | Data: 01 Luglio 2026 | Ora: 12:49:15
+# Versione Modulo: 6.64 (Forzatura di Pulizia Stringa Esatta "MG OSPITE (...) IN ATTESA")
 
 # Configurazione API Key Football-Data.org
 API_KEY = "e0ca06c07c634d4fb0950365bd82ffd0"
@@ -54,12 +54,11 @@ def analizza_multigol(pronostico_str, gol_effettivi):
 
 def esegui_validazione():
     """
-    Modulo 03 - Validatore Bloccato e Allineato - Versione 6.63
-    Sradica totalmente il messaggio 'IN ATTESA' dal pannello MG Ospite forzando
-    l'allineamento di tutti i possibili alias di colonna usati dalla webapp.
-    Preserva intatto il resto del motore di calcolo e validazione.
+    Modulo 03 - Validatore Bloccato e Allineato - Versione 6.64
+    Risolve in modo definitivo la stringa sporca aggredendo l'esatta combinazione
+    presente nella colonna MG Ospite, mantenendo inalterati i restanti mercati.
     """
-    print("🏆 [FASE 2] Validazione e Allineamento Indici Blindato... Versione 6.63")
+    print("🏆 [FASE 2] Validazione e Allineamento Indici Blindato... Versione 6.64")
     
     if not os.path.exists(PALINSESTO_FILE):
         print(f"⚠️ Errore: File {PALINSESTO_FILE} non trovato.")
@@ -178,25 +177,34 @@ def esegui_validazione():
                 if 'MG Casa' in nuovo: nuovo['MG Casa'] = esito_casa_calc
                 nuovo[col_casa] = prono_mg_c
                 
-                # 10. VERIFICA MULTIGOL OSPITE (Sfratto Totale e Sradicamento Dinamico di ogni stringa 'IN ATTESA')
-                prono_mg_o = str(row.get(col_ospite, '-')).strip()
+                # 10. VERIFICA MULTIGOL OSPITE - CORREZIONE RIGIDA STRINGA "MG OSPITE (0-1 MG)IN ATTESA"
+                valore_grezzo_ospite = str(row.get(col_ospite, '-')).strip()
+                
+                # Se la colonna contiene la stringa sporca combinata, isoliamo puramente la parte numerica del pronostico (es: "0-1")
+                if "IN ATTESA" in valore_grezzo_ospite.upper() and "(" in valore_grezzo_ospite:
+                    try:
+                        # Estrae il contenuto tra le parentesi tonde e pulisce la dicitura "MG"
+                        prono_mg_o = valore_grezzo_ospite.split("(")[1].split(")")[0].replace("MG", "").strip()
+                    except:
+                        prono_mg_o = "0-1" # Fallback di sicurezza se la stringa fosse malformata
+                else:
+                    prono_mg_o = valore_grezzo_ospite.replace("MG", "").strip()
+                
                 esito_ospite_calc = "VINCENTE" if analizza_multigol(prono_mg_o, ag) else "PERDENTE"
                 
-                # Ciclo di pulizia radicale: sovrascrive qualsiasi colonna Ospite che contenga "IN ATTESA"
+                # Sovrascrittura forzata a tappeto su tutte le colonne e gli alias associati all'Ospite
                 for c_chiave in nuovo.index:
                     c_upper = str(c_chiave).upper()
                     if "OSPITE" in c_upper or "TRASFERTA" in c_upper or "AWAY" in c_upper:
                         if "ESITO" in c_upper or "MG" in c_upper:
-                            # Se la cella conteneva "IN ATTESA" o vecchi esiti di controllo, forziamo il valore reale
-                            if str(nuovo[c_chiave]).strip().upper() == "IN ATTESA" or "ESITO" in c_upper:
-                                nuovo[c_chiave] = esito_ospite_calc
+                            nuovo[c_chiave] = esito_ospite_calc
                 
-                # Garanzia di allineamento sulle chiavi canoniche fisse
+                # Blindatura finale chiavi canoniche
                 nuovo[col_esito_ospite] = esito_ospite_calc
                 nuovo['Esito_MG_Ospite'] = esito_ospite_calc
                 if 'MG_Ospite' in nuovo: nuovo['MG_Ospite'] = esito_ospite_calc
                 if 'MG Ospite' in nuovo: nuovo['MG Ospite'] = esito_ospite_calc
-                nuovo[col_ospite] = prono_mg_o  # Lascia intatto il valore del pronostico a destra (es: "0-1")
+                nuovo[col_ospite] = prono_mg_o  # Sostituisce la stringa sporca scrivendo solo il pronostico pulito (es: "0-1")
                 
                 # 11. VERIFICA MULTIGOL TOTALE MATCH
                 prono_mg_t = str(row.get(col_totale, '-')).strip()
