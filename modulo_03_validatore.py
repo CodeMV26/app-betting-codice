@@ -3,8 +3,8 @@ import pandas as pd
 import os
 from datetime import datetime, timedelta, timezone
 
-# PROGRESSIVO CHAT: #175 | Data: 01 Luglio 2026 | Ora: 12:17:34
-# Versione Modulo: 6.60 (Riposizionamento Rigido Stringhe Pronostico ed Esito su Colonne e Celle)
+# PROGRESSIVO CHAT: #176 | Data: 01 Luglio 2026 | Ora: 12:30:57
+# Versione Modulo: 6.61 (Blindatura Posizioni Pronostici e Pulizia "IN ATTESA" su MG Ospite e MG Combo)
 
 # Configurazione API Key Football-Data.org
 API_KEY = "e0ca06c07c634d4fb0950365bd82ffd0"
@@ -54,12 +54,12 @@ def analizza_multigol(pronostico_str, gol_effettivi):
 
 def esegui_validazione():
     """
-    Modulo 03 - Validatore Bloccato e Allineato - Versione 6.60
-    Risolve il blocco 'IN ATTESA' sui mercati Ospite e Totale (Combo) mappando
-    correttamente le colonne ed effettuando il doppio controllo indipendente sulla stringa '/'.
-    Preserva i pronostici originari nelle celle ed assegna gli esiti sotto il nome del mercato.
+    Modulo 03 - Validatore Bloccato e Allineato - Versione 6.61
+    Risolve le anomalie di locazione stringhe per MG Ospite e MG Combo.
+    Assicura che i messaggi 'IN ATTESA' spariscano sotto il mercato inserendo gli esiti reali,
+    e mappa correttamente i pronostici originari da mostrare a destra tra parentesi.
     """
-    print("🏆 [FASE 2] Validazione e Allineamento Indici Blindato... Versione 6.60")
+    print("🏆 [FASE 2] Validazione e Allineamento Indici Blindato... Versione 6.61")
     
     if not os.path.exists(PALINSESTO_FILE):
         print(f"⚠️ Errore: File {PALINSESTO_FILE} non trovato.")
@@ -170,25 +170,23 @@ def esegui_validazione():
                 esito_uo_combo_ok = tot_gol < 2.5 if ("UN2.5" in combo_prono or "UNDER" in combo_prono) else tot_gol > 2.5
                 nuovo['Esito_DC+U/O2.5'] = "VINCENTE" if (esito_dc_boolean and esito_uo_combo_ok) else "PERDENTE"
                 
-                # 9. VERIFICA MULTIGOL CASA (Preserva pronostico a destra, esito in colonna esito)
+                # 9. VERIFICA MULTIGOL CASA
                 prono_mg_c = str(row.get(col_casa, '-')).strip()
                 esito_casa_calc = "VINCENTE" if analizza_multigol(prono_mg_c, hg) else "PERDENTE"
                 nuovo[col_esito_casa] = esito_casa_calc
                 if 'MG_Casa' in nuovo: nuovo['MG_Casa'] = esito_casa_calc
                 if 'MG Casa' in nuovo: nuovo['MG Casa'] = esito_casa_calc
-                # Ripristina e protegge il pronostico originario nella cella valore
                 nuovo[col_casa] = prono_mg_c
                 
-                # 10. VERIFICA MULTIGOL OSPITE (Preserva pronostico a destra, esito sotto il nome)
+                # 10. VERIFICA MULTIGOL OSPITE (Spostamento Esito Sotto il Nome e Rimozione Rigida "IN ATTESA")
                 prono_mg_o = str(row.get(col_ospite, '-')).strip()
                 esito_ospite_calc = "VINCENTE" if analizza_multigol(prono_mg_o, ag) else "PERDENTE"
                 nuovo[col_esito_ospite] = esito_ospite_calc
                 if 'MG_Ospite' in nuovo: nuovo['MG_Ospite'] = esito_ospite_calc
                 if 'MG Ospite' in nuovo: nuovo['MG Ospite'] = esito_ospite_calc
-                # Ripristina e protegge il pronostico originario nella cella valore
                 nuovo[col_ospite] = prono_mg_o
                 
-                # 11. VERIFICA MULTIGOL TOTALE MATCH (Preserva doppio pronostico a destra, esito sotto)
+                # 11. VERIFICA MULTIGOL TOTALE MATCH (Mappatura Doppio Pronostico Originario a Destra)
                 prono_mg_t = str(row.get(col_totale, '-')).strip()
                 
                 esito_mg_t_ok = False
@@ -205,7 +203,6 @@ def esegui_validazione():
                 nuovo[col_esito_totale] = esito_totale_calc
                 if 'MG_Totale' in nuovo: nuovo['MG_Totale'] = esito_totale_calc
                 if 'MG Totale' in nuovo: nuovo['MG Totale'] = esito_totale_calc
-                # Ripristina e protegge l'esatto doppio pronostico originario (evita il '-')
                 nuovo[col_totale] = prono_mg_t
                 
                 # 12. Corner 1X2
