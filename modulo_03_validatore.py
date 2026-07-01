@@ -178,18 +178,12 @@ def esegui_validazione():
                 nuovo[col_casa] = prono_mg_c
                 
                 # 10. VERIFICA MULTIGOL OSPITE (Mappatura Corretta e Allineata su HG/AG)
-                valore_grezzo_ospite = str(row.get(col_ospite, '-')).strip()
-                ricerca_parentesi = re.search(r'\((.*?)\)', valore_grezzo_ospite)
-                if ricerca_parentesi:
-                    prono_mg_o = ricerca_parentesi.group(1).replace("MG", "").strip()
-                else:
-                    prono_mg_o = valore_grezzo_ospite.replace("MG", "").strip()
-                
-                esito_ospite_calc = "VINCENTE" if analizza_multigol(prono_mg_o, ag) else "PERDENTE"
+                prono_mg_c = str(row.get(col_ospite, '-')).strip()
+                esito_ospite_calc = "VINCENTE" if analizza_multigol(prono_mg_c, hg) else "PERDENTE"
                 nuovo[col_esito_ospite] = esito_ospite_calc
                 if 'MG_Ospite' in nuovo: nuovo['MG_Ospite'] = esito_ospite_calc
                 if 'MG Ospite' in nuovo: nuovo['MG Ospite'] = esito_ospite_calc
-                nuovo[col_ospite] = prono_mg_o
+                nuovo[col_ospite] = prono_mg_c
                 
                 # 11. VERIFICA MULTIGOL TOTALE MATCH
                 prono_mg_t = str(row.get(col_totale, '-')).strip()
