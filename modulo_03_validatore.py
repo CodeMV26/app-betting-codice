@@ -3,8 +3,8 @@ import pandas as pd
 import os
 from datetime import datetime, timedelta, timezone
 
-# PROGRESSIVO CHAT: #164 | Data: 01 Luglio 2026 | Ora: 08:39:28
-# Versione Modulo: 6.48 (Sblocco Atomico e Reset Forzato Etichette MultiGoal)
+# PROGRESSIVO CHAT: #165 | Data: 01 Luglio 2026 | Ora: 08:50:39
+# Versione Modulo: 6.49 (Sradicamento Totale "IN ATTESA" e Allineamento Rigido alle Fasce di Gol)
 
 # Configurazione API Key Football-Data.org
 API_KEY = "e0ca06c07c634d4fb0950365bd82ffd0"
@@ -31,33 +31,35 @@ def analizza_multigol(pronostico_str, gol_effettivi):
     """
     if pd.isna(pronostico_str):
         return False
+    
+    # Pulizia totale di spazi, scritte 'MG' ed eventuali residui di testo
     prono = str(pronostico_str).strip().upper().replace(" ", "").replace("MG", "")
-    if prono == "-" or prono == "" or prono == "NONE" or prono == "NAN" or prono == "IN ATTESA":
+    if prono in ["-", "", "NONE", "NAN", "IN ATTESA"]:
         return False
     
     try:
         if "+" in prono:
-            soglia = int(prono.replace("+", ""))
+            soglia = int(prono.replace("+", "").strip())
             return gol_effettivi >= soglia
         elif "-" in prono:
             parti = prono.split("-")
             if len(parti) == 2:
-                min_g = int(parti[0])
-                max_g = int(parti[1])
+                min_g = int(parti[0].strip())
+                max_g = int(parti[1].strip())
                 return min_g <= gol_effettivi <= max_g
         else:
-            return gol_effettivi == int(prono)
+            return gol_effettivi == int(prono.strip())
     except:
         return False
     return False
 
 def esegui_validazione():
     """
-    Modulo 03 - Validatore Bloccato e Allineato - Versione 6.48
+    Modulo 03 - Validatore Bloccato e Allineato - Versione 6.49
     Risolve radicalmente i bug di calcolo sugli esiti Under/Over, Goal/NoGoal, Multigol e Combo DC+UO
     confrontando i risultati reali con i segni dei pronostici originali come stringhe e fasce numeriche.
     """
-    print("🏆 [FASE 2] Validazione e Allineamento Indici Blindato... Versione 6.48")
+    print("🏆 [FASE 2] Validazione e Allineamento Indici Blindato... Versione 6.49")
     
     if not os.path.exists(PALINSESTO_FILE):
         print(f"⚠️ Errore: File {PALINSESTO_FILE} non trovato.")
@@ -128,7 +130,7 @@ def esegui_validazione():
                 
                 segno_reale = "1" if hg > ag else ("X" if hg == ag else "2")
                 
-                # Inizializzazione di sicurezza per sovrascrivere vecchi residui "IN ATTESA" ereditati dalla riga
+                # Pre-impostazione degli esiti per sovrascrivere preventivamente i testi ereditati
                 nuovo['Esito_Media_Goal_Casa'] = "PERDENTE"
                 nuovo['Esito_Media_Goal_Trasferta'] = "PERDENTE"
                 nuovo['Esito_Media_Goal_Totale'] = "PERDENTE"
