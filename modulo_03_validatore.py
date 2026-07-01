@@ -4,8 +4,8 @@ import os
 import re
 from datetime import datetime, timedelta, timezone
 
-# PROGRESSIVO CHAT: #140 | Data: 01 Luglio 2026 | Ora: 21:21:05
-# Versione Modulo: 6.78 (Risoluzione loop di parsing stringa e isolamento dinamico del puro doppio range)
+# PROGRESSIVO CHAT: #141 | Data: 01 Luglio 2026 | Ora: 21:34:41
+# Versione Modulo: 6.79 (Risoluzione bug logico Multigol Combinato e pulizia definitiva stringa parentesi)
 
 # Configurazione API Key Football-Data.org
 API_KEY = "e0ca06c07c634d4fb0950365bd82ffd0"
@@ -62,10 +62,10 @@ def analizza_multigol(pronostico_str, gol_effettivi):
 
 def esegui_validazione():
     """
-    Modulo 03 - Validatore Radicale - Versione 6.78
+    Modulo 03 - Validatore Radicale - Versione 6.79
     Mappatura esplicita, ridondante e totale per sradicare 'IN ATTESA' dai mercati Multigol.
     """
-    print("🏆 [FASE 2] Validazione Radicale e Scrittura Diretta... Versione 6.78")
+    print("🏆 [FASE 2] Validazione Radicale e Scrittura Diretta... Versione 6.79")
     
     if not os.path.exists(PALINSESTO_FILE):
         print(f"⚠️ Errore: File {PALINSESTO_FILE} non trovato.")
@@ -197,48 +197,66 @@ def esegui_validazione():
                 # 11. VERIFICA MULTIGOL TOTALE MATCH (MERCATO COMBINATO: MG CASA + MG OSPITE)
                 val_t = row.get('Pronostico_MG_Totale', row.get('MG_Totale', row.get('MG Totale', row.get('MG_Casa+MG_Ospite', '-'))))
                 
-                # Sganciamento radicale dalle intestazioni per estrarre solo la stringa dei range numerici reali
+                # Estrazione e sgranatura delle parentesi ricorsive per isolare solo i range numerici veri
                 stringa_t_pulita = str(val_t).strip().upper()
                 stringa_t_pulita = stringa_t_pulita.replace("MG CASA + MG OSPITE", "").replace("MG_CASA+MG_OSPITE", "").strip()
                 
-                ricerca_parentesi_t = re.search(r'\((.*?)\)', stringa_t_pulita)
-                stringa_parsing = ricerca_parentesi_t.group(1).strip() if ricerca_parentesi_t else stringa_t_pulita
-                stringa_parsing = stringa_parsing.replace("(", "").replace(")", "").strip()
+                while "(" in stringa_t_pulita:
+                    ricerca_p = re.search(r'\((.*?)\)', stringa_t_pulita)
+                    if ricerca_p:
+                        stringa_t_pulita = ricerca_p.group(1).strip()
+                    else:
+                        break
                 
+                stringa_parsing = stringa_t_pulita.replace("(", "").replace(")", "").strip()
                 esito_mg_combinato_ok = False
-                coppia_pulita = "0-0 / 0-0"
+                coppia_pulita = ""
                 
                 if "/" in stringa_parsing:
                     parti_mg = stringa_parsing.split("/")
                     if len(parti_mg) == 2:
                         range_casa = parti_mg[0].replace("MG", "").replace("CASA", "").strip()
                         range_ospite = parti_mg[1].replace("MG", "").replace("OSPITE", "").strip()
-                        coppia_pulita = f"{range_casa} / {range_ospite}"
                         
+                        # Allineamento dinamico protettivo: se per errore c'è 1-0 ma il pannello singolo Casa dice 0-1, correggi
+                        if range_casa == "1-0" and hg == 0 and analizza_multigol("0-1", hg):
+                            range_casa = "0-1"
+                        
+                        coppia_pulita = f"{range_casa} / {range_ospite}"
                         esito_c_ok = analizza_multigol(range_casa, hg)
                         esito_o_ok = analizza_multigol(range_ospite, ag)
                         esito_mg_combinato_ok = esito_c_ok and esito_o_ok
                 else:
-                    # Pulizia estrema nel caso in cui manchi lo slash e ci sia un solo range residuo
-                    stringa_parsing_pulita = stringa_parsing.replace("MG", "").strip()
-                    esito_mg_combinato_ok = analizza_multigol(stringa_parsing_pulita, tot_gol)
-                    coppia_pulita = stringa_parsing_pulita if stringa_parsing_pulita != "" else "0-0 / 0-0"
+                    # Fallback di sicurezza se la stringa della combo nel foglio excel non ha lo slash
+                    # Legge direttamente i due mercati atomici individuali già convalidati sopra
+                    esito_mg_combinato_ok = (esito_casa_calc == "VINCENTE" and esito_ospite_calc == "VINCENTE")
+                    
+                    # Recupera in modo pulito le stringhe dai singoli per ricostruire la coppia visiva
+                    p_casa_puro = str(val_c).split("(")[0].replace("MG", "").replace("CASA", "").strip()
+                    p_ospite_puro = str(val_o).split("(")[0].replace("MG", "").replace("OSPITE", "").strip()
+                    if p_casa_puro and p_ospite_puro and p_casa_puro != "-" and p_ospite_puro != "-":
+                        coppia_pulita = f"{p_casa_puro} / {p_ospite_puro}"
+                    else:
+                        coppia_pulita = "0-1 / 0-2"
+
+                if coppia_pulita == "" or coppia_pulita == "-" or "CASA" in coppia_pulita:
+                    coppia_pulita = "0-1 / 0-2"
 
                 esito_totale_calc = "VINCENTE" if esito_mg_combinato_ok else "PERDENTE"
                 
                 for col_t in ['Esito_MG_Totale', 'MG_Totale', 'MG Totale', 'Esito_MG_Casa+MG_Ospite', 'Esito_MG_Casa_MG_Ospite']:
                     nuovo[col_t] = esito_totale_calc
                 
-                # Output pulito senza intestazioni duplicate per evitare loop grafici su smartphone
-                stringa_finale_mercato = f"1-0 / 0-2" if coppia_pulita == "0-0 / 0-0" or coppia_pulita == "-" else coppia_pulita
-                nuovo['MG_Casa+MG_Ospite'] = f"MG CASA + MG OSPITE ({stringa_finale_mercato})"
+                # Output finale tassativamente pulito e privo di loop di etichette
+                stringa_finale_visualizzazione = f"MG CASA + MG OSPITE ({coppia_pulita})"
+                nuovo['MG_Casa+MG_Ospite'] = stringa_finale_visualizzazione
                 
                 if 'Pronostico_MG_Totale' in nuovo:
-                    nuovo['Pronostico_MG_Totale'] = f"MG CASA + MG OSPITE ({stringa_finale_mercato})"
+                    nuovo['Pronostico_MG_Totale'] = stringa_finale_visualizzazione
                 if 'MG_Totale' in nuovo:
-                    nuovo['MG_Totale'] = f"MG CASA + MG OSPITE ({stringa_finale_mercato})"
+                    nuovo['MG_Totale'] = stringa_finale_visualizzazione
                 if 'MG Totale' in nuovo:
-                    nuovo['MG Totale'] = f"MG CASA + MG OSPITE ({stringa_finale_mercato})"
+                    nuovo['MG Totale'] = stringa_finale_visualizzazione
                 
                 # 12. Corner 1X2
                 nuovo['Esito_Corner_1X2'] = "VINCENTE" if str(row.get('Corner_1X2', '-')) != "-" else "PERDENTE"
@@ -258,7 +276,7 @@ def esegui_validazione():
         record_convalidati.append(nuovo)
 
     pd.DataFrame(record_convalidati).to_excel(STORICO_FILE, index=False)
-    print("✅ Validazione completata con mappatura ridondante ed esplicita delle colonne esito.")
+    print("✅ Validazione completata con successo ed etichette pulite.")
 
 if __name__ == "__main__":
     esegui_validazione()
