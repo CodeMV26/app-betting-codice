@@ -4,8 +4,8 @@ import os
 import re
 from datetime import datetime, timedelta, timezone
 
-# PROGRESSIVO CHAT: #185 | Data: 01 Luglio 2026 | Ora: 19:13:14
-# Versione Modulo: 6.69 (Ridisegno Radicale e Semplificazione Strutturale del Modulo 03)
+# PROGRESSIVO CHAT: #186 | Data: 01 Luglio 2026 | Ora: 19:23:14
+# Versione Modulo: 6.70 (Correzione Mappatura Rigida "Pronostico_MG_Trasferta" Modulo 03)
 
 # Configurazione API Key Football-Data.org
 API_KEY = "e0ca06c07c634d4fb0950365bd82ffd0"
@@ -39,7 +39,7 @@ def analizza_multigol(pronostico_str, gol_effettivi):
     if ricerca_parentesi:
         prono = ricerca_parentesi.group(1).replace("MG", "").strip()
     else:
-        prono = stringa_pulita.replace("MG", "").replace("OSPITE", "").replace("CASA", "").replace(" ", "")
+        prono = stringa_pulita.replace("MG", "").replace("OSPITE", "").replace("CASA", "").replace("TRASFERTA", "").replace(" ", "")
     
     if prono in ["-", "", "NONE", "NAN", "IN ATTESA"] or "ATTESA" in prono:
         return False
@@ -62,10 +62,10 @@ def analizza_multigol(pronostico_str, gol_effettivi):
 
 def esegui_validazione():
     """
-    Modulo 03 - Validatore Radicale - Versione 6.69
+    Modulo 03 - Validatore Radicale - Versione 6.70
     Mappatura esplicita, ridondante e totale per sradicare 'IN ATTESA' dai mercati Multigol.
     """
-    print("🏆 [FASE 2] Validazione Radicale e Scrittura Diretta... Versione 6.69")
+    print("🏆 [FASE 2] Validazione Radicale e Scrittura Diretta... Versione 6.70")
     
     if not os.path.exists(PALINSESTO_FILE):
         print(f"⚠️ Errore: File {PALINSESTO_FILE} non trovato.")
@@ -169,8 +169,8 @@ def esegui_validazione():
                 for col_c in ['Esito_MG_Casa', 'MG_Casa', 'MG Casa', 'Esito_MG_Casa_Calcolato']:
                     nuovo[col_c] = esito_casa_calc
                 
-                # 10. VERIFICA MULTIGOL OSPITE (Rilevazione ridondante esplicita)
-                val_o = row.get('Pronostico_MG_Trasferta', row.get('MG_Ospite', row.get('MG Ospite', row.get('Pronostico_MG_Ospite', '-'))))
+                # 10. VERIFICA MULTIGOL OSPITE (Allineamento Rigido su 'Pronostico_MG_Trasferta')
+                val_o = row.get('Pronostico_MG_Trasferta', row.get('Pronostico_MG_Ospite', row.get('MG_Ospite', row.get('MG Ospite', '-'))))
                 esito_ospite_calc = "VINCENTE" if analizza_multigol(val_o, ag) else "PERDENTE"
                 for col_o in ['Esito_MG_Ospite', 'MG_Ospite', 'MG Ospite', 'Esito_MG_Ospite_Calcolato']:
                     nuovo[col_o] = esito_ospite_calc
@@ -180,7 +180,7 @@ def esegui_validazione():
                 stringa_o_pulita = ricerca_p_o.group(1).replace("MG", "").strip() if ricerca_p_o else str(val_o).replace("MG", "").strip()
                 if "ATTESA" not in stringa_o_pulita.upper() and stringa_o_pulita != "-":
                     for col_p_o in ['Pronostico_MG_Trasferta', 'Pronostico_MG_Ospite']:
-                        if col_p_o in nuovo: nuovo[col_p_o] = stringa_o_pulita
+                        nuovo[col_p_o] = stringa_o_pulita
 
                 # 11. VERIFICA MULTIGOL TOTALE MATCH
                 val_t = row.get('Pronostico_MG_Totale', row.get('MG_Totale', row.get('MG Totale', '-')))
