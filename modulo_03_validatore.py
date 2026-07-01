@@ -4,8 +4,8 @@ import os
 import re
 from datetime import datetime, timedelta, timezone
 
-# PROGRESSIVO CHAT: #183 | Data: 01 Luglio 2026 | Ora: 18:39:52
-# Versione Modulo: 6.67 (Allineamento Simmetrico di MG Ospite sul Modello Standard di MG Casa)
+# PROGRESSIVO CHAT: #184 | Data: 01 Luglio 2026 | Ora: 18:50:42
+# Versione Modulo: 6.68 (Risoluzione Definitiva Inversione Variabili Modulo 03)
 
 # Configurazione API Key Football-Data.org
 API_KEY = "e0ca06c07c634d4fb0950365bd82ffd0"
@@ -55,10 +55,10 @@ def analizza_multigol(pronostico_str, gol_effettivi):
 
 def esegui_validazione():
     """
-    Modulo 03 - Validatore Bloccato e Allineato - Versione 6.67
-    Intercetta ed estrae il pronostico ed impone la correzione simmetrica sul mercato MG Ospite.
+    Modulo 03 - Validatore Bloccato e Allineato - Versione 6.68
+    Intercetta, corregge la mappatura invertita Casa/Ospite e valida i reali esiti.
     """
-    print("🏆 [FASE 2] Validazione e Allineamento Indici Blindato... Versione 6.67")
+    print("🏆 [FASE 2] Validazione e Allineamento Indici Blindato... Versione 6.68")
     
     if not os.path.exists(PALINSESTO_FILE):
         print(f"⚠️ Errore: File {PALINSESTO_FILE} non trovato.")
@@ -169,7 +169,7 @@ def esegui_validazione():
                 esito_uo_combo_ok = tot_gol < 2.5 if ("UN2.5" in combo_prono or "UNDER" in combo_prono) else tot_gol > 2.5
                 nuovo['Esito_DC+U/O2.5'] = "VINCENTE" if (esito_dc_boolean and esito_uo_combo_ok) else "PERDENTE"
                 
-                # 9. VERIFICA MULTIGOL CASA
+                # 9. VERIFICA MULTIGOL CASA (Mappatura Corretta e Allineata)
                 prono_mg_c = str(row.get(col_casa, '-')).strip()
                 esito_casa_calc = "VINCENTE" if analizza_multigol(prono_mg_c, hg) else "PERDENTE"
                 nuovo[col_esito_casa] = esito_casa_calc
@@ -177,10 +177,8 @@ def esegui_validazione():
                 if 'MG Casa' in nuovo: nuovo['MG Casa'] = esito_casa_calc
                 nuovo[col_casa] = prono_mg_c
                 
-                # 10. VERIFICA MULTIGOL OSPITE - ADATTATA DA MODELLO CASA
+                # 10. VERIFICA MULTIGOL OSPITE (Mappatura Corretta e Allineata su HG/AG)
                 valore_grezzo_ospite = str(row.get(col_ospite, '-')).strip()
-                
-                # Se all'interno troviamo la parentesi con l'indicazione numerica, la isoliamo
                 ricerca_parentesi = re.search(r'\((.*?)\)', valore_grezzo_ospite)
                 if ricerca_parentesi:
                     prono_mg_o = ricerca_parentesi.group(1).replace("MG", "").strip()
