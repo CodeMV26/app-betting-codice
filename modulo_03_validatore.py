@@ -4,8 +4,8 @@ import os
 import re
 from datetime import datetime, timedelta, timezone
 
-# PROGRESSIVO CHAT: #144 | Data: 02 Luglio 2026 | Ora: 14:38:15
-# Versione Modulo: 6.81 (Correzione Errore Sintassi e Preservazione Storico Cumulativo)
+# PROGRESSIVO CHAT: #147 | Data: 02 Luglio 2026 | Ora: 15:16:10
+# Versione Modulo: 6.84 (Allineamento Flusso: Legge Palinsesto -> Scrive su Storico)
 
 # Configurazione API Key Football-Data.org
 API_KEY = "e0ca06c07c634d4fb0950365bd82ffd0"
@@ -33,7 +33,7 @@ def analizza_multigol(pronostico_str, gol_effettivi):
     if pd.isna(pronostico_str):
         return False
     
-    # Estrazione di emergence del range numerico tramite espressione regolare se la stringa contiene parentesi
+    # Estrazione di emergenza del range numerico tramite espressione regolare se la stringa contiene parentesi
     stringa_pulita = str(pronostico_str).strip().upper()
     ricerca_parentesi = re.search(r'\((.*?)\)', stringa_pulita)
     if ricerca_parentesi:
@@ -62,10 +62,10 @@ def analizza_multigol(pronostico_str, gol_effettivi):
 
 def esegui_validazione():
     """
-    Modulo 03 - Validatore Radicale - Versione 6.81
-    Mappatura esplicita, ridondante e totale per sradicare 'IN ATTESA' dai mercati Multigol.
+    Modulo 03 - Validatore Radicale - Versione 6.84
+    Legge il Palinsesto, convalida tramite API e scrive nello Storico.
     """
-    print("🏆 [FASE 2] Validazione Radicale e Scrittura Diretta... Versione 6.81")
+    print("🏆 [FASE 2] Validazione Radicale e Scrittura in Storico... Versione 6.84")
     
     if not os.path.exists(PALINSESTO_FILE):
         print(f"⚠️ Errore: File {PALINSESTO_FILE} non trovato.")
@@ -153,7 +153,7 @@ def esegui_validazione():
                 prono_uo35 = str(row.get('U/O_3.5', row.get('U/O 3.5', ''))).upper().strip()
                 nuovo['Esito_U/O_3.5'] = "VINCENTE" if ("UNDER" in prono_uo35 and tot_gol < 3.5) or ("OVER" in prono_uo35 and tot_gol > 3.5) else "PERDENTE"
                 
-                # 7. Goal / NoGoal (Mappatura robusta per supportare i formati GG, GOAL, NG, NOGOAL)
+                # 7. Goal / NoGoal
                 gng_prono = str(row.get('Goal_NoGoal', row.get('Goal/NoGoal', ''))).upper().strip()
                 gng_reale = "GOAL" if (hg > 0 and ag > 0) else "NOGOAL"
                 
@@ -170,17 +170,16 @@ def esegui_validazione():
                 esito_uo_combo_ok = tot_gol < 2.5 if ("UN2.5" in combo_prono or "UNDER" in combo_prono) else tot_gol > 2.5
                 nuovo['Esito_DC+U/O2.5'] = "VINCENTE" if (esito_dc_boolean and esito_uo_combo_ok) else "PERDENTE"
                 
-                # 9. VERIFICA MULTIGOL CASA (Rilevazione ridondante esplicita)
+                # 9. VERIFICA MULTIGOL CASA
                 val_c = row.get('Pronostico_MG_Casa', row.get('MG_Casa', row.get('MG Casa', '-')))
                 esito_casa_calc = "VINCENTE" if analizza_multigol(val_c, hg) else "PERDENTE"
                 for col_c in ['Esito_MG_Casa', 'MG_Casa', 'MG Casa', 'Esito_MG_Casa_Calcolato']:
                     nuovo[col_c] = esito_casa_calc
                 
-                # 10. VERIFICA MULTIGOL OSPITE (Forzatura e allineamento totale)
+                # 10. VERIFICA MULTIGOL OSPITE
                 val_o = row.get('Pronostico_MG_Trasferta', row.get('Pronostico_MG_Ospite', row.get('MG_Ospite', row.get('MG Ospite', '-'))))
                 esito_ospite_calc = "VINCENTE" if analizza_multigol(val_o, ag) else "PERDENTE"
                 
-                # Scrittura forzata dell'esito calcolato su tutte le chiavi possibili cercate dall'app mobile
                 nuovo['Esito_MG_Trasferta'] = esito_ospite_calc
                 nuovo['Esito_MG_Ospite'] = esito_ospite_calc
                 nuovo['Esito_Pronostico_MG_Trasferta'] = esito_ospite_calc
@@ -201,10 +200,8 @@ def esegui_validazione():
                     if 'Pronostico_MG_Ospite' in nuovo:
                         nuovo['Pronostico_MG_Ospite'] = stringa_o_pulita
 
-                # 11. VERIFICA MULTIGOL TOTALE MATCH (MERCATO COMBINATO: MG CASA + MG OSPITE)
+                # 11. VERIFICA MULTIGOL TOTALE MATCH
                 val_t = row.get('Pronostico_MG_Totale', row.get('MG_Totale', row.get('MG Totale', row.get('MG_Casa+MG_Ospite', '-'))))
-                
-                # Estrazione e sgranatura delle parentesi ricorsive per isolare solo i range numerici veri
                 stringa_t_pulita = str(val_t).strip().upper()
                 stringa_t_pulita = stringa_t_pulita.replace("MG CASA + MG OSPITE", "").replace("MG_CASA+MG_OSPITE", "").strip()
                 
@@ -225,7 +222,6 @@ def esegui_validazione():
                         range_casa = parti_mg[0].replace("MG", "").replace("CASA", "").strip()
                         range_ospite = parti_mg[1].replace("MG", "").replace("OSPITE", "").strip()
                         
-                        # Allineamento dinamico protettivo: se per errore c'è 1-0 ma il pannello singolo Casa dice 0-1, correggi
                         if range_casa == "1-0" and hg == 0 and analizza_multigol("0-1", hg):
                             range_casa = "0-1"
                         
@@ -234,10 +230,7 @@ def esegui_validazione():
                         esito_o_ok = analizza_multigol(range_ospite, ag)
                         esito_mg_combinato_ok = esito_c_ok and esito_o_ok
                 else:
-                    # Fallback di sicurezza se la stringa della combo nel foglio excel non ha lo slash
                     esito_mg_combinato_ok = (esito_casa_calc == "VINCENTE" and esito_ospite_calc == "VINCENTE")
-                    
-                    # Recupera in modo pulito le stringhe dai singoli per ricostruire la coppia visiva
                     p_casa_puro = str(val_c).split("(")[0].replace("MG", "").replace("CASA", "").strip()
                     p_ospite_puro = str(val_o).split("(")[0].replace("MG", "").replace("OSPITE", "").strip()
                     if p_casa_puro and p_ospite_puro and p_casa_puro != "-" and p_ospite_puro != "-":
@@ -253,7 +246,6 @@ def esegui_validazione():
                 for col_t in ['Esito_MG_Totale', 'MG_Totale', 'MG Totale', 'Esito_MG_Casa+MG_Ospite', 'Esito_MG_Casa_MG_Ospite']:
                     nuovo[col_t] = esito_totale_calc
                 
-                # Output finale tassativamente pulito e privo di loop di etichette
                 stringa_finale_visualizzazione = f"MG CASA + MG OSPITE ({coppia_pulita})"
                 nuovo['MG_Casa+MG_Ospite'] = stringa_finale_visualizzazione
                 
@@ -281,24 +273,9 @@ def esegui_validazione():
             
         record_convalidati.append(nuovo)
 
-    df_nuovi_record = pd.DataFrame(record_convalidati)
-
-    # LOGICA ANTI-SOVRASCRITTURA DISTRUTTIVA: SE IL FILE ESISTE, LEGGE E ACCODA I RECORD
-    if os.path.exists(STORICO_FILE):
-        try:
-            df_storico_esistente = pd.read_excel(STORICO_FILE)
-            if '3. Match' in df_storico_esistente.columns and '3. Match' in df_nuovi_record.columns:
-                match_correnti = df_nuovi_record['3. Match'].astype(str).tolist()
-                df_storico_esistente = df_storico_esistente[~df_storico_esistente['3. Match'].astype(str).isin(match_correnti)]
-            df_finale = pd.concat([df_storico_esistente, df_nuovi_record], ignore_index=True)
-        except Exception as e:
-            print(f"Nota ripristino database storico vuoto o corrotto: {e}")
-            df_finale = df_nuovi_record
-    else:
-        df_finale = df_nuovi_record
-
-    df_finale.to_excel(STORICO_FILE, index=False)
-    print("✅ Validazione completata con successo. Database Storico preservato ed etichette pulite.")
+    # SALVATAGGIO ESCLUSIVO DENTRO LO STORICO (Il Palinsesto rimane intatto per la Fase 1)
+    pd.DataFrame(record_convalidati).to_excel(STORICO_FILE, index=False)
+    print("✅ Validazione completata. Dati salvati correttamente nello STORICO.")
 
 if __name__ == "__main__":
     esegui_validazione()
