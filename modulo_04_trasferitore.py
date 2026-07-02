@@ -2,8 +2,8 @@ import sys
 import os
 import pandas as pd
 
-# PROGRESSIVO CHAT: #148 | Data: 02 Luglio 2026 | Ora: 15:52:10
-# Versione Modulo: 6.85 (Modulo 04 - Ottimizzato: Trasferimento Esiti, Pulizia Storico e Accumulo Continuo)
+# PROGRESSIVO CHAT: #149 | Data: 02 Luglio 2026 | Ora: 16:05:27
+# Versione Modulo: 6.86 (Modulo 04 - Ottimizzato: Forza Iniezione e Allineamento 12 Mercati ed Esiti)
 
 STORICO_FILE = "Storico_Validato_Betting.xlsx"
 DATABASE_STORICO_GLOBALE = "Database_Storico_Completo.xlsx"
@@ -35,10 +35,11 @@ def _logica_core_trasferimento():
             "Esito_DC+U/O2.5", "Esito_U/O_1.5", "Esito_U/O_2.5", "Esito_U/O_3.5", "Esito_Goal_NoGoal", "Esito_Corner_1X2"
         ]
 
-        # Uniforma a stringa tutte le colonne sensibili dello storico per evitare troncamenti o perdite
+        # Assicura l'esistenza di tutte le colonne nello storico corrente e forzane il tipo stringa
         for col in colonne_mercati_testo:
-            if col in df_storico_corrente.columns:
-                df_storico_corrente[col] = df_storico_corrente[col].astype(str).str.strip()
+            if col not in df_storico_corrente.columns:
+                df_storico_corrente[col] = "-"
+            df_storico_corrente[col] = df_storico_corrente[col].astype(str).str.strip()
 
         # DIVISIONE DEI MATCH: Isola le partite TERMINATE e VALIDATE da quelle ancora IN ATTESA
         maschera_terminati = (
@@ -61,11 +62,11 @@ def _logica_core_trasferimento():
         if os.path.exists(DATABASE_STORICO_GLOBALE):
             df_db_esistente = pd.read_excel(DATABASE_STORICO_GLOBALE)
             if not df_db_esistente.empty:
+                # Forza la presenza e l'allineamento di tutte le colonne strutturali nel DB Esistente
                 for col in colonne_mercati_testo:
-                    if col in df_db_esistente.columns:
-                        df_db_esistente[col] = df_db_esistente[col].astype(str).str.strip()
-                    else:
+                    if col not in df_db_esistente.columns:
                         df_db_esistente[col] = "-"
+                    df_db_esistente[col] = df_db_esistente[col].astype(str).str.strip()
                 
                 # Mappatura chiavi presenti nel Database per evitare duplicazioni esatte dello stesso evento
                 mappa_chiavi_db = {genera_chiave_univoca_local(riga): idx for idx, riga in df_db_esistente.iterrows()}
@@ -74,19 +75,19 @@ def _logica_core_trasferimento():
                 for _, riga in df_da_trasferire.iterrows():
                     chiave_nuova = genera_chiave_univoca_local(riga)
                     if chiave_nuova in mappa_chiavi_db:
-                        # Aggiorna il record esistente nel database se per caso era incompleto
+                        # Aggiorna in modo incondizionato il record esistente includendo tutti i mercati e gli esiti rilevati
                         idx_db = mappa_chiavi_db[chiave_nuova]
                         for col in df_da_trasferire.columns:
-                            if col in df_db_esistente.columns:
-                                df_db_esistente.at[idx_db, col] = str(riga[col])
+                            df_db_esistente.at[idx_db, col] = str(riga[col]).strip()
                     else:
                         record_effettivi_nuovi.append(riga)
                 
                 if record_effettivi_nuovi:
                     df_nuovi_inserimenti = pd.DataFrame(record_effettivi_nuovi)
                     for col in colonne_mercati_testo:
-                        if col in df_nuovi_inserimenti.columns:
-                            df_nuovi_inserimenti[col] = df_nuovi_inserimenti[col].astype(str).str.strip()
+                        if col not in df_nuovi_inserimenti.columns:
+                            df_nuovi_inserimenti[col] = "-"
+                        df_nuovi_inserimenti[col] = df_nuovi_inserimenti[col].astype(str).str.strip()
                     
                     df_db_finale = pd.concat([df_db_esistente, df_nuovi_inserimenti], ignore_index=True, sort=False)
                 else:
@@ -95,6 +96,12 @@ def _logica_core_trasferimento():
                 df_db_finale = df_da_trasferire
         else:
             df_db_finale = df_da_trasferire
+
+        # Sincronizzazione finale di sicurezza sulla struttura prima della scrittura su disco
+        for col in colonne_mercati_testo:
+            if col not in df_db_finale.columns:
+                df_db_finale[col] = "-"
+            df_db_finale[col] = df_db_finale[col].astype(str).str.strip()
 
         # 1. SALVATAGGIO SCRITTURA NEL DATABASE GLOBALE (Garantisce la crescita infinita)
         df_db_finale.to_excel(DATABASE_STORICO_GLOBALE, index=False)
@@ -115,4 +122,4 @@ def esegui_trasferimento():
     _logica_core_trasferimento()
 
 sys.modules[__name__].esegui_allineamento = esegui_allineamento
-sys.modules[__name__].esegui_trasferimento = esegui_trasferimento
+sys.modules[__name__].esegui_trasferimento = esegui_transferimento
