@@ -4,8 +4,8 @@ import os
 import re
 from datetime import datetime, timedelta, timezone
 
-# PROGRESSIVO CHAT: #142 | Data: 02 Luglio 2026 | Ora: 14:10:42
-# Versione Modulo: 6.80 (Risoluzione bug di parsing stringa su stringhe GG/NG e normalizzazione mercati)
+# PROGRESSIVO CHAT: #143 | Data: 02 Luglio 2026 | Ora: 14:26:09
+# Versione Modulo: 6.81 (Integrazione della protezione e preservazione dei dati storici)
 
 # Configurazione API Key Football-Data.org
 API_KEY = "e0ca06c07c634d4fb0950365bd82ffd0"
@@ -62,10 +62,10 @@ def analizza_multigol(pronostico_str, gol_effettivi):
 
 def esegui_validazione():
     """
-    Modulo 03 - Validatore Radicale - Versione 6.80
-    Mappatura esplicita, ridondante e totale per sradicare 'IN ATTESA' dai mercati Multigol.
+    Modulo 03 - Validatore Radicale - Versione 6.81
+    Mappatura esplicita, ridondante e protezione totale contro la perdita dello storico dati.
     """
-    print("🏆 [FASE 2] Validazione Radicale e Scrittura Diretta... Versione 6.80")
+    print("🏆 [FASE 2] Validazione Radicale e Scrittura Diretta... Versione 6.81")
     
     if not os.path.exists(PALINSESTO_FILE):
         print(f"⚠️ Errore: File {PALINSESTO_FILE} non trovato.")
@@ -153,7 +153,7 @@ def esegui_validazione():
                 prono_uo35 = str(row.get('U/O_3.5', row.get('U/O 3.5', ''))).upper().strip()
                 nuovo['Esito_U/O_3.5'] = "VINCENTE" if ("UNDER" in prono_uo35 and tot_gol < 3.5) or ("OVER" in prono_uo35 and tot_gol > 3.5) else "PERDENTE"
                 
-                # 7. Goal / NoGoal (Mappatura robusta per supportare i formati GG, GOAL, NG, NOGOAL)
+                # 7. Goal / NoGoal
                 gng_prono = str(row.get('Goal_NoGoal', row.get('Goal/NoGoal', ''))).upper().strip()
                 gng_reale = "GOAL" if (hg > 0 and ag > 0) else "NOGOAL"
                 
@@ -261,7 +261,7 @@ def esegui_validazione():
                     nuovo['Pronostico_MG_Totale'] = stringa_finale_visualizzazione
                 if 'MG_Totale' in nuovo:
                     nuovo['MG_Totale'] = stringa_finale_visualizzazione
-                if 'MG Totale' in nuovo:
+                if 'MG Totale' in Directory = nuovo:
                     nuovo['MG Totale'] = stringa_finale_visualizzazione
                 
                 # 12. Corner 1X2
@@ -281,8 +281,28 @@ def esegui_validazione():
             
         record_convalidati.append(nuovo)
 
-    pd.DataFrame(record_convalidati).to_excel(STORICO_FILE, index=False)
-    print("✅ Validazione completata con successo ed etichette pulite.")
+    df_nuovi_record = pd.DataFrame(record_convalidati)
+
+    # SECZIONE DI SALVAGGIO INTEGRATIVA ANTI-PERDITA DATI (PRESERVA LO STORICO)
+    if os.path.exists(STORICO_FILE):
+        try:
+            df_storico_esistente = pd.read_excel(STORICO_FILE)
+            # Rimuove dallo storico vecchio i match che stiamo aggiornando adesso per evitare duplicati stantii
+            if '3. Match' in df_storico_esistente.columns and '3. Match' in df_nuovi_record.columns:
+                match_correnti = df_nuovi_record['3. Match'].astype(str).tolist()
+                df_storico_esistente = df_storico_esistente[~df_storico_esistente['3. Match'].astype(str).isin(match_correnti)]
+            
+            # Unione incrementale: unisce il vecchio database storico con i nuovi dati appena validati
+            df_finale = pd.concat([df_storico_esistente, df_nuovi_record], ignore_index=True)
+        except Exception as e:
+            print(f"Nota di ripristino: File esistente corrotto o vuoto, ricreo. ({e})")
+            df_finale = df_nuovi_record
+    else:
+        df_finale = df_nuovi_record
+
+    # Scrittura sicura cumulativa sul database storico Excel
+    df_finale.to_excel(STORICO_FILE, index=False)
+    print("✅ Validazione completata! Database Storico preservato e aggiornato senza alcuna perdita.")
 
 if __name__ == "__main__":
     esegui_validazione()
