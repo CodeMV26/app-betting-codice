@@ -2,8 +2,8 @@ import sys
 import os
 import pandas as pd
 
-# PROGRESSIVO CHAT: #156 | Data: 02 Luglio 2026 | Ora: 20:51:56
-# Versione Modulo: 6.93 (Modulo 04 - Correzione Definitiva Iniezione Valori e Fix fillna)
+# PROGRESSIVO CHAT: #157 | Data: 02 Luglio 2026 | Ora: 21:02:15
+# Versione Modulo: 6.94 (Modulo 04 - Allineamento Forzato e Scrittura Garantita 12 Mercati)
 
 STORICO_FILE = "Storico_Validato_Betting.xlsx"
 DATABASE_STORICO_GLOBALE = "Database_Storico_Completo.xlsx"
@@ -68,15 +68,17 @@ def _logica_core_trasferimento():
             df_db_esistente = pd.read_excel(DATABASE_STORICO_GLOBALE)
             if not df_db_esistente.empty:
                 # -------------------------------------------------------------
-                # MODIFICA MIRATA E CIRCOSCRITTA: Allineamento e salvaguardia totale dello schema colonne
-                tutte_le_colonne_target = list(set(list(df_db_esistente.columns) + list(df_da_trasferire.columns) + colonne_mercati_testo))
+                # MODIFICA RIGIDA E DEFINITIVA: Creazione di una struttura unificata pulita
+                # Uniamo le colonne fisicamente presenti in entrambi i file per evitare disallineamenti di indice
+                colonne_totali = list(df_db_esistente.columns)
+                for c in df_da_trasferire.columns:
+                    if c not in colonne_totali:
+                        colonne_totali.append(c)
                 
-                # Forza l'allineamento strutturale preventivo delle colonne sul DB Esistente
-                df_db_esistente = df_db_esistente.reindex(columns=tutte_le_colonne_target)
-                
-                # Sostituisce i valori NaN reali con il trattino, convertendo in stringa pulita senza sovrascrivere i dati validi
-                df_db_esistente = df_db_esistente.fillna("-")
-                for col in df_db_esistente.columns:
+                # Assegnazione forzata delle nuove colonne vuote come stringhe pulite sul database esistente
+                for col in colonne_totali:
+                    if col not in df_db_esistente.columns:
+                        df_db_esistente[col] = "-"
                     df_db_esistente[col] = df_db_esistente[col].astype(str).str.strip()
                 # -------------------------------------------------------------
                 
@@ -96,6 +98,10 @@ def _logica_core_trasferimento():
                 
                 if record_effettivi_nuovi:
                     df_nuovi_inserimenti = pd.DataFrame(record_effettivi_nuovi)
+                    # Allinea lo schema dei nuovi inserimenti prima della concatenazione
+                    for col in df_db_esistente.columns:
+                        if col not in df_nuovi_inserimenti.columns:
+                            df_nuovi_inserimenti[col] = "-"
                     df_db_finale = pd.concat([df_db_esistente, df_nuovi_inserimenti], ignore_index=True, sort=False)
                 else:
                     df_db_finale = df_db_esistente
