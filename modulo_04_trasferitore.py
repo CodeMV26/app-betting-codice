@@ -2,8 +2,8 @@ import sys
 import os
 import pandas as pd
 
-# PROGRESSIVO CHAT: #154 | Data: 02 Luglio 2026 | Ora: 20:24:03
-# Versione Modulo: 6.91 (Modulo 04 - Rilevamento Dinamico Totale dei 12 Mercati ed Esiti)
+# PROGRESSIVO CHAT: #155 | Data: 02 Luglio 2026 | Ora: 20:41:56
+# Versione Modulo: 6.92 (Modulo 04 - Fix Assegnazione Colonne Dinamiche su Righe Esistenti)
 
 STORICO_FILE = "Storico_Validato_Betting.xlsx"
 DATABASE_STORICO_GLOBALE = "Database_Storico_Completo.xlsx"
@@ -67,11 +67,19 @@ def _logica_core_trasferimento():
         if os.path.exists(DATABASE_STORICO_GLOBALE):
             df_db_esistente = pd.read_excel(DATABASE_STORICO_GLOBALE)
             if not df_db_esistente.empty:
-                # Estende dinamicamente le colonne rilevate anche sul database storico globale esistente
-                for col in colonne_mercati_testo:
-                    if col not in df_db_esistente.columns:
+                # -------------------------------------------------------------
+                # MODIFICA MIRATA: Sincronizzazione totale e preventiva delle colonne
+                # Includiamo tutte le colonne del file sorgente per espandere lo schema del database
+                tutte_le_colonne_target = list(set(list(df_db_esistente.columns) + list(df_da_trasferire.columns) + colonne_mercati_testo))
+                
+                # Forza la ri-indicizzazione delle colonne sul DataFrame esistente prima di scrivere i valori
+                df_db_esistente = df_db_esistente.reindex(columns=tutte_le_colonne_target)
+                
+                for col in tutte_le_colonne_target:
+                    if col not in df_db_esistente.columns or df_db_esistente[col].isna().all():
                         df_db_esistente[col] = "-"
                     df_db_esistente[col] = df_db_esistente[col].astype(str).str.strip()
+                # -------------------------------------------------------------
                 
                 # Mappatura chiavi presenti nel Database per evitare duplicazioni esatte dello stesso evento
                 mappa_chiavi_db = {genera_chiave_univoca_local(riga): idx for idx, riga in df_db_esistente.iterrows()}
@@ -89,11 +97,6 @@ def _logica_core_trasferimento():
                 
                 if record_effettivi_nuovi:
                     df_nuovi_inserimenti = pd.DataFrame(record_effettivi_nuovi)
-                    for col in colonne_mercati_testo:
-                        if col not in df_nuovi_inserimenti.columns:
-                            df_nuovi_inserimenti[col] = "-"
-                        df_nuovi_inserimenti[col] = df_nuovi_inserimenti[col].astype(str).str.strip()
-                    
                     df_db_finale = pd.concat([df_db_esistente, df_nuovi_inserimenti], ignore_index=True, sort=False)
                 else:
                     df_db_finale = df_db_esistente
