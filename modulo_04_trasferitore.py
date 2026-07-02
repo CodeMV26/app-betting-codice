@@ -2,8 +2,8 @@ import sys
 import os
 import pandas as pd
 
-# PROGRESSIVO CHAT: #150 | Data: 02 Luglio 2026 | Ora: 16:16:45
-# Versione Modulo: 6.87 (Modulo 04 - Corretto Refuso 'esegui_transferimento' in esegui_trasferimento)
+# PROGRESSIVO CHAT: #151 | Data: 02 Luglio 2026 | Ora: 16:18:10
+# Versione Modulo: 6.88 (Modulo 04 - Rigenerazione Integrale e Chiusura Stringhe)
 
 STORICO_FILE = "Storico_Validato_Betting.xlsx"
 DATABASE_STORICO_GLOBALE = "Database_Storico_Completo.xlsx"
@@ -32,4 +32,94 @@ def _logica_core_trasferimento():
             "Pronostico_MG_Trasferta", "MG_Ospite", "MG Ospite", "Esito_MG_Trasferta", "Esito_MG_Ospite", "Esito_Pronostico_MG_Trasferta", "Esito_Pronostico_MG_Ospite",
             "Pronostico_MG_Totale", "MG_Totale", "MG Totale", "MG_Casa+MG_Ospite", "Esito_MG_Totale", "Esito_MG_Casa+MG_Ospite", "Esito_MG_Casa_MG_Ospite",
             "Risultato_Reale", "Esito_1X2", "Esito_Risultato_Esatto", "Esito_Doppia_Chance", 
-            "Esito_DC+U/O2.5", "Esito_U/O_1.5", "Esito_U/O_2.5", "Esito_
+            "Esito_DC+U/O2.5", "Esito_U/O_1.5", "Esito_U/O_2.5", "Esito_U/O_3.5", "Esito_Goal_NoGoal", "Esito_Corner_1X2"
+        ]
+
+        # Assicura l'esistenza di tutte le colonne nello storico corrente e forzane il tipo stringa
+        for col in colonne_mercati_testo:
+            if col not in df_storico_corrente.columns:
+                df_storico_corrente[col] = "-"
+            df_storico_corrente[col] = df_storico_corrente[col].astype(str).str.strip()
+
+        # DIVISIONE DEI MATCH: Isola le partite TERMINATE e VALIDATE da quelle ancora IN ATTESA
+        maschera_terminati = (
+            df_storico_corrente['Risultato_Reale'].notna() & 
+            (df_storico_corrente['Risultato_Reale'].astype(str).str.upper().str.strip() != "IN ATTESA") &
+            (df_storico_corrente['Risultato_Reale'].astype(str).str.upper().str.strip() != "NAN") &
+            (df_storico_corrente['Risultato_Reale'].astype(str).str.strip() != "")
+        )
+        
+        df_da_trasferire = df_storico_corrente[maschera_terminati].copy()
+        df_da_mantenere_in_storico = df_storico_corrente[~maschera_terminati].copy()
+
+        if df_da_trasferire.empty:
+            print("ℹ️ Nessun match terminato e validato trovato nello Storico. Fase 3 saltata.")
+            return
+
+        print(f"📈 Trovati {len(df_da_trasferire)} match terminati da spostare nel Database globale.")
+
+        # Caricamento o creazione del Database Storico Globale
+        if os.path.exists(DATABASE_STORICO_GLOBALE):
+            df_db_esistente = pd.read_excel(DATABASE_STORICO_GLOBALE)
+            if not df_db_esistente.empty:
+                # Forza la presenza e l'allineamento di tutte le colonne strutturali nel DB Esistente
+                for col in colonne_mercati_testo:
+                    if col not in df_db_esistente.columns:
+                        df_db_esistente[col] = "-"
+                    df_db_esistente[col] = df_db_esistente[col].astype(str).str.strip()
+                
+                # Mappatura chiavi presenti nel Database per evitare duplicazioni esatte dello stesso evento
+                mappa_chiavi_db = {genera_chiave_univoca_local(riga): idx for idx, riga in df_db_esistente.iterrows()}
+                
+                record_effettivi_nuovi = []
+                for _, riga in df_da_trasferire.iterrows():
+                    chiave_nuova = genera_chiave_univoca_local(riga)
+                    if chiave_nuova in mappa_chiavi_db:
+                        # Aggiorna in modo incondizionato il record esistente includendo tutti i mercati e gli esiti rilevati
+                        idx_db = mappa_chiavi_db[chiave_nuova]
+                        for col in df_da_trasferire.columns:
+                            df_db_esistente.at[idx_db, col] = str(riga[col]).strip()
+                    else:
+                        record_effettivi_nuovi.append(riga)
+                
+                if record_effettivi_nuovi:
+                    df_nuovi_inserimenti = pd.DataFrame(record_effettivi_nuovi)
+                    for col in colonne_mercati_testo:
+                        if col not in df_nuovi_inserimenti.columns:
+                            df_nuovi_inserimenti[col] = "-"
+                        df_nuovi_inserimenti[col] = df_nuovi_inserimenti[col].astype(str).str.strip()
+                    
+                    df_db_finale = pd.concat([df_db_esistente, df_nuovi_inserimenti], ignore_index=True, sort=False)
+                else:
+                    df_db_finale = df_db_esistente
+            else:
+                df_db_finale = df_da_trasferire
+        else:
+            df_db_finale = df_da_trasferire
+
+        # Sincronizzazione finale di sicurezza sulla struttura prima della scrittura su disco
+        for col in colonne_mercati_testo:
+            if col not in df_db_finale.columns:
+                df_db_finale[col] = "-"
+            df_db_finale[col] = df_db_finale[col].astype(str).str.strip()
+
+        # 1. SALVATAGGIO SCRITTURA NEL DATABASE GLOBALE (Garantisce la crescita infinita)
+        df_db_finale.to_excel(DATABASE_STORICO_GLOBALE, index=False)
+        print(f"✅ Database Definitivo aggiornato con successo. Totale record attuali: {len(df_db_finale)}")
+
+        # 2. PULIZIA REALE DELLO STORICO: Salviamo nello Storico solo i match non ancora convalidati
+        df_da_mantenere_in_storico.to_excel(STORICO_FILE, index=False)
+        print(f"🧹 Pulizia completata: rimossi {len(df_da_trasferire)} eventi terminati dallo Storico ({len(df_da_mantenere_in_storico)} rimasti in attesa).")
+
+    except Exception as e:
+        print(f"❌ Errore controllato durante il trasferimento: {e}")
+        raise e
+
+def esegui_allineamento():
+    _logica_core_trasferimento()
+
+def esegui_trasferimento():
+    _logica_core_trasferimento()
+
+sys.modules[__name__].esegui_allineamento = esegui_allineamento
+sys.modules[__name__].esegui_trasferimento = esegui_trasferimento
