@@ -2,8 +2,8 @@ import sys
 import os
 import pandas as pd
 
-# PROGRESSIVO CHAT: #153 | Data: 02 Luglio 2026 | Ora: 20:20:12
-# Versione Modulo: 6.90 (Modulo 04 - Ottimizzato: Integrazione e Validazione Sicura 12 Mercati ed Esiti)
+# PROGRESSIVO CHAT: #154 | Data: 02 Luglio 2026 | Ora: 20:24:03
+# Versione Modulo: 6.91 (Modulo 04 - Rilevamento Dinamico Totale dei 12 Mercati ed Esiti)
 
 STORICO_FILE = "Storico_Validato_Betting.xlsx"
 DATABASE_STORICO_GLOBALE = "Database_Storico_Completo.xlsx"
@@ -24,18 +24,21 @@ def _logica_core_trasferimento():
             print("⚠️ Lo storico sorgente è vuoto. Nessun dato da trasferire.")
             return
             
-        # Elenco completo, esteso e ridondante dei 12 mercati con i rispettivi ESITI (Vincenti/Perdenti)
-        colonne_mercati_testo = [
-            "1X2", "Risultato_Esatto", "Doppia_Chance", "DC+U/O2.5", 
-            "U/O_1.5", "U/O_2.5", "U/O_3.5", "Goal_NoGoal", "Corner_1X2",
-            "Pronostico_MG_Casa", "MG_Casa", "MG Casa", "Esito_MG_Casa", "Esito_MG_Casa_Calcolato",
-            "Pronostico_MG_Trasferta", "MG_Ospite", "MG Ospite", "Esito_MG_Trasferta", "Esito_MG_Ospite", "Esito_Pronostico_MG_Trasferta", "Esito_Pronostico_MG_Ospite",
-            "Pronostico_MG_Totale", "MG_Totale", "MG Totale", "MG_Casa+MG_Ospite", "Esito_MG_Totale", "Esito_MG_Casa+MG_Ospite", "Esito_MG_Casa_MG_Ospite",
-            "Risultato_Reale", "Esito_1X2", "Esito_Risultato_Esatto", "Esito_Doppia_Chance", 
-            "Esito_DC+U/O2.5", "Esito_DC+U/O_2.5", "Esito_U/O_1.5", "Esito_U/O_2.5", "Esito_U/O_3.5", "Esito_Goal_NoGoal", "Esito_Corner_1X2",
-            "Esito 1X2", "Esito Risultato Esatto", "Esito Doppia Chance", "Esito DC+U/O2.5",
-            "Esito U/O 1.5", "Esito U/O 2.5", "Esito U/O 3.5", "Esito Goal/NoGoal", "Esito Goal NoGoal", "Esito Corner 1X2"
-        ]
+        # BASE STATICA: Colonne di controllo fisse
+        colonne_base = ["Risultato_Reale", "Risultato Reale"]
+        
+        # RILEVAMENTO DINAMICO: Cattura istantaneamente ogni variante dei 12 mercati ed esiti presenti nello Storico
+        colonne_rilevate_dinamiche = []
+        parole_chiave_mercati = ["1X2", "CH.", "CHANCE", "U/O", "OVER", "UNDER", "GOAL", "CORNER", "MG", "CASA", "OSPITE", "TRASFERTA", "ESITO"]
+        
+        for col in df_storico_corrente.columns:
+            col_upper = str(col).upper()
+            if any(p_chiave in col_upper for p_chiave in parole_chiave_mercati) or col_upper.startswith("ESITO"):
+                if col not in colonne_rilevate_dinamiche:
+                    colonne_rilevate_dinamiche.append(col)
+                    
+        # Unione finale per comporre l'elenco totale delle colonne dei mercati da blindare
+        colonne_mercati_testo = list(set(colonne_base + colonne_rilevate_dinamiche))
 
         # Assicura l'esistenza di tutte le colonne nello storico corrente e forzane il tipo stringa
         for col in colonne_mercati_testo:
@@ -64,7 +67,7 @@ def _logica_core_trasferimento():
         if os.path.exists(DATABASE_STORICO_GLOBALE):
             df_db_esistente = pd.read_excel(DATABASE_STORICO_GLOBALE)
             if not df_db_esistente.empty:
-                # Forza la presenza e l'allineamento di tutte le colonne strutturali nel DB Esistente
+                # Estende dinamicamente le colonne rilevate anche sul database storico globale esistente
                 for col in colonne_mercati_testo:
                     if col not in df_db_esistente.columns:
                         df_db_esistente[col] = "-"
@@ -77,7 +80,7 @@ def _logica_core_trasferimento():
                 for _, riga in df_da_trasferire.iterrows():
                     chiave_nuova = genera_chiave_univoca_local(riga)
                     if chiave_nuova in mappa_chiavi_db:
-                        # Aggiorna in modo incondizionato ogni singola colonna inclusi tutti i 12 mercati ed esiti
+                        # Aggiorna in modo incondizionato ogni singola colonna inclusi tutti i 12 mercati ed esiti rilevati
                         idx_db = mappa_chiavi_db[chiave_nuova]
                         for col in df_da_trasferire.columns:
                             df_db_esistente.at[idx_db, col] = str(riga[col]).strip()
