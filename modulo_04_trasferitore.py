@@ -2,8 +2,8 @@ import sys
 import os
 import pandas as pd
 
-# PROGRESSIVO CHAT: #151 | Data: 02 Luglio 2026 | Ora: 16:18:10
-# Versione Modulo: 6.88 (Modulo 04 - Rigenerazione Integrale e Chiusura Stringhe)
+# PROGRESSIVO CHAT: #153 | Data: 02 Luglio 2026 | Ora: 20:20:12
+# Versione Modulo: 6.90 (Modulo 04 - Ottimizzato: Integrazione e Validazione Sicura 12 Mercati ed Esiti)
 
 STORICO_FILE = "Storico_Validato_Betting.xlsx"
 DATABASE_STORICO_GLOBALE = "Database_Storico_Completo.xlsx"
@@ -24,7 +24,7 @@ def _logica_core_trasferimento():
             print("⚠️ Lo storico sorgente è vuoto. Nessun dato da trasferire.")
             return
             
-        # Elenco completo ed esteso di tutte le colonne dei mercati, pronostici ed ESITI da preservare
+        # Elenco completo, esteso e ridondante dei 12 mercati con i rispettivi ESITI (Vincenti/Perdenti)
         colonne_mercati_testo = [
             "1X2", "Risultato_Esatto", "Doppia_Chance", "DC+U/O2.5", 
             "U/O_1.5", "U/O_2.5", "U/O_3.5", "Goal_NoGoal", "Corner_1X2",
@@ -32,7 +32,9 @@ def _logica_core_trasferimento():
             "Pronostico_MG_Trasferta", "MG_Ospite", "MG Ospite", "Esito_MG_Trasferta", "Esito_MG_Ospite", "Esito_Pronostico_MG_Trasferta", "Esito_Pronostico_MG_Ospite",
             "Pronostico_MG_Totale", "MG_Totale", "MG Totale", "MG_Casa+MG_Ospite", "Esito_MG_Totale", "Esito_MG_Casa+MG_Ospite", "Esito_MG_Casa_MG_Ospite",
             "Risultato_Reale", "Esito_1X2", "Esito_Risultato_Esatto", "Esito_Doppia_Chance", 
-            "Esito_DC+U/O2.5", "Esito_U/O_1.5", "Esito_U/O_2.5", "Esito_U/O_3.5", "Esito_Goal_NoGoal", "Esito_Corner_1X2"
+            "Esito_DC+U/O2.5", "Esito_DC+U/O_2.5", "Esito_U/O_1.5", "Esito_U/O_2.5", "Esito_U/O_3.5", "Esito_Goal_NoGoal", "Esito_Corner_1X2",
+            "Esito 1X2", "Esito Risultato Esatto", "Esito Doppia Chance", "Esito DC+U/O2.5",
+            "Esito U/O 1.5", "Esito U/O 2.5", "Esito U/O 3.5", "Esito Goal/NoGoal", "Esito Goal NoGoal", "Esito Corner 1X2"
         ]
 
         # Assicura l'esistenza di tutte le colonne nello storico corrente e forzane il tipo stringa
@@ -75,7 +77,7 @@ def _logica_core_trasferimento():
                 for _, riga in df_da_trasferire.iterrows():
                     chiave_nuova = genera_chiave_univoca_local(riga)
                     if chiave_nuova in mappa_chiavi_db:
-                        # Aggiorna in modo incondizionato il record esistente includendo tutti i mercati e gli esiti rilevati
+                        # Aggiorna in modo incondizionato ogni singola colonna inclusi tutti i 12 mercati ed esiti
                         idx_db = mappa_chiavi_db[chiave_nuova]
                         for col in df_da_trasferire.columns:
                             df_db_esistente.at[idx_db, col] = str(riga[col]).strip()
