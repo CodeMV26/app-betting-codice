@@ -4,8 +4,8 @@ import os
 import re
 from datetime import datetime, timedelta, timezone
 
-# PROGRESSIVO CHAT: #141 | Data: 01 Luglio 2026 | Ora: 21:34:41
-# Versione Modulo: 6.79 (Risoluzione bug logico Multigol Combinato e pulizia definitiva stringa parentesi)
+# PROGRESSIVO CHAT: #142 | Data: 02 Luglio 2026 | Ora: 14:10:42
+# Versione Modulo: 6.80 (Risoluzione bug di parsing stringa su stringhe GG/NG e normalizzazione mercati)
 
 # Configurazione API Key Football-Data.org
 API_KEY = "e0ca06c07c634d4fb0950365bd82ffd0"
@@ -62,10 +62,10 @@ def analizza_multigol(pronostico_str, gol_effettivi):
 
 def esegui_validazione():
     """
-    Modulo 03 - Validatore Radicale - Versione 6.79
+    Modulo 03 - Validatore Radicale - Versione 6.80
     Mappatura esplicita, ridondante e totale per sradicare 'IN ATTESA' dai mercati Multigol.
     """
-    print("🏆 [FASE 2] Validazione Radicale e Scrittura Diretta... Versione 6.79")
+    print("🏆 [FASE 2] Validazione Radicale e Scrittura Diretta... Versione 6.80")
     
     if not os.path.exists(PALINSESTO_FILE):
         print(f"⚠️ Errore: File {PALINSESTO_FILE} non trovato.")
@@ -153,10 +153,17 @@ def esegui_validazione():
                 prono_uo35 = str(row.get('U/O_3.5', row.get('U/O 3.5', ''))).upper().strip()
                 nuovo['Esito_U/O_3.5'] = "VINCENTE" if ("UNDER" in prono_uo35 and tot_gol < 3.5) or ("OVER" in prono_uo35 and tot_gol > 3.5) else "PERDENTE"
                 
-                # 7. Goal / NoGoal
+                # 7. Goal / NoGoal (Mappatura robusta per supportare i formati GG, GOAL, NG, NOGOAL)
                 gng_prono = str(row.get('Goal_NoGoal', row.get('Goal/NoGoal', ''))).upper().strip()
                 gng_reale = "GOAL" if (hg > 0 and ag > 0) else "NOGOAL"
-                nuovo['Esito_Goal_NoGoal'] = "VINCENTE" if ("NG" in gng_prono and gng_reale == "NOGOAL") or ("GOAL" in gng_prono and gng_reale == "GOAL") else "PERDENTE"
+                
+                is_prono_goal = "GOAL" in gng_prono or "GG" in gng_prono
+                is_prono_nogoal = "NG" in gng_prono or "NOGOAL" in gng_prono or "NO GOAL" in gng_prono
+                
+                if (is_prono_goal and gng_reale == "GOAL") or (is_prono_nogoal and gng_reale == "NOGOAL"):
+                    nuovo['Esito_Goal_NoGoal'] = "VINCENTE"
+                else:
+                    nuovo['Esito_Goal_NoGoal'] = "PERDENTE"
                 
                 # 8. Combo Doppia Chance + Under/Over 2.5
                 combo_prono = str(row.get('DC+U/O2.5', row.get('DC+U/O_2.5', ''))).upper().strip()
@@ -228,7 +235,6 @@ def esegui_validazione():
                         esito_mg_combinato_ok = esito_c_ok and esito_o_ok
                 else:
                     # Fallback di sicurezza se la stringa della combo nel foglio excel non ha lo slash
-                    # Legge direttamente i due mercati atomici individuali già convalidati sopra
                     esito_mg_combinato_ok = (esito_casa_calc == "VINCENTE" and esito_ospite_calc == "VINCENTE")
                     
                     # Recupera in modo pulito le stringhe dai singoli per ricostruire la coppia visiva
