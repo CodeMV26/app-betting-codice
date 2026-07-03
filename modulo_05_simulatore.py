@@ -2,8 +2,8 @@ import numpy as np
 import pandas as pd
 import math
 
-# PROGRESSIVO CHAT: #121 | Data: 28 Giugno 2026 | Ora: 21:37:14
-# Versione Progetto: 6.14 | MODULO 05: MOTORE DI BACKTESTING ISOLATO (VERSIONE INTEGRALE)
+# PROGRESSIVO CHAT: #161 | Data: 03 Luglio 2026 | Ora: 13:54:11
+# Versione Progetto: 6.96 | MODULO 05: MOTORE DI BACKTESTING CON SANIFICAZIONE STRINGHE ("-") E VALORI DI DEFAULT
 
 def poisson_prob(lam, k):
     """Calcola la probabilità di Poisson pura."""
@@ -47,13 +47,23 @@ def determina_miglior_multigol(prob_vett):
     }
     return max(fasce, key=fasce.get)
 
-def esegui_simulazione_archivio(df_database, s_uo15, s_uo25, s_uo35, s_gng, peso_casa, peso_trasferta):
+def esegui_simulazione_archivio(df_database, s_uo15=0.70, s_uo25=0.60, s_uo35=0.50, s_gng=0.55, peso_casa=1.05, peso_trasferta=0.95):
     """
-    Esegue il ricalcolo matematico massivo di tutto l'archivio storico applicando 
-    le nuove soglie e pesi dinamici passati dall'interfaccia utente.
+    Esegue il backtesting massivo gestendo in modo sicuro i valori non numerici (es. '-')
+    inseriti dall'allineamento automatico dei 12 mercati.
     """
-    df_validi = df_database[df_database['Risultato_Reale'].astype(str).str.contains("-")].copy()
-    df_validi = df_validi[~df_validi['Risultato_Reale'].astype(str).str.contains("NON ANCORA")]
+    if df_database is None or df_database.empty:
+        return {}, 0
+
+    # Copia locale e forzatura iniziale a stringa pulita per prevenire errori di tipo
+    df_lavoro = df_database.copy()
+    for col in df_lavoro.columns:
+        df_lavoro[col] = df_lavoro[col].fillna("-").astype(str).str.strip()
+
+    # Isola i record con risultati convalidati ed elimina i match in attesa
+    df_validi = df_lavoro[df_lavoro['Risultato_Reale'].str.contains("-")].copy()
+    df_validi = df_validi[~df_validi['Risultato_Reale'].str.contains("NON ANCORA")]
+    df_validi = df_validi[~df_validi['Risultato_Reale'].str.upper().str.contains("IN ATTESA")]
     
     totale_match = len(df_validi)
     if totale_match == 0:
@@ -66,15 +76,33 @@ def esegui_simulazione_archivio(df_database, s_uo15, s_uo25, s_uo35, s_gng, peso
     }
     
     for _, row in df_validi.iterrows():
-        res_reale = str(row.get('Risultato_Reale', '0-0')).strip()
-        g_casa, g_ospite = map(int, res_reale.split("-"))
+        res_reale = row['Risultato_Reale']
+        try:
+            g_casa, g_ospite = map(int, res_reale.split("-"))
+        except ValueError:
+            continue
+            
         somma_gol = g_casa + g_ospite
         segno_reale = '1' if g_casa > g_ospite else ('2' if g_ospite > g_casa else 'X')
         
-        m_gf_c = float(row.get('Media_Goal_Casa_Orig', row.get('Media_Goal_Casa', 1.20)))
-        m_gf_t = float(row.get('Media_Goal_Trasferta_Orig', row.get('Media_Goal_Trasferta', 1.10)))
-        if math.isnan(m_gf_c): m_gf_c = 1.20
-        if math.isnan(m_gf_t): m_gf_t = 1.10
+        # ---------------------------------------------------------------------
+        # BLINDATURA ESTREMA ANTI-CRASH: Intercetta i caratteri '-' o le celle vuote
+        # ---------------------------------------------------------------------
+        try:
+            val_casa = str(row.get('Media_Goal_Casa_Orig', row.get('Media_Goal_Casa', '1.20'))).strip()
+            m_gf_c = float(val_casa.replace(',', '.')) if val_casa != '-' else 1.20
+        except:
+            m_gf_c = 1.20
+
+        try:
+            val_trasferta = str(row.get('Media_Goal_Trasferta_Orig', row.get('Media_Goal_Trasferta', '1.10'))).strip()
+            m_gf_t = float(val_trasferta.replace(',', '.')) if val_trasferta != '-' else 1.10
+        except:
+            m_gf_t = 1.10
+            
+        if math.isnan(m_gf_c) or m_gf_c <= 0: m_gf_c = 1.20
+        if math.isnan(m_gf_t) or m_gf_t <= 0: m_gf_t = 1.10
+        # ---------------------------------------------------------------------
         
         sos_c = (m_gf_c / 1.20) * peso_casa
         sos_t = (m_gf_t / 1.10) * peso_trasferta
@@ -121,15 +149,26 @@ def esegui_simulazione_archivio(df_database, s_uo15, s_uo25, s_uo35, s_gng, peso
         def check_multigol_coerenza(p_str, gol_effettivi):
             p = p_str.replace("MG","").strip()
             if "-" in p:
-                g_min, g_max = map(int, p.split("-"))
-                return g_min <= gol_effettivi <= g_max
+                try:
+                    g_min, g_max = map(int, p.split("-"))
+                    return g_min <= gol_effettivi <= g_max
+                except:
+                    return False
             return gol_effettivi >= 3 if "3+" in p else False
 
         if check_multigol_coerenza(determina_miglior_multigol(prob_c), g_casa): vinti["MG Casa"] += 1
         if check_multigol_coerenza(determina_miglior_multigol(prob_t), g_ospite): vinti["MG Ospite"] += 1
         
-        if prono_combo == row.get('DC+U/O2.5') and row.get('Esito_DC+U/O2.5') == 'VINCENTE': vinti["Combo DC + U/O"] += 1
-        if ("1" in row.get('Esito_Corner_1X2', 'X') and xg_c > xg_t + 0.3) or ("2" in row.get('Esito_Corner_1X2', 'X') and xg_t > xg_c + 0.3): vinti["Corner 1X2"] += 1
+        # Mappature e controlli robusti per mercati di controllo stringa
+        val_combo_db = row.get('DC+U/O2.5', '-')
+        esito_combo_db = row.get('Esito_DC+U/O2.5', '-')
+        esito_corner_db = row.get('Esito_Corner_1X2', '-')
+        
+        if prono_combo == val_combo_db and esito_combo_db == 'VINCENTE': 
+            vinti["Combo DC + U/O"] += 1
+            
+        if ("1" in esito_corner_db and xg_c > xg_t + 0.3) or ("2" in esito_corner_db and xg_t > xg_c + 0.3): 
+            vinti["Corner 1X2"] += 1
 
     risultati_percentuali = {m: f"{(vinti[m]/totale_match)*100:.1f}% ({vinti[m]}/{totale_match})" for m in vinti}
     return risultati_percentuali, totale_match
