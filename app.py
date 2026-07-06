@@ -2,10 +2,11 @@ import streamlit as st
 import pandas as pd
 import os
 import datetime
+import io
 from zoneinfo import ZoneInfo
 
-# PROGRESSIVO CHAT: #145 | Data: 30 Giugno 2026 | Ora: 17:31:04
-# Versione Progetto: 6.29 (Allineamento UI Mobile a Logica Multigol Rigida & No-Cache)
+# PROGRESSIVO CHAT: #146 | Data: 6 Luglio 2026 | Ora: 09:09:21
+# Versione Progetto: 6.30 (Integrazione Pulsante Nativo Esporta Database in Excel 1-Click)
 
 st.set_page_config(page_title="⚽ Betting Pro Mobile", page_icon="⚽", layout="centered")
 
@@ -20,7 +21,7 @@ DB_FILE = "Database_Storico_Completo.xlsx"
 STORICO_FILE = "Storico_Validato_Betting.xlsx"
 PALINSESTO_FILE = "Pronostici_App_Betting.xlsx"
 
-VERSIONE_CORRENTE = "6.29"
+VERSIONE_CORRENTE = "6.30"
 
 @st.cache_data(ttl=0)
 def carica_dati(path):
@@ -52,6 +53,7 @@ st.markdown("""
     div.stButton > button[id*="fase_1"] { background-color: #2cd158 !important; color: white !important; }
     div.stButton > button[id*="fase_2"] { background-color: #6a5acd !important; color: white !important; }
     div.stButton > button[id*="fase_3"] { background-color: #ffd700 !important; color: #1c1c1e !important; }
+    div.stDownloadButton > button { background-color: #007aff !important; color: white !important; border-radius: 8px !important; font-weight: 700 !important; font-size: 11px !important; padding: 6px 10px !important; height: auto !important; width: 100% !important; border: none !important; box-shadow: 0 2px 5px rgba(0,0,0,0.03) !important; margin-bottom: 12px !important; }
     .tab-click-col div.stButton > button { font-size: 9px !important; padding: 6px 1px !important; border-radius: 6px !important; border: 1px solid #d1d1d6 !important; text-transform: uppercase; }
     .match-card { background-color: #ffffff !important; padding: 12px; border-radius: 14px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); margin-bottom: 10px; border: 1px solid #e5e5ea !important; }
     .meta-label { color: #007aff; font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.3px; margin-bottom: 2px; }
@@ -288,6 +290,21 @@ elif st.session_state.tab_selezionata == "STORICO":
 elif st.session_state.tab_selezionata == "DATABASE":
     if not df_database.empty:
         st.markdown('<div class="block-header">🗄️ Archivio Generale Partite</div>', unsafe_allow_html=True)
+        
+        # --- NUOVO PULSANTE NATIVO ESPORTA DATABASE 1-CLICK ---
+        buffer = io.BytesIO()
+        with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
+            df_database.to_excel(writer, index=False, sheet_name='Database_Generale')
+        buffer.seek(0)
+        
+        st.download_button(
+            label="📥 ESPORTA DATABASE IN EXCEL (1-CLICK)",
+            data=buffer,
+            file_name=f"Database_Generale_{datetime.datetime.now(FUSO_ROMA).strftime('%Y%m%d_%H%M%S')}.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            use_container_width=True
+        )
+        
         for idx, row in df_database.iterrows():
             st.markdown(f"""
             <div class="match-card">
