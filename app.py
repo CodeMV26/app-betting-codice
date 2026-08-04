@@ -5,8 +5,8 @@ import datetime
 import io
 from zoneinfo import ZoneInfo
 
-# PROGRESSIVO CHAT: #165 | Data: 18 Luglio 2026 | Ora: 18:05:12
-# Versione Progetto: 7.05 (Rimozione Cache Integrale - Risoluzione Letargo e Sincronizzazione Real-Time GitHub)
+# PROGRESSIVO CHAT: #146 | Data: 6 Luglio 2026 | Ora: 09:09:21
+# Versione Progetto: 6.30 (Integrazione Pulsante Nativo Esporta Database in Excel 1-Click)
 
 st.set_page_config(page_title="⚽ Betting Pro Mobile", page_icon="⚽", layout="centered")
 
@@ -21,9 +21,9 @@ DB_FILE = "Database_Storico_Completo.xlsx"
 STORICO_FILE = "Storico_Validato_Betting.xlsx"
 PALINSESTO_FILE = "Pronostici_App_Betting.xlsx"
 
-VERSIONE_CORRENTE = "7.05"
+VERSIONE_CORRENTE = "6.30"
 
-# RIMOZIONE DEFINITIVA CACHE: Lettura diretta dei file su disco ad ogni risveglio/aggiornamento
+@st.cache_data(ttl=0)
 def carica_dati(path):
     if os.path.exists(path):
         try:
@@ -32,8 +32,7 @@ def carica_dati(path):
                 df = df[df['3. Match'].astype(str).str.upper().str.strip() != 'NONE VS NONE']
                 df = df.dropna(subset=['3. Match'])
             return df.reset_index(drop=True)
-        except: 
-            return pd.DataFrame()
+        except: return pd.DataFrame()
     return pd.DataFrame()
 
 df_palinsesto = carica_dati(PALINSESTO_FILE)
@@ -292,6 +291,7 @@ elif st.session_state.tab_selezionata == "DATABASE":
     if not df_database.empty:
         st.markdown('<div class="block-header">🗄️ Archivio Generale Partite</div>', unsafe_allow_html=True)
         
+        # --- NUOVO PULSANTE NATIVO ESPORTA DATABASE 1-CLICK ---
         buffer = io.BytesIO()
         with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
             df_database.to_excel(writer, index=False, sheet_name='Database_Generale')
@@ -382,3 +382,4 @@ elif st.session_state.tab_selezionata == "SIMULATORE":
                 </div>
                 """, unsafe_allow_html=True)
             st.markdown("</div></div>", unsafe_allow_html=True)
+
